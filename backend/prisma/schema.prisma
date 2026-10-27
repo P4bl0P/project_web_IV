@@ -13,3 +13,53 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum ApplicationStatus {
+  PENDING
+  WAITLIST
+  APPROVED
+  REJECTED
+}
+
+enum ScoutBranch {
+  CASTOR
+  LOBATO
+  RANGER
+  PIONERO
+}
+
+model Application {
+  id                String            @id @default(uuid())
+  status            ApplicationStatus @default(PENDING)
+  
+  // Datos de control
+  requestDate       DateTime          @default(now())
+  requestedBranch   ScoutBranch
+
+  // Datos del educando
+  childName         String
+  childBirthDate    DateTime
+  address           String
+
+  // Datos de tutores
+  fatherName        String?
+  fatherPhone       String?
+  fatherEmail       String?
+  
+  motherName        String?
+  motherPhone       String?
+  motherEmail       String?
+
+  // Información adicional
+  motivation        String            @db.Text
+
+  // Criterios lista de espera
+  hasFamilyInGroup  Boolean           @default(false)
+  fromAnotherGroup  Boolean           @default(false)
+  socialInclusion   Boolean           @default(false)
+  
+  additionalData    Json?
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
