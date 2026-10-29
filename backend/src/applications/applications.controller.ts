@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApplicationStatus, ScoutBranch } from '@prisma/client';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
@@ -13,22 +24,33 @@ export class ApplicationsController {
   }
 
   @Get()
-  findAll() {
-    return this.applicationsService.findAll();
+  findAll(
+    @Query('status') status?: ApplicationStatus,
+    @Query('branch') branch?: ScoutBranch,
+  ) {
+    return this.applicationsService.findAll({ status, branch });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.applicationsService.findOne(+id);
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.applicationsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateApplicationDto: UpdateApplicationDto) {
-    return this.applicationsService.update(+id, updateApplicationDto);
+  update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() updateApplicationDto: UpdateApplicationDto,
+  ) {
+    return this.applicationsService.update(id, updateApplicationDto);
+  }
+
+  @Post(':id/admit')
+  admitToCensus(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.applicationsService.admitToCensus(id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.applicationsService.remove(+id);
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.applicationsService.remove(id);
   }
 }

@@ -1,12 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -15,51 +8,75 @@ datasource db {
 }
 
 enum ApplicationStatus {
-  PENDING
-  WAITLIST
-  APPROVED
-  REJECTED
+  PENDING   // Paso 2: Solicitud recibida pendiente de revisar por el Consejo
+  WAITLIST  // Paso 3: Revisada y apuntada en la lista de espera
+  ADMITTED  // Paso 4: Plaza asignada, enviada inscripción y pasado al Censo
+  REJECTED  // Solicitud descartada o baja de la lista
 }
 
 enum ScoutBranch {
-  CASTOR
-  LOBATO
-  RANGER
-  PIONERO
+  CASTOR    // 6-8 años (Colonia)
+  LOBATO    // 8-11 años (Manada)
+  RANGER    // 11-14 años (Tropa)
+  PIONERO   // 14-17 años (Posta)
+  RUTA      // 17-20 años (Clan)
 }
 
 model Application {
-  id                String            @id @default(uuid())
+  id                String            @id @default(uuid()) @db.Uuid
   status            ApplicationStatus @default(PENDING)
-  
-  // Datos de control
   requestDate       DateTime          @default(now())
   requestedBranch   ScoutBranch
 
-  // Datos del educando
-  childName         String
-  childBirthDate    DateTime
-  address           String
+  // Datos del niño/a (educando)
+  childName         String            @db.VarChar(150)
+  childBirthDate    DateTime          @db.Date
+  address           String            @db.VarChar(255)
 
-  // Datos de tutores
-  fatherName        String?
-  fatherPhone       String?
-  fatherEmail       String?
-  
-  motherName        String?
-  motherPhone       String?
-  motherEmail       String?
+  // Datos de los padres / tutores
+  fatherName        String?           @db.VarChar(150)
+  fatherPhone       String?           @db.VarChar(30)
+  fatherEmail       String?           @db.VarChar(150)
 
-  // Información adicional
+  motherName        String?           @db.VarChar(150)
+  motherPhone       String?           @db.VarChar(30)
+  motherEmail       String?           @db.VarChar(150)
+
+  // Motivación y notas del Consejo
   motivation        String            @db.Text
+  councilNotes      String?           @db.Text
 
-  // Criterios lista de espera
+  // Criterios de baremación en lista de espera
   hasFamilyInGroup  Boolean           @default(false)
   fromAnotherGroup  Boolean           @default(false)
   socialInclusion   Boolean           @default(false)
-  
-  additionalData    Json?
+
+  // Relación 1:1 cuando pasa al Censo (Paso 4)
+  censusMember      Member?
 
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+
+  // Índices justificados por consultas de lista de espera y filtrado por rama
+  @@index([status, requestedBranch, requestDate])
+}
+
+model Member {
+  id              String       @id @default(uuid()) @db.Uuid
+  fullName        String       @db.VarChar(150)
+  birthDate       DateTime     @db.Date
+  currentBranch   ScoutBranch
+  address         String       @db.VarChar(255)
+  primaryPhone    String       @db.VarChar(30)
+  primaryEmail    String       @db.VarChar(150)
+  enrollmentDate  DateTime     @default(now())
+  isActive        Boolean      @default(true)
+
+  applicationId   String?      @unique @db.Uuid
+  application     Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([currentBranch, isActive])
 }

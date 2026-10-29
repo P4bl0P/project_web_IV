@@ -1,8 +1,13 @@
+// backend/src/app.service.ts
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
+  getHealth() {
+    return {
+      status: 'ok',
+      service: 'grupo-iv-scouts-api',
+      timestamp: new Date().toISOString(),
+    };
   }
 }
