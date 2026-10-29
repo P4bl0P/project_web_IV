@@ -7,76 +7,148 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 1. Estados del flujo completo (Solicitud -> Lista de Espera -> Inscripción -> Censo)
 enum ApplicationStatus {
-  PENDING   // Paso 2: Solicitud recibida pendiente de revisar por el Consejo
-  WAITLIST  // Paso 3: Revisada y apuntada en la lista de espera
-  ADMITTED  // Paso 4: Plaza asignada, enviada inscripción y pasado al Censo
-  REJECTED  // Solicitud descartada o baja de la lista
+  PENDIENTE_REVISION     // Acaba de enviar el formulario inicial (Fase 1)
+  LISTA_ESPERA           // Revisado por el Kraal, esperando hueco en su rama
+  PLAZA_OFERTADA         // Enlace mágico activo enviado a los padres (Fase 2)
+  INSCRIPCION_COMPLETADA // Padres rellenaron y firmaron Fase 2; falta OK final de secretaría
+  CENSADO                // Miembro oficial activo del Grupo IV
+  BAJA                   // Rechazado, archivado o baja del grupo
 }
 
-enum ScoutBranch {
-  CASTOR    // 6-8 años (Colonia)
-  LOBATO    // 8-11 años (Manada)
-  RANGER    // 11-14 años (Tropa)
-  PIONERO   // 14-17 años (Posta)
-  RUTA      // 17-20 años (Clan)
+// 2. Sexo/Género (Para el criterio de ratio en las ramas)
+enum Gender {
+  MASCULINO
+  FEMENINO
+  OTRO
 }
 
-model Application {
-  id                String            @id @default(uuid()) @db.Uuid
-  status            ApplicationStatus @default(PENDING)
-  requestDate       DateTime          @default(now())
-  requestedBranch   ScoutBranch
-
-  // Datos del niño/a (educando)
-  childName         String            @db.VarChar(150)
-  childBirthDate    DateTime          @db.Date
-  address           String            @db.VarChar(255)
-
-  // Datos de los padres / tutores
-  fatherName        String?           @db.VarChar(150)
-  fatherPhone       String?           @db.VarChar(30)
-  fatherEmail       String?           @db.VarChar(150)
-
-  motherName        String?           @db.VarChar(150)
-  motherPhone       String?           @db.VarChar(30)
-  motherEmail       String?           @db.VarChar(150)
-
-  // Motivación y notas del Consejo
-  motivation        String            @db.Text
-  councilNotes      String?           @db.Text
-
-  // Criterios de baremación en lista de espera
-  hasFamilyInGroup  Boolean           @default(false)
-  fromAnotherGroup  Boolean           @default(false)
-  socialInclusion   Boolean           @default(false)
-
-  // Relación 1:1 cuando pasa al Censo (Paso 4)
-  censusMember      Member?
-
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  // Índices justificados por consultas de lista de espera y filtrado por rama
-  @@index([status, requestedBranch, requestDate])
+// 3. Situación legal del asociado (Hoja 1 MSC)
+enum LegalStatus {
+  MENOR
+  MAYOR
+  EMANCIPADO
 }
 
-model Member {
-  id              String       @id @default(uuid()) @db.Uuid
-  fullName        String       @db.VarChar(150)
-  birthDate       DateTime     @db.Date
-  currentBranch   ScoutBranch
-  address         String       @db.VarChar(255)
-  primaryPhone    String       @db.VarChar(30)
-  primaryEmail    String       @db.VarChar(150)
-  enrollmentDate  DateTime     @default(now())
-  isActive        Boolean      @default(true)
+// 4. Tipo de custodia (Hoja 1 MSC - Determina si exige 1 o 2 firmas)
+enum CustodyType {
+  SIN_ESPECIFICAR
+  TUTELA_LEGAL
+  CUSTODIA_UNICA
+  CUSTODIA_CONJUNTA
+}
 
-  applicationId   String?      @unique @db.Uuid
-  application     Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+// 5. Preferencia de recepción de circulares (Hoja 1 MSC)
+enum CircularPreference {
+  EMAIL
+  CORREO_POSTAL
+}
 
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+// ============================================================================
+// MODELO PRINCIPAL: Datos de Fase 1 + Criterios + Control del Enlace Mágico
+// ============================================================================
+model Applicant {
+  id                  String            @id @default(uuid())
+  createdAt           DateTime          @default(now()) // Fecha oficial de solicitud (Criterio orden)
+  updatedAt           DateTime          @updatedAt
+  status              ApplicationStatus @default(PENDIENTE_REVISION)
 
-  @@index([currentBranch, isActive])
+  // --- DATOS DEL EDUCANDO (Fase 1) ---
+  childFirstName      String            // Nombre
+  childLastName       String            // Apellidos separado para el PDF oficial
+  childBirthDate      DateTime          // Calcula edad y rama dinámicamente
+  gender              Gender            @default(MASCULINO)
+
+  // --- DIRECCIÓN POSTAL DESGLOSADA (Fase 1 -> se reutiliza en Fase 2 y SEPA) ---
+  streetAddress       String            // Calle / Avda / Plaza
+  streetNumber        String?           // Nº
+  ApartmentDoor       String?           // Piso / Puerta (PTA)
+  postalCode          String            @default("41089")
+  municipality        String            @default("Dos Hermanas")
+  province            String            @default("Sevilla")
+
+  // --- DATOS PADRE / TUTOR 1 (Fase 1) ---
+  parent1FirstName    String
+  parent1LastName     String
+  parent1Phone        String
+  parent1Email        String
+
+  // --- DATOS MADRE / TUTOR 2 (Fase 1 - Opcional por familias monoparentales) ---
+  parent2FirstName    String?
+  parent2LastName     String?
+  parent2Phone        String?
+  parent2Email        String?
+
+  // --- MOTIVACIÓN Y CRITERIOS DE ADMISIÓN (Fase 1 + Uso interno del Kraal) ---
+  motivation          String?           @db.Text
+  hasFamilyInGroup    Boolean           @default(false) // Prioridad 1: Familiar en el grupo
+  familyMemberDetails String?           // Nombre del hermano/responsable/viejo lobo
+  comesFromOtherGroup Boolean           @default(false) // Prioridad 4: Viene de otro grupo scout
+  originGroupDetails  String?           // Nombre del grupo scout de procedencia
+  socialInclusionPriority Boolean       @default(false) // Prioridad 3: Marcado por el Kraal
+  kraalInternalNotes  String?           @db.Text        // Notas privadas de estudio del Kraal
+
+  // --- CONTROL DEL ENLACE MÁGICO (Para pasar a Fase 2) ---
+  enrollmentToken     String?           @unique         // Token único sin contraseña
+  tokenExpiresAt      DateTime?                         // Fecha de caducidad del enlace (Semáforo)
+  admittedAt          DateTime?                         // Fecha en que pasa a CENSADO
+
+  // --- RELACIÓN 1:1 CON LA FASE 2 ---
+  enrollment          EnrollmentDetails?
+
+  @@index([status])
+  @@index([childBirthDate])
+}
+
+// ============================================================================
+// MODELO FASE 2: Hoja de Inscripción Oficial, Ficha Médica y SEPA
+// ============================================================================
+model EnrollmentDetails {
+  id                  String             @id @default(uuid())
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  applicantId         String             @unique
+  applicant           Applicant          @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  // --- AMPLIACIÓN HOJA 1: DATOS LEGALES Y DNI ---
+  childDni            String?            // DNI del menor (si tiene)
+  childPhone          String?            // Solo si es mayor/Pionero/Ruta
+  childEmail          String?
+  legalStatus         LegalStatus        @default(MENOR)
+  circularPreference  CircularPreference @default(EMAIL)
+
+  parent1Dni          String             // Obligatorio en Fase 2
+  parent2Dni          String?            // Obligatorio si hay custodia conjunta
+  parentsMaritalStatus String?           // Casados, pareja de hecho, divorciados, monoparental...
+  custodyType         CustodyType        @default(SIN_ESPECIFICAR)
+
+  // --- CONSENTIMIENTOS LOPD E IMÁGENES (Hoja 1) ---
+  acceptsDataStorage  Boolean            @default(true) // Casilla 1 LOPD
+  acceptsDataTransfer Boolean            @default(true) // Casilla 2 Cesión MSC
+  authorizesImages    Boolean            @default(true) // Autoriza fotos/vídeos (Si es false = marca "No autorizo")
+
+  // --- HOJA 2: FICHA MÉDICA ---
+  bloodType           String?            // Grupo sanguíneo
+  chronicDiseases     String?            @db.Text // Enfermedades crónicas
+  allergies           String?            @db.Text // Alergias
+  medHeadache         String?            // Qué darle para: Cabeza
+  medFever            String?            // Fiebre
+  medStomach          String?            // Estómago
+  medThroat           String?            // Garganta
+  medicalObservations String?            @db.Text // Observaciones médicas
+  authorizesEmergency Boolean            @default(true) // Autorización intervención quirúrgica/médica urgente
+
+  // --- HOJA 3: DOMICILIACIÓN BANCARIA (SEPA) ---
+  accountHolderName   String             // Titular de la cuenta
+  accountHolderDni    String             // DNI del titular
+  iban                String             // ES + 22 dígitos
+  authorizesSepa      Boolean            @default(true)
+
+  // --- FIRMAS DIGITALES (Guardadas en Base64 desde el dedo en el móvil) ---
+  signatureParent1    String             @db.Text // Firma del Tutor 1 (y titular médico/SEPA)
+  signedAtParent1     DateTime           @default(now())
+  signatureParent2    String?            @db.Text // Segunda firma (Requerida en Custodia Conjunta)
+  signedAtParent2     DateTime?
 }
