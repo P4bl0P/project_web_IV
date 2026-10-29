@@ -1,15 +1,48 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
-import { ApplicationStatus } from '@prisma/client';
-import { CreateApplicationDto } from './create-application.dto';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApplicationStatus, Gender } from '@prisma/client';
 
-export class UpdateApplicationDto extends PartialType(CreateApplicationDto) {
-  @IsOptional()
+export class UpdateApplicationDto {
   @IsEnum(ApplicationStatus)
+  @IsOptional()
   status?: ApplicationStatus;
 
-  @IsOptional()
   @IsString()
-  @MaxLength(2000)
-  councilNotes?: string;
+  @IsOptional()
+  childFirstName?: string;
+
+  @IsString()
+  @IsOptional()
+  childLastName?: string;
+
+  @IsDateString()
+  @IsOptional()
+  childBirthDate?: string;
+
+  @IsEnum(Gender)
+  @IsOptional()
+  gender?: Gender;
+
+  @IsBoolean()
+  @IsOptional()
+  hasFamilyInGroup?: boolean;
+
+  @IsString()
+  @IsOptional()
+  familyMemberDetails?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  comesFromOtherGroup?: boolean;
+
+  @IsString()
+  @IsOptional()
+  originGroupDetails?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  socialInclusionPriority?: boolean;
+
+  @IsString()
+  @IsOptional()
+  kraalInternalNotes?: string;
 }

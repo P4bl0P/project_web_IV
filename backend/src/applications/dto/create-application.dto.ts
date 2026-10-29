@@ -6,76 +6,97 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  MaxLength,
-  MinLength,
 } from 'class-validator';
-import { ScoutBranch } from '@prisma/client';
+import { Gender } from '@prisma/client';
 
 export class CreateApplicationDto {
-  @IsEnum(ScoutBranch, {
-    message: 'requestedBranch debe ser CASTOR, LOBATO, RANGER, PIONERO o RUTA',
-  })
-  requestedBranch!: ScoutBranch;
+  @IsString()
+  @IsNotEmpty()
+  childFirstName: string;
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(2)
-  @MaxLength(150)
-  childName!: string;
+  childLastName: string;
 
-  @IsDateString({}, { message: 'childBirthDate debe ser una fecha ISO 8601 válida' })
-  childBirthDate!: string;
+  @IsDateString()
+  childBirthDate: string;
+
+  @IsEnum(Gender)
+  @IsOptional()
+  gender?: Gender;
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(255)
-  address!: string;
+  streetAddress: string;
 
-  @IsOptional()
   @IsString()
-  @MaxLength(150)
-  fatherName?: string;
-
   @IsOptional()
+  streetNumber?: string;
+
   @IsString()
-  @MaxLength(30)
-  fatherPhone?: string;
-
   @IsOptional()
+  ApartmentDoor?: string;
+
+  @IsString()
+  @IsOptional()
+  postalCode?: string;
+
+  @IsString()
+  @IsOptional()
+  municipality?: string;
+
+  @IsString()
+  @IsOptional()
+  province?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  parent1FirstName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  parent1LastName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  parent1Phone: string;
+
   @IsEmail()
-  @MaxLength(150)
-  fatherEmail?: string;
+  parent1Email: string;
 
-  @IsOptional()
   @IsString()
-  @MaxLength(150)
-  motherName?: string;
-
   @IsOptional()
+  parent2FirstName?: string;
+
   @IsString()
-  @MaxLength(30)
-  motherPhone?: string;
-
   @IsOptional()
+  parent2LastName?: string;
+
+  @IsString()
+  @IsOptional()
+  parent2Phone?: string;
+
   @IsEmail()
-  @MaxLength(150)
-  motherEmail?: string;
+  @IsOptional()
+  parent2Email?: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MinLength(10)
-  @MaxLength(2000)
-  motivation!: string;
-
   @IsOptional()
+  motivation?: string;
+
   @IsBoolean()
+  @IsOptional()
   hasFamilyInGroup?: boolean;
 
+  @IsString()
   @IsOptional()
-  @IsBoolean()
-  fromAnotherGroup?: boolean;
+  familyMemberDetails?: string;
 
-  @IsOptional()
   @IsBoolean()
-  socialInclusion?: boolean;
+  @IsOptional()
+  comesFromOtherGroup?: boolean;
+
+  @IsString()
+  @IsOptional()
+  originGroupDetails?: string;
 }
