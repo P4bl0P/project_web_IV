@@ -14,7 +14,7 @@ export class ApplicationsService {
         'Debe proporcionarse al menos un teléfono o correo de contacto de madre, padre o tutor.',
       );
     }
-
+    
     return this.prisma.application.create({
       data: {
         ...dto,

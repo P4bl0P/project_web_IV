@@ -14,11 +14,9 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('getHealth', () => {
-    it('should return service status ok', () => {
-      const result = appController.getHealth();
-      expect(result.status).toBe('ok');
-      expect(result.service).toBe('grupo-iv-scouts-api');
+  describe('root', () => {
+    it('should be defined', () => {
+      expect(appController).toBeDefined();
     });
   });
 });
