@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { Squash as Hamburger } from 'hamburger-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Settings, User, LogOut, ChevronDown } from 'lucide-react';
-// Asegúrate de tener estas imágenes en tu carpeta src/assets/
+
 import logo from '../assets/logoIV.jpeg';
 import loginIcon from '../assets/flor_lis.png';
 
@@ -172,7 +172,7 @@ const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   
   // Estado simulado de autenticación. Cambia a "true" para ver el menú de usuario.
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {

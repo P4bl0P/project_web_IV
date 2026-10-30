@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import Home from './pages/Home';
 import SolicitudPage from './pages/SolicitudPage';
+import GestionPage from './pages/GestionPage';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/solicitud" element={<SolicitudPage />} />
             <Route path="/contact" element={<SolicitudPage />} />
+            <Route path="/gestion" element={<GestionPage />} />
             <Route
               path="/about"
               element={<div className="p-8 text-center text-gray-600">Página Conócenos (En construcción)</div>}
