@@ -1,51 +1,48 @@
-import type {
-  ApplicationRecord,
-  ApplicationStatus,
-  CreateApplicationPayload,
-} from '../types/application';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers ?? {}),
-    },
-    ...options,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    const message = Array.isArray(errorBody.message)
-      ? errorBody.message.join(', ')
-      : errorBody.message || `Error HTTP ${response.status}`;
-    throw new Error(message);
-  }
-
-  return response.json() as Promise<T>;
+export interface CreateApplicationPayload {
+  childFirstName: string;
+  childLastName: string;
+  childBirthDate: string;
+  gender: 'MASCULINO' | 'FEMENINO' | 'OTRO';
+  streetAddress: string;
+  streetNumber?: string;
+  ApartmentDoor?: string;
+  postalCode?: string;
+  municipality?: string;
+  province?: string;
+  parent1FirstName: string;
+  parent1LastName: string;
+  parent1Phone: string;
+  parent1Email: string;
+  parent2FirstName?: string;
+  parent2LastName?: string;
+  parent2Phone?: string;
+  parent2Email?: string;
+  motivation?: string;
+  hasFamilyInGroup: boolean;
+  familyMemberDetails?: string;
+  comesFromOtherGroup: boolean;
+  originGroupDetails?: string;
 }
 
 export const applicationsApi = {
-  create: (payload: CreateApplicationPayload) =>
-    request<ApplicationRecord>('/applications', {
+  // Fase 1: Enviar solicitud pública
+  async submitApplication(data: CreateApplicationPayload) {
+    const response = await fetch(`${API_URL}/applications`, {
       method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
 
-  list: (status?: ApplicationStatus) => {
-    const query = status ? `?status=${status}` : '';
-    return request<ApplicationRecord[]>(`/applications${query}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const msg = Array.isArray(errorData.message)
+        ? errorData.message.join(' · ')
+        : errorData.message;
+      throw new Error(msg || 'Error al enviar la solicitud. Revisa los datos.');
+    }
+
+    return response.json();
   },
-
-  updateStatus: (id: string, status: ApplicationStatus) =>
-    request<ApplicationRecord>(`/applications/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    }),
-
-  admitToCensus: (id: string) =>
-    request<{ id: string; fullName: string }>(`/applications/${id}/admit`, {
-      method: 'POST',
-    }),
 };
