@@ -15,12 +15,14 @@ import {
   FileCheck2,
   UserCheck,
   Archive,
+  FileDown,
 } from 'lucide-react';
 import {
   applicationsApi,
   type ApplicantRecord,
   type ApplicationStatus,
 } from '../services/api';
+import { generateOfficialScoutPdf } from '../utils/pdfGenerator';
 
 type TabType = 'WAITLIST' | 'OFFERED' | 'CENSUS' | 'ARCHIVED';
 
@@ -477,6 +479,17 @@ export default function GestionPage() {
                         {copiedId === record.id ? <Check size={15} className="text-green-600" /> : <Copy size={15} />}
                         {copiedId === record.id ? 'Copiado' : 'Copiar Link'}
                       </button>
+
+                      {record.enrollment && (
+                        <button
+                          onClick={() => generateOfficialScoutPdf(record)}
+                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5"
+                          title="Descargar Hoja de Inscripción, Ficha Médica y SEPA con firma"
+                        >
+                          <FileDown size={15} />
+                          PDF Oficial (3 Hojas)
+                        </button>
+                      )}
 
                       {record.status === 'INSCRIPCION_COMPLETADA' && (
                         <button

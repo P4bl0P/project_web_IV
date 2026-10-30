@@ -36,6 +36,13 @@ export interface CreateApplicationPayload {
   originGroupDetails?: string;
 }
 
+export interface EnrollmentDetailsRecord extends CompleteEnrollmentPayload {
+  id: string;
+  createdAt: string;
+  signedAtParent1: string;
+  signedAtParent2?: string | null;
+}
+
 export interface ApplicantRecord extends CreateApplicationPayload {
   id: string;
   createdAt: string;
@@ -49,7 +56,7 @@ export interface ApplicantRecord extends CreateApplicationPayload {
   calculatedBranch: string;
   currentAge: number;
   priorityScore: number;
-  enrollment?: Record<string, unknown> | null;
+  enrollment?: EnrollmentDetailsRecord | null;
 }
 
 export interface UpdateApplicationPayload {
