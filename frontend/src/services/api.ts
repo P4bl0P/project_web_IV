@@ -120,4 +120,87 @@ export const applicationsApi = {
       throw new Error('Error al eliminar la solicitud.');
     }
   },
+
+  // Fase 5: Obtener datos del enlace mágico (para padres)
+  async getByMagicToken(token: string): Promise<ApplicantRecord> {
+    const response = await fetch(`${API_URL}/applications/magic/${token}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || 'El enlace de inscripción no es válido o ha caducado.',
+      );
+    }
+    return response.json();
+  },
+
+  // Fase 5: Enviar inscripción definitiva desde el enlace mágico
+  async submitMagicEnrollment(
+    token: string,
+    data: CompleteEnrollmentPayload,
+  ): Promise<ApplicantRecord> {
+    const response = await fetch(`${API_URL}/applications/magic/${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const msg = Array.isArray(errorData.message)
+        ? errorData.message.join(' · ')
+        : errorData.message;
+      throw new Error(msg || 'Error al guardar la inscripción.');
+    }
+    return response.json();
+  },
 };
+
+export interface CompleteEnrollmentPayload {
+  // Posibles correcciones de Fase 1
+  streetAddress?: string;
+  streetNumber?: string;
+  ApartmentDoor?: string;
+  postalCode?: string;
+  municipality?: string;
+  province?: string;
+  parent1Phone?: string;
+  parent1Email?: string;
+  parent2Phone?: string;
+  parent2Email?: string;
+
+  // Hoja 1: Datos legales y DNI
+  childDni?: string;
+  childPhone?: string;
+  childEmail?: string;
+  legalStatus: 'MENOR' | 'MAYOR' | 'EMANCIPADO';
+  circularPreference: 'EMAIL' | 'CORREO_POSTAL';
+  parent1Dni: string;
+  parent2Dni?: string;
+  parentsMaritalStatus?: string;
+  custodyType: 'SIN_ESPECIFICAR' | 'TUTELA_LEGAL' | 'CUSTODIA_UNICA' | 'CUSTODIA_CONJUNTA';
+
+  // Consentimientos
+  acceptsDataStorage: boolean;
+  acceptsDataTransfer: boolean;
+  authorizesImages: boolean;
+
+  // Hoja 2: Ficha Médica
+  bloodType?: string;
+  chronicDiseases?: string;
+  allergies?: string;
+  medHeadache?: string;
+  medFever?: string;
+  medStomach?: string;
+  medThroat?: string;
+  medicalObservations?: string;
+  authorizesEmergency: boolean;
+
+  // Hoja 3: SEPA / IBAN
+  accountHolderName: string;
+  accountHolderDni: string;
+  iban: string;
+  authorizesSepa: boolean;
+
+  // Firmas Base64
+  signatureParent1: string;
+  signatureParent2?: string;
+}
