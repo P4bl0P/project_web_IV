@@ -255,4 +255,70 @@ export class ApplicationsService {
       where: { id },
     });
   }
+
+  // 10. Importación masiva desde Excel (Censo actual o Lista de Espera histórica)
+  async bulkImport(
+    items: Array<
+      CreateApplicationDto & {
+        status?: ApplicationStatus;
+        createdAt?: string;
+        childDni?: string;
+        parent1Dni?: string;
+        iban?: string;
+      }
+    >,
+  ) {
+    let importedCount = 0;
+
+    for (const item of items) {
+      const {
+        childBirthDate,
+        status,
+        createdAt,
+        childDni,
+        parent1Dni,
+        iban,
+        ...rest
+      } = item;
+
+      const parsedBirth = new Date(childBirthDate);
+      const validBirth = isNaN(parsedBirth.getTime())
+        ? new Date('2015-01-01')
+        : parsedBirth;
+
+      const parsedCreated = createdAt ? new Date(createdAt) : new Date();
+      const targetStatus = status || ApplicationStatus.LISTA_ESPERA;
+
+      await this.prisma.applicant.create({
+        data: {
+          ...rest,
+          childBirthDate: validBirth,
+          createdAt: isNaN(parsedCreated.getTime()) ? new Date() : parsedCreated,
+          status: targetStatus,
+          ...(targetStatus === ApplicationStatus.CENSADO
+            ? { admittedAt: new Date() }
+            : {}),
+          // Si viene del Excel del Censo y trae DNI o IBAN, creamos su ficha base
+          ...(targetStatus === ApplicationStatus.CENSADO &&
+          (childDni || parent1Dni || iban)
+            ? {
+                enrollment: {
+                  create: {
+                    childDni: childDni || undefined,
+                    parent1Dni: parent1Dni || 'PENDIENTE',
+                    accountHolderName: `${rest.parent1FirstName} ${rest.parent1LastName}`,
+                    accountHolderDni: parent1Dni || 'PENDIENTE',
+                    iban: iban || 'ES0000000000000000000000',
+                    signatureParent1: '',
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+      importedCount++;
+    }
+
+    return { importedCount };
+  }
 }

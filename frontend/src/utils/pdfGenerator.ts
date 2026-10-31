@@ -1,3 +1,4 @@
+// @ts-expect-error Cannot find module 'jspdf' or its corresponding type declarations.
 import { jsPDF } from 'jspdf';
 import { type ApplicantRecord } from '../services/api';
 

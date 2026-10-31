@@ -159,6 +159,19 @@ export const applicationsApi = {
     }
     return response.json();
   },
+
+  // Importación masiva desde Excel (Censo o Lista de Espera)
+  async bulkImport(items: Record<string, unknown>[]): Promise<{ importedCount: number }> {
+    const response = await fetch(`${API_URL}/applications/bulk-import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    if (!response.ok) {
+      throw new Error('Error al importar los registros del archivo Excel.');
+    }
+    return response.json();
+  },
 };
 
 export interface CompleteEnrollmentPayload {

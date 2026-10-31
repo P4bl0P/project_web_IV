@@ -77,4 +77,10 @@ export class ApplicationsController {
   remove(@Param('id') id: string) {
     return this.applicationsService.remove(id);
   }
+
+  // Panel Kraal: Importar Excel de Lista de Espera o Censo Oficial
+  @Post('bulk-import')
+  bulkImport(@Body() body: { items: any[] }) {
+    return this.applicationsService.bulkImport(body.items || []);
+  }
 }
