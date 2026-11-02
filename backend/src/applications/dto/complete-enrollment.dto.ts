@@ -7,6 +7,7 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { CircularPreference, CustodyType, LegalStatus } from '@prisma/client';
 
 export class CompleteEnrollmentDto {
@@ -47,6 +48,7 @@ export class CompleteEnrollmentDto {
   @IsOptional()
   parent2Phone?: string;
 
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value))
   @IsEmail()
   @IsOptional()
   parent2Email?: string;
@@ -60,6 +62,7 @@ export class CompleteEnrollmentDto {
   @IsOptional()
   childPhone?: string;
 
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value))
   @IsEmail()
   @IsOptional()
   childEmail?: string;
