@@ -27,6 +27,8 @@ export default function SecretariaPage() {
   };
 
   useEffect(() => {
+    // Load the remote collection once when the module opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, []);
 

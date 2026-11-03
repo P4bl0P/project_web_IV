@@ -139,11 +139,11 @@ export default function SolicitudPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-8">
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-950 rounded-2xl p-6 md:p-8 text-white shadow-md mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="form-page page-width">
+      <div className="form-hero">
         <div>
           <span className="inline-block bg-white/20 text-xs font-semibold px-3 py-1 rounded-full mb-2">
-            Fase 1 · Lista de Espera
+            Fase 1 · Lista de espera
           </span>
           <h1 className="text-2xl md:text-3xl font-bold">Solicitud de Entrada al Grupo IV</h1>
           <p className="text-blue-100 text-xs sm:text-sm mt-1">Grupo Scout San José de Calasanz · Montequinto</p>
@@ -167,7 +167,7 @@ export default function SolicitudPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6 form-stack">
         <EducandoSection formData={formData} fieldErrors={fieldErrors} onChange={handleChange} />
 
         <FamilySection
