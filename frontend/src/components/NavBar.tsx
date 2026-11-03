@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, LogOut, Settings, UserRound } from 'lucide-react';
 import logo from '../assets/logoIV.jpeg';
+import flower from '../assets/flor_lis.png';
 
 const links = [
   { label: 'Inicio', to: '/home' },
@@ -55,6 +56,7 @@ export default function NavBar() {
         </Link>
 
         <nav className="desktop-nav" aria-label="Navegación principal">
+          <Link to="/login" className="nav-flower" aria-label="Acceder al área privada"><img src={flower} alt="Acceso al área privada" /></Link>
           {links.map((link) => (
             <Link key={link.to} to={link.to} className={isActive(link.to) ? 'nav-link active' : 'nav-link'} onClick={() => setManagementOpen(false)}>
               {link.label}

@@ -30,6 +30,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://userIV:passwdIV@db:5432/IV_db?schema=public}
       PORT: 3000
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
     volumes:
       - ./backend:/app
       - /app/node_modules
