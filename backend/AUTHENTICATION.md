@@ -27,6 +27,30 @@ impide crear una segunda cuenta con ese privilegio.
 2. Ejecuta `npm run db:migrate` y `npm run db:seed`.
 3. Ejecuta una única vez `ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run db:bootstrap`.
 4. Inicia sesión y completa la configuración TOTP.
+
+Con Docker Compose, ejecuta desde la raíz:
+
+```bash
+cp .env.example .env
+# Edita .env y sustituye todos los valores de ejemplo.
+docker compose up -d --build
+docker compose exec backend npm run db:seed
+docker compose exec backend npm run db:bootstrap
+```
+
+El comando `db:migrate` y el comando `db:seed` regeneran Prisma antes de
+trabajar con la base de datos. Esto es importante porque el contenedor de
+desarrollo conserva `node_modules` en un volumen y, sin regeneración, puede
+usar un cliente Prisma antiguo que no conoce los modelos nuevos.
+
+Si quieres empezar desde cero y borrar todos los datos locales:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+docker compose exec backend npm run db:seed
+docker compose exec backend npm run db:bootstrap
+```
    La respuesta de configuración genera diez códigos de recuperación; guárdalos
    fuera de la aplicación. Cada código es de un solo uso y se almacena como
    hash.

@@ -13,4 +13,10 @@ async function main() {
     });
   }
 }
-main().finally(() => prisma.$disconnect());
+
+main()
+  .catch((error: unknown) => {
+    console.error('Database seed failed:', error);
+    process.exitCode = 1;
+  })
+  .finally(() => prisma.$disconnect());
