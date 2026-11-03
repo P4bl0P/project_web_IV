@@ -11,10 +11,10 @@ import InscripcionMagicaPage from './pages/InscripcionMagicaPage';
 function App() {
   return (
     <BrowserRouter>
-      <div className="w-full min-h-screen bg-slate-50 pt-14">
+      <div className="app-shell">
         <NavBar />
 
-        <main className="w-full">
+        <main className="app-main">
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<Home />} />

@@ -120,10 +120,10 @@ export default function InscripcionMagicaPage() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-500">Cargando inscripción...</div>;
+  if (loading) return <div className="state-card page-width">Cargando inscripción...</div>;
   if (loadError || !applicant) {
     return (
-      <div className="max-w-md mx-auto p-8 mt-10 bg-white rounded-2xl border border-red-200 text-center">
+      <div className="state-card page-width">
         <AlertCircle size={36} className="text-red-500 mx-auto mb-2" />
         <p className="text-sm text-slate-700">{loadError}</p>
       </div>
@@ -131,7 +131,7 @@ export default function InscripcionMagicaPage() {
   }
   if (completed) {
     return (
-      <div className="max-w-md mx-auto p-8 mt-10 bg-white rounded-2xl border border-emerald-200 text-center">
+      <div className="state-card page-width success-state">
         <CheckCircle2 size={40} className="text-emerald-600 mx-auto mb-3" />
         <h2 className="text-xl font-bold text-slate-900">¡Inscripción Completada!</h2>
         <p className="text-xs text-slate-600 mt-2">
@@ -142,7 +142,7 @@ export default function InscripcionMagicaPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-8 space-y-5">
+    <div className="enrollment-page page-width">
       <div className="bg-indigo-900 text-white rounded-2xl p-5 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">
