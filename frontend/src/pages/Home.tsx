@@ -99,23 +99,25 @@ function HeroSlider() {
         <div className="hero-slide-shade" />
         <div className="hero-slide-caption">
           <strong>{resolvedSlides[activeIndex].caption}</strong>
-          <span>{activeIndex + 1} / {resolvedSlides.length}</span>
         </div>
         <div className="hero-badge"><Heart size={16} fill="currentColor" /> Siempre listos</div>
       </div>
       <div className="hero-slider-footer">
         <div className="hero-slider-toolbar">
+          <button type="button" className="hero-pause" onClick={() => setPaused((value) => !value)} aria-label={paused ? 'Reanudar carrusel' : 'Pausar carrusel'}>
+            {paused ? <Play size={12} /> : <Pause size={12} />}
+          </button>
           <button type="button" className="hero-control" onClick={() => move(-1)} aria-label="Fotografía anterior"><ArrowLeft size={15} /></button>
           <button type="button" className="hero-control" onClick={() => move(1)} aria-label="Fotografía siguiente"><ArrowRight size={15} /></button>
+          <span className="hero-slide-counter">
+            {activeIndex + 1} / {resolvedSlides.length}
+          </span>
         </div>
         <div className="hero-indicators" role="tablist" aria-label="Fotografías del hero">
           {resolvedSlides.map((slide, index) => (
             <button key={slide.file} type="button" role="tab" aria-selected={index === activeIndex} aria-label={`Mostrar ${slide.caption}`} className={index === activeIndex ? 'is-active' : ''} onClick={() => interact(index)} />
           ))}
         </div>
-        <button type="button" className="hero-pause" onClick={() => setPaused((value) => !value)} aria-label={paused ? 'Reanudar carrusel' : 'Pausar carrusel'}>
-          {paused ? <Play size={12} /> : <Pause size={12} />}
-        </button>
       </div>
     </div>
   );
