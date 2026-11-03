@@ -14,7 +14,7 @@ export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async login(email: string, password: string, ip?: string) {
-    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (!user || user.status !== 'ACTIVE' || !(await argon2.verify(user.passwordHash, password))) {
       await this.audit(null, 'LOGIN_FAILED', email, 'DENIED', ip);
       throw new UnauthorizedException('Credenciales no válidas');

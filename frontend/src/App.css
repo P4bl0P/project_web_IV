@@ -179,3 +179,4 @@ a { color: inherit; }
 .mfa-setup { padding: 14px; border-radius: 12px; color: var(--muted); background: var(--soft); font-size: 12px; line-height: 1.5; }
 .mfa-setup strong { color: var(--navy); }
 .mfa-setup code { display: block; margin-top: 8px; overflow-wrap: anywhere; color: var(--blue); font-size: 10px; }
+.recovery-codes { margin: 18px 0; padding: 16px; border-radius: 12px; color: var(--navy); background: var(--soft); font: 700 14px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; }
