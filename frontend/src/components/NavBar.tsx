@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, LogOut, Settings, UserRound } from 'lucide-react';
 import logo from '../assets/logoIV.jpeg';
@@ -14,13 +14,34 @@ export default function NavBar() {
   const [managementOpen, setManagementOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    const closeOnDesktop = () => {
+      if (window.innerWidth > 800) setOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', closeOnDesktop);
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', closeOnDesktop);
+    };
+  }, [open]);
+
   const isActive = (to: string) => location.pathname === to || (to === '/home' && location.pathname === '/');
+  const closeMobileMenu = () => setOpen(false);
 
   return (
     <header className="site-header">
@@ -51,21 +72,27 @@ export default function NavBar() {
           </div>
         </nav>
 
-        <button type="button" className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open}>
+        <button ref={menuButtonRef} type="button" className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} aria-controls="mobile-navigation">
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
-      <div className={`mobile-drawer ${open ? 'is-open' : ''}`}>
+      <div id="mobile-navigation" className={`mobile-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open}>
+        <div className="mobile-drawer-head">
+          <span>Menú</span>
+          <button type="button" className="mobile-close-button" onClick={closeMobileMenu} aria-label="Cerrar menú">
+            <X size={19} />
+          </button>
+        </div>
         <nav aria-label="Navegación móvil">
           {links.map((link) => (
-            <Link key={link.to} to={link.to} className={isActive(link.to) ? 'mobile-link active' : 'mobile-link'} onClick={() => setOpen(false)}>{link.label}</Link>
+            <Link key={link.to} to={link.to} tabIndex={open ? 0 : -1} className={isActive(link.to) ? 'mobile-link active' : 'mobile-link'} onClick={closeMobileMenu}>{link.label}</Link>
           ))}
-          <Link to="/gestion" className="mobile-link" onClick={() => setOpen(false)}>Gestión <ChevronDown size={16} /></Link>
-          <Link to="/editProfile" className="mobile-link" onClick={() => setOpen(false)}>Perfil</Link>
+          <Link to="/gestion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Gestión <ChevronDown size={16} /></Link>
+          <Link to="/editProfile" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Perfil</Link>
         </nav>
       </div>
-      {open && <button type="button" className="mobile-backdrop" onClick={() => setOpen(false)} aria-label="Cerrar menú" />}
+      {open && <button type="button" className="mobile-backdrop" onClick={closeMobileMenu} aria-label="Cerrar menú" />}
     </header>
   );
 }
