@@ -51,6 +51,21 @@ docker compose up -d --build
 docker compose exec backend npm run db:seed
 docker compose exec backend npm run db:bootstrap
 ```
+
+Si una versión anterior falló con `P3018` o `P3009`, detén el backend y marca
+esa ejecución como revertida antes de volver a arrancar:
+
+```bash
+docker compose stop backend
+docker compose run --rm --no-deps backend \
+  npx prisma migrate resolve --rolled-back 20261103170000_authentication_security
+docker compose up -d backend
+docker compose exec backend npm run db:seed
+```
+
+La migración de autenticación debe ser incremental: la primera migración ya
+crea `Applicant` y sus enums; la segunda solo crea `User`, `Role`, `Module`,
+`Permission`, sesiones, invitaciones, códigos de recuperación y auditoría.
    La respuesta de configuración genera diez códigos de recuperación; guárdalos
    fuera de la aplicación. Cada código es de un solo uso y se almacena como
    hash.
