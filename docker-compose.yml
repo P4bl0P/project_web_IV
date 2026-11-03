@@ -27,14 +27,17 @@ services:
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://userIV:passwdIV@db:5432/IV_db?schema=public}
-      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: ${PORT:-3000}
       NODE_ENV: ${NODE_ENV:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
       MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
       SESSION_IDLE_MS: ${SESSION_IDLE_MS:-900000}
       SESSION_MAX_MS: ${SESSION_MAX_MS:-28800000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_NAME: ${ADMIN_NAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     volumes:
       - ./backend:/app
       - /app/node_modules

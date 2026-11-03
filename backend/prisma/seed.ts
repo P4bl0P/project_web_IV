@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import '../src/env';
 const prisma = new PrismaClient();
 async function main() {
   const moduleNames = ['Jefatura', 'Secretaría', 'Tesorería'];

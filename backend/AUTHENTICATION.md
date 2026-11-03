@@ -22,7 +22,7 @@ impide crear una segunda cuenta con ese privilegio.
 
 ## Instalación y cuenta inicial
 
-1. Configura las variables de `backend/.env.example` en el hosting, generando
+1. Configura las variables del `.env.example` de la raíz en el hosting, generando
    `MFA_ENCRYPTION_KEY` con `openssl rand -base64 32`.
 2. Ejecuta `npm run db:migrate` y `npm run db:seed`.
 3. Ejecuta una única vez `ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run db:bootstrap`.
