@@ -97,11 +97,14 @@ function HeroSlider() {
           />
         ))}
         <div className="hero-slide-shade" />
-        <div className="hero-slide-caption">{resolvedSlides[activeIndex].caption}</div>
-        <div className="hero-slider-controls">
-          <button type="button" onClick={() => move(-1)} aria-label="Fotografía anterior"><ArrowLeft size={16} /></button>
-          <button type="button" onClick={() => move(1)} aria-label="Fotografía siguiente"><ArrowRight size={16} /></button>
+      </div>
+      <div className="hero-slider-toolbar">
+        <button type="button" className="hero-control" onClick={() => move(-1)} aria-label="Fotografía anterior"><ArrowLeft size={17} /></button>
+        <div className="hero-slide-caption">
+          <strong>{resolvedSlides[activeIndex].caption}</strong>
+          <span>{activeIndex + 1} / {resolvedSlides.length}</span>
         </div>
+        <button type="button" className="hero-control" onClick={() => move(1)} aria-label="Fotografía siguiente"><ArrowRight size={17} /></button>
       </div>
       <div className="hero-slider-footer">
         <div className="hero-indicators" role="tablist" aria-label="Fotografías del hero">
