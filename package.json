@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "hamburger-react": "^2.5.2",
+    "lucide-react": "^1.64.0",
+    "react-router-dom": "^7.18.5"
+  }
+}

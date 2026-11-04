@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Estados del flujo completo (Solicitud -> Lista de Espera -> Inscripción -> Censo)
+enum ApplicationStatus {
+  PENDIENTE_REVISION // Acaba de enviar el formulario inicial (Fase 1)
+  LISTA_ESPERA // Revisado por el Kraal, esperando hueco en su rama
+  PLAZA_OFERTADA // Enlace mágico activo enviado a los padres (Fase 2)
+  INSCRIPCION_COMPLETADA // Padres rellenaron y firmaron Fase 2; falta OK final de secretaría
+  CENSADO // Miembro oficial activo del Grupo IV
+  BAJA // Rechazado, archivado o baja del grupo
+}
+
+// 2. Sexo/Género (Para el criterio de ratio en las ramas)
+enum Gender {
+  MASCULINO
+  FEMENINO
+  OTRO
+}
+
+// 3. Situación legal del asociado (Hoja 1 MSC)
+enum LegalStatus {
+  MENOR
+  MAYOR
+  EMANCIPADO
+}
+
+// 4. Tipo de custodia (Hoja 1 MSC - Determina si exige 1 o 2 firmas)
+enum CustodyType {
+  SIN_ESPECIFICAR
+  TUTELA_LEGAL
+  CUSTODIA_UNICA
+  CUSTODIA_CONJUNTA
+}
+
+// 5. Preferencia de recepción de circulares (Hoja 1 MSC)
+enum CircularPreference {
+  EMAIL
+  CORREO_POSTAL
+}
+
+// ============================================================================
+// MODELO PRINCIPAL: Datos de Fase 1 + Criterios + Control del Enlace Mágico
+// ============================================================================
+model Applicant {
+  id        String            @id @default(uuid())
+  createdAt DateTime          @default(now()) // Fecha oficial de solicitud (Criterio orden)
+  updatedAt DateTime          @updatedAt
+  status    ApplicationStatus @default(PENDIENTE_REVISION)
+
+  // --- DATOS DEL EDUCANDO (Fase 1) ---
+  childFirstName String // Nombre
+  childLastName  String // Apellidos separado para el PDF oficial
+  childBirthDate DateTime // Calcula edad y rama dinámicamente
+  gender         Gender   @default(MASCULINO)
+
+  // --- DIRECCIÓN POSTAL DESGLOSADA (Fase 1 -> se reutiliza en Fase 2 y SEPA) ---
+  streetAddress String // Calle / Avda / Plaza
+  streetNumber  String? // Nº
+  ApartmentDoor String? // Piso / Puerta (PTA)
+  postalCode    String  @default("41089")
+  municipality  String  @default("Dos Hermanas")
+  province      String  @default("Sevilla")
+
+  // --- DATOS PADRE / TUTOR 1 (Fase 1) ---
+  parent1FirstName String
+  parent1LastName  String
+  parent1Phone     String
+  parent1Email     String
+
+  // --- DATOS MADRE / TUTOR 2 (Fase 1 - Opcional por familias monoparentales) ---
+  parent2FirstName String?
+  parent2LastName  String?
+  parent2Phone     String?
+  parent2Email     String?
+
+  // --- MOTIVACIÓN Y CRITERIOS DE ADMISIÓN (Fase 1 + Uso interno del Kraal) ---
+  motivation              String? @db.Text
+  hasFamilyInGroup        Boolean @default(false) // Prioridad 1: Familiar en el grupo
+  familyMemberDetails     String? // Nombre del hermano/responsable/viejo lobo
+  comesFromOtherGroup     Boolean @default(false) // Prioridad 4: Viene de otro grupo scout
+  originGroupDetails      String? // Nombre del grupo scout de procedencia
+  socialInclusionPriority Boolean @default(false) // Prioridad 3: Marcado por el Kraal
+  kraalInternalNotes      String? @db.Text // Notas privadas de estudio del Kraal
+
+  // --- CONTROL DEL ENLACE MÁGICO (Para pasar a Fase 2) ---
+  enrollmentToken String?   @unique // Token único sin contraseña
+  tokenExpiresAt  DateTime? // Fecha de caducidad del enlace (Semáforo)
+  admittedAt      DateTime? // Fecha en que pasa a CENSADO
+
+  // --- RELACIÓN 1:1 CON LA FASE 2 ---
+  enrollment EnrollmentDetails?
+
+  @@index([status])
+  @@index([childBirthDate])
+}
+
+// ============================================================================
+// MODELO FASE 2: Hoja de Inscripción Oficial, Ficha Médica y SEPA
+// ============================================================================
+model EnrollmentDetails {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applicantId String    @unique
+  applicant   Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  // --- AMPLIACIÓN HOJA 1: DATOS LEGALES Y DNI ---
+  childDni           String? // DNI del menor (si tiene)
+  childPhone         String? // Solo si es mayor/Pionero/Ruta
+  childEmail         String?
+  legalStatus        LegalStatus        @default(MENOR)
+  circularPreference CircularPreference @default(EMAIL)
+
+  parent1Dni           String // Obligatorio en Fase 2
+  parent2Dni           String? // Obligatorio si hay custodia conjunta
+  parentsMaritalStatus String? // Casados, pareja de hecho, divorciados, monoparental...
+  custodyType          CustodyType @default(SIN_ESPECIFICAR)
+
+  // --- CONSENTIMIENTOS LOPD E IMÁGENES (Hoja 1) ---
+  acceptsDataStorage  Boolean @default(true) // Casilla 1 LOPD
+  acceptsDataTransfer Boolean @default(true) // Casilla 2 Cesión MSC
+  authorizesImages    Boolean @default(true) // Autoriza fotos/vídeos (Si es false = marca "No autorizo")
+
+  // --- HOJA 2: FICHA MÉDICA ---
+  bloodType           String? // Grupo sanguíneo
+  chronicDiseases     String? @db.Text // Enfermedades crónicas
+  allergies           String? @db.Text // Alergias
+  medHeadache         String? // Qué darle para: Cabeza
+  medFever            String? // Fiebre
+  medStomach          String? // Estómago
+  medThroat           String? // Garganta
+  medicalObservations String? @db.Text // Observaciones médicas
+  authorizesEmergency Boolean @default(true) // Autorización intervención quirúrgica/médica urgente
+
+  // --- HOJA 3: DOMICILIACIÓN BANCARIA (SEPA) ---
+  accountHolderName String // Titular de la cuenta
+  accountHolderDni  String // DNI del titular
+  iban              String // ES + 22 dígitos
+  authorizesSepa    Boolean @default(true)
+
+  // --- FIRMAS DIGITALES (Guardadas en Base64 desde el dedo en el móvil) ---
+  signatureParent1 String    @db.Text // Firma del Tutor 1 (y titular médico/SEPA)
+  signedAtParent1  DateTime  @default(now())
+  signatureParent2 String?   @db.Text // Segunda firma (Requerida en Custodia Conjunta)
+  signedAtParent2  DateTime?
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  BLOCKED
+  DISABLED
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  name            String
+  passwordHash    String
+  status          UserStatus     @default(INVITED)
+  isSuperAdmin    Boolean        @default(false)
+  mfaSecret       String?
+  mfaConfiguredAt DateTime?
+  roleId          String?
+  role            Role?          @relation(fields: [roleId], references: [id])
+  sessions        Session[]
+  invitations     Invitation[]
+  recoveryCodes   RecoveryCode[]
+  auditEvents     AuditEvent[]   @relation("Actor")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status])
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  users       User[]
+  permissions Permission[]
+  createdAt   DateTime     @default(now())
+}
+
+model Module {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  permissions Permission[]
+  createdAt   DateTime     @default(now())
+}
+
+model Permission {
+  id        String  @id @default(uuid())
+  roleId    String
+  moduleId  String
+  canRead   Boolean @default(false)
+  canCreate Boolean @default(false)
+  canUpdate Boolean @default(false)
+  canDelete Boolean @default(false)
+  role      Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module    Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, moduleId])
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId, revokedAt])
+}
+
+model Invitation {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  email     String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, expiresAt])
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid())
+  codeHash  String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+}
+
+model AuditEvent {
+  id        String   @id @default(uuid())
+  actorId   String?
+  actor     User?    @relation("Actor", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  resource  String?
+  result    String
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
