@@ -47,6 +47,16 @@ export class AuthController {
     return this.auth.changePassword(req.user!.id, body.currentPassword, body.newPassword, req.ip);
   }
   @UseGuards(AuthGuard)
+  @Post('password/initial')
+  setInitialPassword(@Req() req: AuthenticatedRequest, @Body() body: { newPassword?: string; confirmPassword?: string }) {
+    if (!body.newPassword || body.newPassword !== body.confirmPassword) {
+      throw new BadRequestException('Las contraseñas no coinciden o faltan datos');
+    }
+    const token = req.cookies?.[sessionCookie];
+    if (!token) throw new BadRequestException('Sesión no válida');
+    return this.auth.setInitialPassword(req.user!.id, body.newPassword, token, req.ip);
+  }
+  @UseGuards(AuthGuard)
   @Get('me')
   me(@Req() req: AuthenticatedRequest) {
     const safe = { ...req.user };

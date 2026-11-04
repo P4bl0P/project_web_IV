@@ -14,6 +14,8 @@ export class AuthGuard implements CanActivate {
     const allowedDuringOnboarding =
       path === '/auth/me' ||
       path === '/auth/password' ||
+      path === '/auth/password/initial' ||
+      path === '/auth/logout' ||
       path.startsWith('/auth/mfa');
     if (user.mustChangePassword && !allowedDuringOnboarding) {
       throw new ForbiddenException('Debes cambiar tu contraseña antes de continuar');

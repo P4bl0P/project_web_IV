@@ -99,6 +99,13 @@ crea `Applicant` y sus enums; la segunda solo crea `User`, `Role`, `Module`,
    endpoints privados y solo permite consultar el perfil, cambiar la contraseña y
    completar MFA.
 
+   El cierre de sesión permanece disponible durante este estado: revoca la sesión
+   actual y limpia la cookie, pero no concede acceso a ningún dato privado.
+   Además, el perfil ofrece `POST /auth/password/initial`, que permite establecer
+   la contraseña definitiva tras completar el login y MFA sin volver a exigir la
+   contraseña temporal. El endpoint solo funciona mientras `mustChangePassword`
+   está activo, conserva la sesión autenticada actual y revoca las demás sesiones.
+
    El perfil personal usa `POST /auth/password`, comprueba la contraseña anterior,
    aplica la política mínima de 15 caracteres, invalida las sesiones existentes y
    registra el cambio en auditoría. Las cuentas `SUPER_ADMIN` no aparecen en el

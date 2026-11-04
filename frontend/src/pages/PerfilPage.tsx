@@ -5,7 +5,7 @@ import { useAuth } from '../auth';
 import { profileApi } from '../services/api';
 
 export default function PerfilPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [values, setValues] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +14,12 @@ export default function PerfilPage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setMessage(''); setError(''); setSaving(true);
     try {
-      await profileApi.changePassword(values);
+      if (user.mustChangePassword) {
+        await profileApi.setInitialPassword({ newPassword: values.newPassword, confirmPassword: values.confirmPassword });
+      } else {
+        await profileApi.changePassword(values);
+      }
+      await refreshUser();
       setValues({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setMessage('Contraseña actualizada. Las sesiones anteriores han quedado invalidadas.');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo cambiar la contraseña'); }
@@ -28,10 +33,10 @@ export default function PerfilPage() {
       <section className="surface-card"><div className="card-title"><LockKeyhole size={20} /><h2>Cambiar contraseña</h2></div>
         {message && <p className="success-message" role="status">{message}</p>}{error && <p className="auth-error" role="alert">{error}</p>}
         <form onSubmit={submit} className="profile-form">
-          <label>Contraseña actual<input type="password" required value={values.currentPassword} onChange={(e) => setValues({ ...values, currentPassword: e.target.value })} /></label>
+          {!user.mustChangePassword && <label>Contraseña actual<input type="password" required value={values.currentPassword} onChange={(e) => setValues({ ...values, currentPassword: e.target.value })} /></label>}
           <label>Nueva contraseña<input type="password" minLength={15} required value={values.newPassword} onChange={(e) => setValues({ ...values, newPassword: e.target.value })} /><small>Mínimo 15 caracteres.</small></label>
           <label>Repetir nueva contraseña<input type="password" minLength={15} required value={values.confirmPassword} onChange={(e) => setValues({ ...values, confirmPassword: e.target.value })} /></label>
-          <button className="button button-primary" disabled={saving}>{saving ? 'Guardando…' : 'Actualizar contraseña'}</button>
+          <button className="button button-primary" disabled={saving}>{saving ? 'Guardando…' : user.mustChangePassword ? 'Establecer contraseña' : 'Actualizar contraseña'}</button>
         </form>
       </section>
     </div>

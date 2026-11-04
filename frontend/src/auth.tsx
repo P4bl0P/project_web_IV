@@ -5,7 +5,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 export type User = { id: string; email: string; name: string; isSuperAdmin: boolean; mustChangePassword?: boolean; role?: { name: string } };
 type LoginResponse = { status: 'MFA_REQUIRED' | 'MFA_SETUP_REQUIRED'; challenge: string; setup?: { secret: string; otpauthUrl: string } };
-type AuthContextValue = { user: User | null; loading: boolean; login: (email: string, password: string) => Promise<LoginResponse>; completeMfa: (challenge: string, code: string, setup: boolean) => Promise<string[]>; logout: () => Promise<void> };
+type AuthContextValue = { user: User | null; loading: boolean; login: (email: string, password: string) => Promise<LoginResponse>; completeMfa: (challenge: string, code: string, setup: boolean) => Promise<string[]>; refreshUser: () => Promise<void>; logout: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function request(path: string, options: RequestInit = {}) {
@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = window.setInterval(() => { void refreshSession(); }, 60000);
     return () => { cancelled = true; window.clearInterval(interval); };
   }, []);
+  const refreshUser = async () => { setUser(await request('/auth/me')); };
   const login = (email: string, password: string) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email: email.trim().toLowerCase(), password }) });
   const completeMfa = async (challenge: string, code: string, setup: boolean) => {
     const result = await request(setup ? '/auth/mfa/confirm-setup' : '/auth/mfa', { method: 'POST', body: JSON.stringify({ challenge, code: code.trim() }) });
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.recoveryCodes ?? [];
   };
   const logout = async () => { await request('/auth/logout', { method: 'POST' }); setUser(null); };
-  return <AuthContext.Provider value={{ user, loading, login, completeMfa, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, login, completeMfa, refreshUser, logout }}>{children}</AuthContext.Provider>;
 }
 export function useAuth() { const value = useContext(AuthContext); if (!value) throw new Error('useAuth must be used inside AuthProvider'); return value; }
 export function PrivateRoute({ children }: { children: ReactNode }) {

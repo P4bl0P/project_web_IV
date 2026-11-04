@@ -105,6 +105,21 @@ export class AuthService {
     return { ok: true };
   }
 
+  async setInitialPassword(userId: string, nextPassword: string, currentToken: string, ip?: string) {
+    if (nextPassword.length < 15) throw new BadRequestException('La contraseña debe tener al menos 15 caracteres');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.mustChangePassword) throw new BadRequestException('No hay ningún cambio inicial pendiente');
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await argon2.hash(nextPassword), mustChangePassword: false } }),
+      this.prisma.session.updateMany({
+        where: { userId, revokedAt: null, NOT: { tokenHash: tokenHash(currentToken) } },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.auditEvent.create({ data: { actorId: userId, action: 'INITIAL_PASSWORD_CHANGED', resource: userId, result: 'ALLOWED', ipAddress: ip } }),
+    ]);
+    return { ok: true };
+  }
+
   async setupMfa(userId: string) {
     const secret = generateSecret();
     const user = await this.prisma.user.update({ where: { id: userId }, data: { mfaSecret: this.encrypt(secret) } });

@@ -205,6 +205,7 @@ export const adminApi = {
 
 export const profileApi = {
   changePassword: (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => apiJson<{ ok: true }>('/auth/password', { method: 'POST', body: JSON.stringify(data) }),
+  setInitialPassword: (data: { newPassword: string; confirmPassword: string }) => apiJson<{ ok: true }>('/auth/password/initial', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export interface CompleteEnrollmentPayload {
