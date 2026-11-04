@@ -1,4 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const authFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
+  fetch(input, { ...init, credentials: 'include' });
 
 export type ApplicationStatus =
   | 'PENDIENTE_REVISION'
@@ -68,7 +70,7 @@ export interface UpdateApplicationPayload {
 export const applicationsApi = {
   // Fase 1: Enviar solicitud pública
   async submitApplication(data: CreateApplicationPayload): Promise<ApplicantRecord> {
-    const response = await fetch(`${API_URL}/applications`, {
+    const response = await authFetch(`${API_URL}/applications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -87,7 +89,7 @@ export const applicationsApi = {
 
   // Fase 4: Obtener todas las solicitudes y miembros
   async getAll(): Promise<ApplicantRecord[]> {
-    const response = await fetch(`${API_URL}/applications`);
+    const response = await authFetch(`${API_URL}/applications`);
     if (!response.ok) {
       throw new Error('No se pudieron cargar las solicitudes del servidor.');
     }
@@ -96,7 +98,7 @@ export const applicationsApi = {
 
   // Fase 4: Actualizar estado, prioridad de inclusión o notas del Kraal
   async update(id: string, data: UpdateApplicationPayload): Promise<ApplicantRecord> {
-    const response = await fetch(`${API_URL}/applications/${id}`, {
+    const response = await authFetch(`${API_URL}/applications/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -109,7 +111,7 @@ export const applicationsApi = {
 
   // Fase 4: Ofertar plaza y generar enlace mágico (+7 días)
   async offerSpot(id: string): Promise<ApplicantRecord> {
-    const response = await fetch(`${API_URL}/applications/${id}/offer-spot`, {
+    const response = await authFetch(`${API_URL}/applications/${id}/offer-spot`, {
       method: 'PATCH',
     });
     if (!response.ok) {
@@ -120,7 +122,7 @@ export const applicationsApi = {
 
   // Fase 4: Eliminar registro
   async remove(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/applications/${id}`, {
+    const response = await authFetch(`${API_URL}/applications/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
@@ -130,7 +132,7 @@ export const applicationsApi = {
 
   // Fase 5: Obtener datos del enlace mágico (para padres)
   async getByMagicToken(token: string): Promise<ApplicantRecord> {
-    const response = await fetch(`${API_URL}/applications/magic/${token}`);
+    const response = await authFetch(`${API_URL}/applications/magic/${token}`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
@@ -145,7 +147,7 @@ export const applicationsApi = {
     token: string,
     data: CompleteEnrollmentPayload,
   ): Promise<ApplicantRecord> {
-    const response = await fetch(`${API_URL}/applications/magic/${token}`, {
+    const response = await authFetch(`${API_URL}/applications/magic/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -162,7 +164,7 @@ export const applicationsApi = {
 
   // Importación masiva desde Excel (Censo o Lista de Espera)
   async bulkImport(items: Record<string, unknown>[]): Promise<{ importedCount: number }> {
-    const response = await fetch(`${API_URL}/applications/bulk-import`, {
+    const response = await authFetch(`${API_URL}/applications/bulk-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items }),

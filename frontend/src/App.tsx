@@ -7,10 +7,12 @@ import SecretariaPage from './pages/SecretariaPage';
 import JefaturaPage from './pages/JefaturaPage';
 import TesoreriaPage from './pages/TesoreriaPage';
 import InscripcionMagicaPage from './pages/InscripcionMagicaPage';
+import { AuthProvider, LoginPage, PrivateRoute } from './auth';
 
 function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
       <div className="app-shell">
         <NavBar />
 
@@ -20,10 +22,11 @@ function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/solicitud" element={<SolicitudPage />} />
             <Route path="/contact" element={<SolicitudPage />} />
-            <Route path="/gestion" element={<GestionPage />} />
-            <Route path="/gestion/secretaria" element={<SecretariaPage />} />
-            <Route path="/gestion/jefatura" element={<JefaturaPage />} />
-            <Route path="/gestion/tesoreria" element={<TesoreriaPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
+            <Route path="/gestion/secretaria" element={<PrivateRoute><SecretariaPage /></PrivateRoute>} />
+            <Route path="/gestion/jefatura" element={<PrivateRoute><JefaturaPage /></PrivateRoute>} />
+            <Route path="/gestion/tesoreria" element={<PrivateRoute><TesoreriaPage /></PrivateRoute>} />
             <Route path="/inscripcion/:token" element={<InscripcionMagicaPage />} />
             <Route
               path="/about"
@@ -33,6 +36,7 @@ function App() {
           </Routes>
         </main>
       </div>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

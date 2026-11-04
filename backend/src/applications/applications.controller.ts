@@ -7,12 +7,16 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
 import { ApplicationStatus } from '@prisma/client';
+import { AuthGuard, ensurePermission } from '../auth.guard';
+import type { AuthenticatedRequest } from '../auth.guard';
 
 @Controller('applications')
 export class ApplicationsController {
@@ -26,13 +30,17 @@ export class ApplicationsController {
 
   // Panel Kraal: Listar todas (filtrable por ?status=LISTA_ESPERA)
   @Get()
-  findAll(@Query('status') status?: ApplicationStatus) {
+  @UseGuards(AuthGuard)
+  findAll(@Query('status') status?: ApplicationStatus, @Req() req?: AuthenticatedRequest) {
+    ensurePermission(req!, 'Secretaría', 'canRead');
     return this.applicationsService.findAll(status);
   }
 
   // Panel Kraal: Obtener el Censo Oficial
   @Get('census')
-  findCensus() {
+  @UseGuards(AuthGuard)
+  findCensus(@Req() req: AuthenticatedRequest) {
+    ensurePermission(req, 'Secretaría', 'canRead');
     return this.applicationsService.findCensus();
   }
 
@@ -56,31 +64,42 @@ export class ApplicationsController {
 
   // Panel Kraal: Ofertar plaza y generar token mágico (+7 días)
   @Patch(':id/offer-spot')
-  offerSpot(@Param('id') id: string) {
+  @UseGuards(AuthGuard)
+  offerSpot(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    ensurePermission(req, 'Secretaría', 'canUpdate');
     return this.applicationsService.offerSpot(id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  @UseGuards(AuthGuard)
+  findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    ensurePermission(req, 'Secretaría', 'canRead');
     return this.applicationsService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard)
   update(
     @Param('id') id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
+    @Req() req: AuthenticatedRequest,
   ) {
+    ensurePermission(req, 'Secretaría', 'canUpdate');
     return this.applicationsService.update(id, updateApplicationDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  @UseGuards(AuthGuard)
+  remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    ensurePermission(req, 'Secretaría', 'canDelete');
     return this.applicationsService.remove(id);
   }
 
   // Panel Kraal: Importar Excel de Lista de Espera o Censo Oficial
   @Post('bulk-import')
-  bulkImport(@Body() body: { items: any[] }) {
+  @UseGuards(AuthGuard)
+  bulkImport(@Body() body: { items: any[] }, @Req() req: AuthenticatedRequest) {
+    ensurePermission(req, 'Secretaría', 'canCreate');
     return this.applicationsService.bulkImport(body.items || []);
   }
 }
