@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from './prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { generateSecret, generateURI, verifySync } from 'otplib';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';

@@ -9,14 +9,42 @@ type AuthContextValue = { user: User | null; loading: boolean; login: (email: st
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function request(path: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_URL}${path}`, { ...options, credentials: 'include', headers: { 'Content-Type': 'application/json', ...options.headers } });
-  if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(typeof data.message === 'string' ? data.message : 'No se pudo completar la operación'); }
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const message = Array.isArray(data.message) ? data.message.join(' · ') : data.message;
+    throw new Error(typeof message === 'string' ? message : 'No se pudo completar la operación');
+  }
   return response.json();
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null); const [loading, setLoading] = useState(true);
-  useEffect(() => { request('/auth/me').then(setUser).catch(() => setUser(null)).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const refreshSession = async () => {
+      try {
+        const nextUser = await request('/auth/me');
+        if (!cancelled) setUser(nextUser);
+      } catch {
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void refreshSession();
+    const interval = window.setInterval(() => { void refreshSession(); }, 60000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, []);
   const login = (email: string, password: string) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email: email.trim().toLowerCase(), password }) });
   const completeMfa = async (challenge: string, code: string, setup: boolean) => {
     const result = await request(setup ? '/auth/mfa/confirm-setup' : '/auth/mfa', { method: 'POST', body: JSON.stringify({ challenge, code: code.trim() }) });
@@ -36,9 +64,20 @@ export function LoginPage() {
   const { user, login, completeMfa } = useAuth(); const navigate = useNavigate();
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState(''); const [setup, setSetup] = useState<LoginResponse['setup']>(); const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]); const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   if (user) return <Navigate to="/gestion" replace />;
-  async function submit(event: React.FormEvent) { event.preventDefault(); setError(''); try { const result = await login(email, password); setChallenge(result.challenge); setSetup(result.setup); } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo iniciar sesión'); } }
-  async function verify(event: React.FormEvent) { event.preventDefault(); setError(''); try { const codes = await completeMfa(challenge, code, Boolean(setup)); if (codes.length) setRecoveryCodes(codes); else navigate('/gestion'); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Código no válido'); } }
+  async function submit(event: React.FormEvent) {
+    event.preventDefault(); setError(''); setSubmitting(true);
+    try { const result = await login(email, password); setChallenge(result.challenge); setSetup(result.setup); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo iniciar sesión'); }
+    finally { setSubmitting(false); }
+  }
+  async function verify(event: React.FormEvent) {
+    event.preventDefault(); setError(''); setSubmitting(true);
+    try { const codes = await completeMfa(challenge, code, Boolean(setup)); if (codes.length) setRecoveryCodes(codes); else navigate('/gestion'); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Código no válido'); }
+    finally { setSubmitting(false); }
+  }
   if (recoveryCodes.length) return <main className="auth-page page-width"><div className="auth-card"><span className="section-kicker">MFA configurado</span><h1>Guarda tus códigos</h1><p className="auth-error">Se muestran una sola vez. Guárdalos en un lugar seguro.</p><pre className="recovery-codes">{recoveryCodes.join('\n')}</pre><button className="button button-primary" type="button" onClick={() => navigate('/gestion')}>Continuar</button></div></main>;
-  return <main className="auth-page page-width"><div className="auth-card"><span className="section-kicker">Área privada</span><h1>{challenge ? 'Verificación en dos pasos' : 'Acceso del equipo'}</h1>{error && <p className="auth-error" role="alert">{error}</p>}{!challenge ? <form onSubmit={submit}><label>Correo electrónico<input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></label><label>Contraseña<input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label><button className="button button-primary" type="submit">Continuar</button></form> : <form onSubmit={verify}>{setup && <div className="mfa-setup"><strong>Configura tu aplicación autenticadora</strong><p>Escanea este URI con Google Authenticator, Microsoft Authenticator o 2FAS:</p><code>{setup.otpauthUrl}</code></div>}<label>Código temporal<input inputMode="numeric" pattern="[0-9]{6}" required value={code} onChange={(event) => setCode(event.target.value)} /></label><button className="button button-primary" type="submit">Entrar</button></form>}</div></main>;
+  return <main className="auth-page page-width"><div className="auth-card"><span className="section-kicker">Área privada</span><h1>{challenge ? 'Verificación en dos pasos' : 'Acceso del equipo'}</h1>{error && <p className="auth-error" role="alert">{error}</p>}{!challenge ? <form onSubmit={submit}><label>Correo electrónico<input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></label><label>Contraseña<input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Comprobando…' : 'Continuar'}</button></form> : <form onSubmit={verify}>{setup && <div className="mfa-setup"><strong>Configura tu aplicación autenticadora</strong><p>Escanea este URI con Google Authenticator, Microsoft Authenticator o 2FAS:</p><code>{setup.otpauthUrl}</code></div>}<label>Código temporal<input inputMode="numeric" pattern="[0-9]{6}" required value={code} onChange={(event) => setCode(event.target.value)} /></label><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Verificando…' : 'Entrar'}</button></form>}</div></main>;
 }

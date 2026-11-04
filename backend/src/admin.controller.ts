@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from './prisma/prisma.service';
 import { AuthGuard, ensureAdmin } from './auth.guard';
 import type { AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';

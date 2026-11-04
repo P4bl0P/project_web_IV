@@ -7,6 +7,18 @@ El backend mantiene sesiones opacas en PostgreSQL. La cookie `scout_session` es
 del token. Las sesiones caducan por inactividad y por duración máxima, y se
 revocan al cerrar sesión o cuando una cuenta deja de estar activa.
 
+El frontend mantiene un único `AuthProvider` en `src/auth.tsx`. La sesión se
+valida contra `GET /auth/me` antes de mostrar accesos privados y se vuelve a
+comprobar periódicamente para retirar esos accesos cuando caduca. Todas las
+peticiones de autenticación usan `credentials: 'include'`; los errores de red
+se distinguen de los rechazos de credenciales. `NavBar` consume ese contexto y
+solo muestra «Gestión» después de la validación del servidor.
+
+`PrismaModule` es el proveedor compartido de persistencia. Los controladores y
+servicios deben importar su `PrismaService` desde `src/prisma/prisma.service`;
+mantener una segunda clase Prisma produciría instancias incompatibles y
+pruebas E2E que no pueden sustituir el acceso a datos de forma consistente.
+
 Las contraseñas usan Argon2id. El segundo factor es TOTP compatible con
 Google Authenticator, Microsoft Authenticator y 2FAS. El secreto TOTP se
 cifra con AES-256-GCM usando `MFA_ENCRYPTION_KEY`; nunca se devuelve con

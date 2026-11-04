@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, LogOut, Settings, UserRound } from 'lucide-react';
 import logo from '../assets/logoIV.jpeg';
 import flower from '../assets/flor_lis.png';
+import { useAuth } from '../auth';
 
 const links = [
   { label: 'Inicio', to: '/home' },
@@ -15,6 +16,7 @@ export default function NavBar() {
   const [managementOpen, setManagementOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading, logout } = useAuth();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -43,6 +45,12 @@ export default function NavBar() {
 
   const isActive = (to: string) => location.pathname === to || (to === '/home' && location.pathname === '/');
   const closeMobileMenu = () => setOpen(false);
+  const handleLogout = async () => {
+    await logout();
+    setManagementOpen(false);
+    closeMobileMenu();
+    navigate('/home');
+  };
 
   return (
     <header className="site-header">
@@ -62,16 +70,16 @@ export default function NavBar() {
               {link.label}
             </Link>
           ))}
-          <div className="nav-menu">
+          {!loading && user && <div className="nav-menu">
             <button type="button" className="nav-link nav-menu-trigger" onClick={() => setManagementOpen((value) => !value)} aria-expanded={managementOpen}>
               Gestión <ChevronDown size={15} className={managementOpen ? 'rotate-180' : ''} />
             </button>
             <div className={`nav-popover ${managementOpen ? 'is-open' : ''}`}>
               <Link to="/gestion"><Settings size={16} /> Panel de gestión</Link>
               <Link to="/editProfile"><UserRound size={16} /> Perfil</Link>
-              <button type="button" onClick={() => navigate('/home')}><LogOut size={16} /> Cerrar sesión</button>
+              <button type="button" onClick={() => void handleLogout()}><LogOut size={16} /> Cerrar sesión</button>
             </div>
-          </div>
+          </div>}
         </nav>
 
         <button ref={menuButtonRef} type="button" className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} aria-controls="mobile-navigation">
@@ -90,8 +98,11 @@ export default function NavBar() {
           {links.map((link) => (
             <Link key={link.to} to={link.to} tabIndex={open ? 0 : -1} className={isActive(link.to) ? 'mobile-link active' : 'mobile-link'} onClick={closeMobileMenu}>{link.label}</Link>
           ))}
-          <Link to="/gestion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Gestión <ChevronDown size={16} /></Link>
-          <Link to="/editProfile" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Perfil</Link>
+          {!loading && user && <>
+            <Link to="/gestion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Gestión <ChevronDown size={16} /></Link>
+            <Link to="/editProfile" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Perfil</Link>
+            <button type="button" tabIndex={open ? 0 : -1} className="mobile-link" onClick={() => void handleLogout()}><LogOut size={16} /> Cerrar sesión</button>
+          </>}
         </nav>
       </div>
       {open && <button type="button" className="mobile-backdrop" onClick={closeMobileMenu} aria-label="Cerrar menú" />}

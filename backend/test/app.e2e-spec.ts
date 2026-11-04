@@ -64,15 +64,15 @@ describe('Applications & Health E2E', () => {
       .expect(400);
   });
 
-  it('GET /applications/:id rejects invalid UUID format (400)', () => {
+  it('GET /applications/:id rejects unauthenticated access before lookup', () => {
     return request(app.getHttpServer())
       .get('/applications/not-a-valid-uuid')
-      .expect(400);
+      .expect(401);
   });
 
-  it('GET /applications/:id returns 404 when UUID is valid but not found', () => {
+  it('GET /applications/:id rejects unauthenticated access for valid UUIDs', () => {
     return request(app.getHttpServer())
       .get('/applications/550e8400-e29b-41d4-a716-446655440000')
-      .expect(404);
+      .expect(401);
   });
 });
