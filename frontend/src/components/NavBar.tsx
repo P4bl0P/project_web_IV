@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, Menu, X, LogOut, Settings, UserRound, Shield } from 'lucide-react';
 import logo from '../assets/logoIV.jpeg';
 import flower from '../assets/flor_lis.png';
 import { useAuth } from '../auth';
@@ -100,6 +100,8 @@ export default function NavBar() {
             </button>
             <div ref={managementMenuRef} className={`nav-popover ${managementOpen ? 'is-open' : ''}`} role="menu">
               <Link to="/gestion" role="menuitem"><Settings size={16} /> Panel de gestión</Link>
+              <Link to="/perfil" role="menuitem"><UserRound size={16} /> Mi perfil</Link>
+              {user.isSuperAdmin && <Link to="/gestion/administracion" role="menuitem"><Shield size={16} /> Administración</Link>}
               <button type="button" role="menuitem" onClick={() => void handleLogout()}><LogOut size={16} /> Cerrar sesión</button>
             </div>
           </div>}
@@ -126,6 +128,8 @@ export default function NavBar() {
           {!loading && user && <div className="mobile-private-section">
             <span className="mobile-section-label">Área privada</span>
             <Link to="/gestion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Panel de gestión <Settings size={17} /></Link>
+            <Link to="/perfil" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Mi perfil <UserRound size={17} /></Link>
+            {user.isSuperAdmin && <Link to="/gestion/administracion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Administración <Shield size={17} /></Link>}
             <button type="button" tabIndex={open ? 0 : -1} className="mobile-link" onClick={() => void handleLogout()}><LogOut size={16} /> Cerrar sesión</button>
           </div>}
         </nav>

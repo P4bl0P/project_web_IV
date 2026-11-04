@@ -7,7 +7,9 @@ import SecretariaPage from './pages/SecretariaPage';
 import JefaturaPage from './pages/JefaturaPage';
 import TesoreriaPage from './pages/TesoreriaPage';
 import InscripcionMagicaPage from './pages/InscripcionMagicaPage';
-import { AuthProvider, LoginPage, PrivateRoute } from './auth';
+import { AdminRoute, AuthProvider, LoginPage, PrivateRoute } from './auth';
+import PerfilPage from './pages/PerfilPage';
+import AdminPage from './pages/AdminPage';
 
 function App() {
   return (
@@ -23,7 +25,9 @@ function App() {
             <Route path="/solicitud" element={<SolicitudPage />} />
             <Route path="/contact" element={<SolicitudPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
             <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
+            <Route path="/gestion/administracion" element={<AdminRoute><AdminPage /></AdminRoute>} />
             <Route path="/gestion/secretaria" element={<PrivateRoute><SecretariaPage /></PrivateRoute>} />
             <Route path="/gestion/jefatura" element={<PrivateRoute><JefaturaPage /></PrivateRoute>} />
             <Route path="/gestion/tesoreria" element={<PrivateRoute><TesoreriaPage /></PrivateRoute>} />
