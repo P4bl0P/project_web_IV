@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService, sessionCookie } from './auth.service';
 import { AuthGuard } from './auth.guard';
@@ -37,6 +37,24 @@ export class AuthController {
     if (req.cookies?.[sessionCookie]) await this.auth.logout(req.cookies[sessionCookie]);
     res.clearCookie(sessionCookie, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' });
     return { ok: true };
+  }
+  @UseGuards(AuthGuard)
+  @Post('password')
+  changePassword(@Req() req: AuthenticatedRequest, @Body() body: { currentPassword?: string; newPassword?: string; confirmPassword?: string }) {
+    if (!body.currentPassword || !body.newPassword || body.newPassword !== body.confirmPassword) {
+      throw new BadRequestException('Las contraseñas no coinciden o faltan datos');
+    }
+    return this.auth.changePassword(req.user!.id, body.currentPassword, body.newPassword, req.ip);
+  }
+  @UseGuards(AuthGuard)
+  @Post('password/initial')
+  setInitialPassword(@Req() req: AuthenticatedRequest, @Body() body: { newPassword?: string; confirmPassword?: string }) {
+    if (!body.newPassword || body.newPassword !== body.confirmPassword) {
+      throw new BadRequestException('Las contraseñas no coinciden o faltan datos');
+    }
+    const token = req.cookies?.[sessionCookie];
+    if (!token) throw new BadRequestException('Sesión no válida');
+    return this.auth.setInitialPassword(req.user!.id, body.newPassword, token, req.ip);
   }
   @UseGuards(AuthGuard)
   @Get('me')

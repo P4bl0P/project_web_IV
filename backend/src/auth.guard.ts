@@ -10,6 +10,16 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.cookies?.scout_session ? await this.auth.getUserBySession(request.cookies.scout_session) : null;
     if (!user) throw new UnauthorizedException('Sesión no válida o caducada');
+    const path = request.path;
+    const allowedDuringOnboarding =
+      path === '/auth/me' ||
+      path === '/auth/password' ||
+      path === '/auth/password/initial' ||
+      path === '/auth/logout' ||
+      path.startsWith('/auth/mfa');
+    if (user.mustChangePassword && !allowedDuringOnboarding) {
+      throw new ForbiddenException('Debes cambiar tu contraseña antes de continuar');
+    }
     request.user = user; return true;
   }
 }

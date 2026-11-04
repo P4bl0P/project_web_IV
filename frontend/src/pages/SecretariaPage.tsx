@@ -98,7 +98,7 @@ export default function SecretariaPage() {
   ];
 
   return (
-    <div className="w-full min-h-[calc(100vh-3.5rem)] bg-slate-50 px-4 sm:px-8 py-6 space-y-4">
+    <div className="secretaria-page w-full min-h-[calc(100vh-3.5rem)] bg-slate-50 px-4 sm:px-8 py-6 space-y-4">
       <div className="bg-white rounded-xl border border-slate-200 p-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link to="/gestion" className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">

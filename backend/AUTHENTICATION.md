@@ -82,6 +82,36 @@ crea `Applicant` y sus enums; la segunda solo crea `User`, `Role`, `Module`,
    fuera de la aplicación. Cada código es de un solo uso y se almacena como
    hash.
 
+   ## Gestión de cuentas, cargos y primer acceso
+
+   Las cuentas se separan de los cargos: `User.isSuperAdmin` identifica la única
+   cuenta absoluta y una cuenta normal referencia un `Role`. Los permisos viven en
+   `Permission` y relacionan un cargo con un `Module`, con operaciones
+   independientes de lectura, creación, edición y eliminación. El servidor obtiene
+   siempre el cargo y los permisos desde la sesión y la base de datos; nunca acepta
+   estos valores desde el cliente.
+
+   `SUPER_ADMIN` dispone de `/admin/users`, `/admin/roles`, `/admin/modules` y
+   `/admin/permissions`. Las cuentas normales se crean con una contraseña temporal
+   aleatoria, almacenada únicamente como hash, y `mustChangePassword=true`. La
+   contraseña temporal se devuelve una sola vez en la respuesta de alta o
+   restablecimiento. Mientras la obligación esté activa, `AuthGuard` bloquea los
+   endpoints privados y solo permite consultar el perfil, cambiar la contraseña y
+   completar MFA.
+
+   El cierre de sesión permanece disponible durante este estado: revoca la sesión
+   actual y limpia la cookie, pero no concede acceso a ningún dato privado.
+   Además, el perfil ofrece `POST /auth/password/initial`, que permite establecer
+   la contraseña definitiva tras completar el login y MFA sin volver a exigir la
+   contraseña temporal. El endpoint solo funciona mientras `mustChangePassword`
+   está activo, conserva la sesión autenticada actual y revoca las demás sesiones.
+
+   El perfil personal usa `POST /auth/password`, comprueba la contraseña anterior,
+   aplica la política mínima de 15 caracteres, invalida las sesiones existentes y
+   registra el cambio en auditoría. Las cuentas `SUPER_ADMIN` no aparecen en el
+   listado ordinario y no pueden editarse, desactivarse ni restablecerse desde el
+   panel.
+
 Las altas posteriores se realizan desde `POST /admin/users`; devuelve un token
 de invitación de un solo uso y 24 horas de duración para entregarlo mediante
 un canal controlado. La contraseña se establece en

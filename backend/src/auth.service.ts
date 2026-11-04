@@ -47,7 +47,7 @@ export class AuthService {
     const invitation = await this.prisma.invitation.findUnique({ where: { tokenHash: tokenHash(token) } });
     if (!invitation || invitation.usedAt || invitation.expiresAt < new Date()) throw new BadRequestException('La invitación no es válida o ha caducado');
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: invitation.userId }, data: { passwordHash: await argon2.hash(password), status: 'ACTIVE' } }),
+      this.prisma.user.update({ where: { id: invitation.userId }, data: { passwordHash: await argon2.hash(password), status: 'ACTIVE', mustChangePassword: false } }),
       this.prisma.invitation.update({ where: { id: invitation.id }, data: { usedAt: new Date() } }),
     ]);
     return { ok: true };
@@ -88,6 +88,37 @@ export class AuthService {
   }
 
   async logout(token: string) { await this.prisma.session.updateMany({ where: { tokenHash: tokenHash(token) }, data: { revokedAt: new Date() } }); }
+
+  async changePassword(userId: string, currentPassword: string, nextPassword: string, ip?: string) {
+    if (nextPassword.length < 15) throw new BadRequestException('La contraseña debe tener al menos 15 caracteres');
+    if (currentPassword === nextPassword) throw new BadRequestException('La nueva contraseña debe ser diferente');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !(await argon2.verify(user.passwordHash, currentPassword))) {
+      await this.audit(userId, 'PASSWORD_CHANGED', userId, 'DENIED', ip);
+      throw new UnauthorizedException('La contraseña actual no es válida');
+    }
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await argon2.hash(nextPassword), mustChangePassword: false } }),
+      this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+      this.prisma.auditEvent.create({ data: { actorId: userId, action: 'PASSWORD_CHANGED', resource: userId, result: 'ALLOWED', ipAddress: ip } }),
+    ]);
+    return { ok: true };
+  }
+
+  async setInitialPassword(userId: string, nextPassword: string, currentToken: string, ip?: string) {
+    if (nextPassword.length < 15) throw new BadRequestException('La contraseña debe tener al menos 15 caracteres');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.mustChangePassword) throw new BadRequestException('No hay ningún cambio inicial pendiente');
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await argon2.hash(nextPassword), mustChangePassword: false } }),
+      this.prisma.session.updateMany({
+        where: { userId, revokedAt: null, NOT: { tokenHash: tokenHash(currentToken) } },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.auditEvent.create({ data: { actorId: userId, action: 'INITIAL_PASSWORD_CHANGED', resource: userId, result: 'ALLOWED', ipAddress: ip } }),
+    ]);
+    return { ok: true };
+  }
 
   async setupMfa(userId: string) {
     const secret = generateSecret();

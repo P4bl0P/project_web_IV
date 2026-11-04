@@ -139,7 +139,7 @@ export default function SolicitudPage() {
   }
 
   return (
-    <div className="form-page page-width">
+    <div className="solicitud-page form-page page-width">
       <div className="form-hero">
         <div>
           <span className="inline-block bg-white/20 text-xs font-semibold px-3 py-1 rounded-full mb-2">

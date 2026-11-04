@@ -1,6 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const authFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
   fetch(input, { ...init, credentials: 'include' });
+async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await authFetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(Array.isArray(data.message) ? data.message.join(' · ') : data.message || 'No se pudo completar la operación');
+  return data;
+}
 
 export type ApplicationStatus =
   | 'PENDIENTE_REVISION'
@@ -174,6 +183,29 @@ export const applicationsApi = {
     }
     return response.json();
   },
+};
+
+export type AdminUser = { id: string; email: string; name: string; status: 'ACTIVE' | 'BLOCKED' | 'DISABLED'; createdAt: string; role?: { id: string; name: string } | null };
+export type AdminRole = { id: string; name: string; _count: { users: number }; permissions: PermissionRecord[] };
+export type PermissionRecord = { id: string; roleId: string; moduleId: string; canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean; role: { name: string }; module: { name: string } };
+
+export const adminApi = {
+  users: () => apiJson<AdminUser[]>('/admin/users'),
+  roles: () => apiJson<AdminRole[]>('/admin/roles'),
+  modules: () => apiJson<{ id: string; name: string }[]>('/admin/modules'),
+  permissions: () => apiJson<PermissionRecord[]>('/admin/permissions'),
+  createUser: (data: { name: string; email: string; roleId: string }) => apiJson<{ user: AdminUser; temporaryPassword: string }>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (id: string, data: Partial<Pick<AdminUser, 'name' | 'email' | 'status'>> & { roleId?: string }) => apiJson<AdminUser>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  resetPassword: (id: string) => apiJson<{ temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { method: 'POST' }),
+  disableUser: (id: string) => apiJson<{ ok: true }>(`/admin/users/${id}`, { method: 'DELETE' }),
+  createRole: (name: string) => apiJson<AdminRole>('/admin/roles', { method: 'POST', body: JSON.stringify({ name }) }),
+  updateRole: (id: string, name: string) => apiJson<AdminRole>(`/admin/roles/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  updatePermission: (id: string, data: Partial<Pick<PermissionRecord, 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete'>>) => apiJson<PermissionRecord>(`/admin/permissions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+export const profileApi = {
+  changePassword: (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => apiJson<{ ok: true }>('/auth/password', { method: 'POST', body: JSON.stringify(data) }),
+  setInitialPassword: (data: { newPassword: string; confirmPassword: string }) => apiJson<{ ok: true }>('/auth/password/initial', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export interface CompleteEnrollmentPayload {

@@ -167,6 +167,7 @@ model User {
   passwordHash    String
   status          UserStatus     @default(INVITED)
   isSuperAdmin    Boolean        @default(false)
+  mustChangePassword Boolean      @default(false)
   mfaSecret       String?
   mfaConfiguredAt DateTime?
   roleId          String?
