@@ -119,12 +119,6 @@ export default function NavBar() {
       </div>
 
       <div id="mobile-navigation" className={`mobile-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open} inert={!open}>
-        <div className="mobile-drawer-head">
-          <span>Menú</span>
-          <button type="button" tabIndex={open ? 0 : -1} className="mobile-close-button" onClick={closeMobileMenu} aria-label="Cerrar menú">
-            <X size={19} />
-          </button>
-        </div>
         <nav aria-label="Navegación móvil">
           {links.map((link) => (
             <Link key={link.to} ref={link === links[0] ? firstMobileLinkRef : undefined} to={link.to} tabIndex={open ? 0 : -1} className={isActive(link.to) ? 'mobile-link active' : 'mobile-link'} aria-current={isActive(link.to) ? 'page' : undefined} onClick={closeMobileMenu}>{link.label}</Link>
