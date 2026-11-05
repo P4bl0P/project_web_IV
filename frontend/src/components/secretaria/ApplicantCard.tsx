@@ -11,6 +11,8 @@ import {
   FileCheck2,
   UserCheck,
   FileDown,
+  Pencil,
+  Eye,
 } from 'lucide-react';
 import { type ApplicantRecord, type ApplicationStatus } from '../../services/api';
 import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
@@ -27,6 +29,10 @@ interface Props {
   onOpenWhatsApp: (record: ApplicantRecord) => void;
   onCopyLink: (record: ApplicantRecord) => void;
   onDelete: (id: string, name: string) => void;
+  onView: () => void;
+  onEdit: () => void;
+  canUpdate: boolean;
+  canDelete: boolean;
 }
 
 export default function ApplicantCard({
@@ -41,6 +47,10 @@ export default function ApplicantCard({
   onOpenWhatsApp,
   onCopyLink,
   onDelete,
+  onView,
+  onEdit,
+  canUpdate,
+  canDelete,
 }: Props) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-indigo-200 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -54,6 +64,9 @@ export default function ApplicantCard({
           <h3 className="text-base font-bold text-slate-900">
             {record.childFirstName} {record.childLastName}
           </h3>
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${record.memberType === 'RESPONSABLE' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}`}>
+            {record.memberType === 'RESPONSABLE' ? 'RESPONSABLE' : 'EDUCANDO'}
+          </span>
           <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold px-2.5 py-0.5 rounded-full">
             {record.calculatedBranch} ({record.currentAge} años)
           </span>
@@ -94,6 +107,7 @@ export default function ApplicantCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {activeTab === 'CENSUS' && <><button onClick={onView} className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1"><Eye size={14} /> Ver ficha</button>{canUpdate && <button onClick={onEdit} className="bg-[#01317b] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1"><Pencil size={14} /> Editar</button>}</>}
         {activeTab === 'WAITLIST' && (
           <>
             <button
@@ -159,12 +173,12 @@ export default function ApplicantCard({
           </button>
         )}
 
-        <button
+        {canDelete && <button
           onClick={() => onDelete(record.id, `${record.childFirstName} ${record.childLastName}`)}
           className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg transition"
         >
           <Trash2 size={15} />
-        </button>
+        </button>}
       </div>
     </div>
   );

@@ -45,6 +45,11 @@ enum CircularPreference {
   CORREO_POSTAL
 }
 
+enum MemberType {
+  EDUCANDO
+  RESPONSABLE
+}
+
 // ============================================================================
 // MODELO PRINCIPAL: Datos de Fase 1 + Criterios + Control del Enlace Mágico
 // ============================================================================
@@ -53,6 +58,8 @@ model Applicant {
   createdAt DateTime          @default(now()) // Fecha oficial de solicitud (Criterio orden)
   updatedAt DateTime          @updatedAt
   status    ApplicationStatus @default(PENDIENTE_REVISION)
+  memberType MemberType       @default(EDUCANDO)
+  censusBranch String?
 
   // --- DATOS DEL EDUCANDO (Fase 1) ---
   childFirstName String // Nombre
@@ -99,6 +106,8 @@ model Applicant {
 
   @@index([status])
   @@index([childBirthDate])
+  @@index([memberType])
+  @@index([censusBranch])
 }
 
 // ============================================================================

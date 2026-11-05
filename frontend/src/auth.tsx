@@ -3,7 +3,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
-export type User = { id: string; email: string; name: string; isSuperAdmin: boolean; mustChangePassword?: boolean; role?: { name: string } };
+export type User = {
+  id: string; email: string; name: string; isSuperAdmin: boolean; mustChangePassword?: boolean;
+  role?: { name: string; permissions?: { canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean; module: { name: string } }[] };
+};
 type LoginResponse = { status: 'MFA_REQUIRED' | 'MFA_SETUP_REQUIRED'; challenge: string; setup?: { secret: string; otpauthUrl: string } };
 type AuthContextValue = { user: User | null; loading: boolean; login: (email: string, password: string) => Promise<LoginResponse>; completeMfa: (challenge: string, code: string, setup: boolean) => Promise<string[]>; refreshUser: () => Promise<void>; logout: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,8 +8,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
-import { ApplicationStatus, Applicant, EnrollmentDetails } from '@prisma/client';
+import { ApplicationStatus, Applicant, EnrollmentDetails, MemberType } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import type { AuthenticatedRequest } from '../auth.guard';
+import { AuthService } from '../auth.service';
+import { CreateCensusMemberDto } from './dto/create-census-member.dto';
 
 export type EnrichedApplicant = Applicant & {
   enrollment?: EnrollmentDetails | null;
@@ -19,7 +23,10 @@ export type EnrichedApplicant = Applicant & {
 
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
 
   /**
    * Calcula dinámicamente la rama scout según el año de nacimiento y la Ronda Solar actual.
@@ -58,7 +65,9 @@ export class ApplicationsService {
   private enrichApplicant(
     applicant: Applicant & { enrollment?: EnrollmentDetails | null },
   ): EnrichedApplicant {
-    const { branch, age } = this.calculateScoutBranch(applicant.childBirthDate);
+    const calculated = this.calculateScoutBranch(applicant.childBirthDate);
+    const branch = applicant.censusBranch ?? calculated.branch;
+    const age = calculated.age;
 
     // Puntuación base para ordenar: Familiar (+100), Inclusión (+50), Otro grupo (+25)
     let priorityScore = 0;
@@ -72,6 +81,40 @@ export class ApplicationsService {
       currentAge: age,
       priorityScore,
     };
+  }
+
+  private duplicateWhere(dto: {
+    childFirstName: string;
+    childLastName: string;
+    childBirthDate: string | Date;
+    parent1Email: string;
+    parent1Phone: string;
+  }) {
+    return {
+      OR: [
+        {
+          childFirstName: { equals: dto.childFirstName.trim(), mode: 'insensitive' as const },
+          childLastName: { equals: dto.childLastName.trim(), mode: 'insensitive' as const },
+          childBirthDate: new Date(dto.childBirthDate),
+        },
+        {
+          childFirstName: { equals: dto.childFirstName.trim(), mode: 'insensitive' as const },
+          childLastName: { equals: dto.childLastName.trim(), mode: 'insensitive' as const },
+          parent1Email: dto.parent1Email.trim().toLowerCase(),
+        },
+        {
+          childFirstName: { equals: dto.childFirstName.trim(), mode: 'insensitive' as const },
+          childLastName: { equals: dto.childLastName.trim(), mode: 'insensitive' as const },
+          parent1Phone: dto.parent1Phone.replace(/\s+/g, ''),
+        },
+      ],
+    };
+  }
+
+  private validateCensusBranch(memberType: MemberType, birthDate: Date, branch: string) {
+    if (memberType === MemberType.EDUCANDO && this.calculateScoutBranch(birthDate).branch !== branch) {
+      throw new BadRequestException('La rama indicada no coincide con la clasificación por edad del educando');
+    }
   }
 
   // 1. Crear solicitud inicial (Fase 1)
@@ -98,8 +141,50 @@ export class ApplicationsService {
   }
 
   // 3. Obtener el Censo oficial (Estado CENSADO)
-  async findCensus(): Promise<EnrichedApplicant[]> {
-    return this.findAll(ApplicationStatus.CENSADO);
+  async findCensus(memberType?: MemberType, branch?: string): Promise<EnrichedApplicant[]> {
+    const applicants = await this.prisma.applicant.findMany({
+      where: {
+        status: ApplicationStatus.CENSADO,
+        ...(memberType ? { memberType } : {}),
+        ...(branch ? { censusBranch: branch } : {}),
+      },
+      include: { enrollment: true },
+      orderBy: [{ censusBranch: 'asc' }, { childLastName: 'asc' }],
+    });
+    return applicants.map((app) => this.enrichApplicant(app));
+  }
+
+  async createCensusMember(
+    dto: CreateCensusMemberDto,
+    req: AuthenticatedRequest,
+  ): Promise<EnrichedApplicant> {
+    const existing = await this.prisma.applicant.findFirst({
+      where: this.duplicateWhere(dto),
+      select: { id: true, childFirstName: true, childLastName: true },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Ya existe una persona coincidente: ${existing.childFirstName} ${existing.childLastName} (${existing.id})`,
+      );
+    }
+    if (!dto.censusBranch?.trim()) {
+      throw new BadRequestException('La rama es obligatoria para una ficha censal');
+    }
+    const { childBirthDate, memberType, censusBranch, ...rest } = dto;
+    this.validateCensusBranch(memberType, new Date(childBirthDate), censusBranch.trim());
+    const created = await this.prisma.applicant.create({
+      data: {
+        ...rest,
+        childBirthDate: new Date(childBirthDate),
+        memberType,
+        censusBranch: censusBranch.trim(),
+        status: ApplicationStatus.CENSADO,
+        admittedAt: new Date(),
+      },
+      include: { enrollment: true },
+    });
+    await this.auth.audit(req.user!.id, 'CENSUS_MEMBER_CREATED', created.id, 'ALLOWED', req.ip);
+    return this.enrichApplicant(created);
   }
 
   // 4. Obtener un solicitante por ID
@@ -115,14 +200,27 @@ export class ApplicationsService {
   }
 
   // 5. Actualizar datos o estado desde el panel del Kraal
-  async update(id: string, dto: UpdateApplicationDto): Promise<EnrichedApplicant> {
-    await this.findOne(id);
+  async update(
+    id: string,
+    dto: UpdateApplicationDto,
+    req?: AuthenticatedRequest,
+  ): Promise<EnrichedApplicant> {
+    const before = await this.findOne(id);
     const { childBirthDate, status, ...rest } = dto;
+    const effectiveMemberType = rest.memberType ?? before.memberType;
+    const effectiveBranch = rest.censusBranch ?? before.censusBranch;
+    const effectiveBirthDate = childBirthDate ? new Date(childBirthDate) : before.childBirthDate;
+    if (effectiveMemberType === MemberType.RESPONSABLE && !effectiveBranch) {
+      throw new BadRequestException('La rama es obligatoria para una persona responsable');
+    }
+    if (effectiveMemberType === MemberType.EDUCANDO && effectiveBranch) {
+      this.validateCensusBranch(effectiveMemberType, effectiveBirthDate, effectiveBranch);
+    }
 
     const updated = await this.prisma.applicant.update({
       where: { id },
       data: {
-        ...rest,
+        ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined)),
         ...(status ? { status } : {}),
         ...(status === ApplicationStatus.CENSADO ? { admittedAt: new Date() } : {}),
         ...(childBirthDate ? { childBirthDate: new Date(childBirthDate) } : {}),
@@ -130,6 +228,20 @@ export class ApplicationsService {
       include: { enrollment: true },
     });
 
+    if (req) {
+      const changedFields = Object.keys(dto).filter(
+        (key) =>
+          JSON.stringify((before as Record<string, unknown>)[key]) !==
+          JSON.stringify((updated as Record<string, unknown>)[key]),
+      );
+      await this.auth.audit(
+        req.user!.id,
+        'CENSUS_MEMBER_UPDATED',
+        id,
+        `ALLOWED:${changedFields.join(',')}`,
+        req.ip,
+      );
+    }
     return this.enrichApplicant(updated);
   }
 
@@ -265,60 +377,51 @@ export class ApplicationsService {
         childDni?: string;
         parent1Dni?: string;
         iban?: string;
+        memberType?: MemberType;
+        censusBranch?: string;
       }
     >,
   ) {
-    let importedCount = 0;
+    return this.prisma.$transaction(async (tx) => {
+      let importedCount = 0;
+      let skippedCount = 0;
 
-    for (const item of items) {
-      const {
-        childBirthDate,
-        status,
-        createdAt,
-        childDni,
-        parent1Dni,
-        iban,
-        ...rest
-      } = item;
+      for (const item of items) {
+        const { childBirthDate, status, createdAt, memberType, censusBranch, ...rest } = item;
+        const parsedBirth = new Date(childBirthDate);
+        const validBirth = isNaN(parsedBirth.getTime()) ? new Date('2015-01-01') : parsedBirth;
+        const parsedCreated = createdAt ? new Date(createdAt) : new Date();
+        const targetStatus = status || ApplicationStatus.LISTA_ESPERA;
+        const duplicate = await tx.applicant.findFirst({
+          where: this.duplicateWhere({
+            childFirstName: rest.childFirstName,
+            childLastName: rest.childLastName,
+            childBirthDate: validBirth,
+            parent1Email: rest.parent1Email,
+            parent1Phone: rest.parent1Phone,
+          }),
+          select: { id: true },
+        });
+        if (duplicate) {
+          skippedCount++;
+          continue;
+        }
 
-      const parsedBirth = new Date(childBirthDate);
-      const validBirth = isNaN(parsedBirth.getTime())
-        ? new Date('2015-01-01')
-        : parsedBirth;
+        await tx.applicant.create({
+          data: {
+            ...rest,
+            childBirthDate: validBirth,
+            createdAt: isNaN(parsedCreated.getTime()) ? new Date() : parsedCreated,
+            status: targetStatus,
+            memberType: memberType === MemberType.RESPONSABLE ? MemberType.RESPONSABLE : MemberType.EDUCANDO,
+            censusBranch: censusBranch || undefined,
+            ...(targetStatus === ApplicationStatus.CENSADO ? { admittedAt: new Date() } : {}),
+          },
+        });
+        importedCount++;
+      }
 
-      const parsedCreated = createdAt ? new Date(createdAt) : new Date();
-      const targetStatus = status || ApplicationStatus.LISTA_ESPERA;
-
-      await this.prisma.applicant.create({
-        data: {
-          ...rest,
-          childBirthDate: validBirth,
-          createdAt: isNaN(parsedCreated.getTime()) ? new Date() : parsedCreated,
-          status: targetStatus,
-          ...(targetStatus === ApplicationStatus.CENSADO
-            ? { admittedAt: new Date() }
-            : {}),
-          // Si viene del Excel del Censo y trae DNI o IBAN, creamos su ficha base
-          ...(targetStatus === ApplicationStatus.CENSADO &&
-          (childDni || parent1Dni || iban)
-            ? {
-                enrollment: {
-                  create: {
-                    childDni: childDni || undefined,
-                    parent1Dni: parent1Dni || 'PENDIENTE',
-                    accountHolderName: `${rest.parent1FirstName} ${rest.parent1LastName}`,
-                    accountHolderDni: parent1Dni || 'PENDIENTE',
-                    iban: iban || 'ES0000000000000000000000',
-                    signatureParent1: '',
-                  },
-                },
-              }
-            : {}),
-        },
-      });
-      importedCount++;
-    }
-
-    return { importedCount };
+      return { importedCount, skippedCount };
+    });
   }
 }

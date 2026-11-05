@@ -20,6 +20,7 @@ export type ApplicationStatus =
   | 'BAJA';
 
 export type Gender = 'MASCULINO' | 'FEMENINO' | 'OTRO';
+export type MemberType = 'EDUCANDO' | 'RESPONSABLE';
 
 export interface CreateApplicationPayload {
   childFirstName: string;
@@ -59,6 +60,8 @@ export interface ApplicantRecord extends CreateApplicationPayload {
   createdAt: string;
   updatedAt: string;
   status: ApplicationStatus;
+  memberType: MemberType;
+  censusBranch?: string | null;
   socialInclusionPriority: boolean;
   kraalInternalNotes?: string | null;
   enrollmentToken?: string | null;
@@ -72,6 +75,26 @@ export interface ApplicantRecord extends CreateApplicationPayload {
 
 export interface UpdateApplicationPayload {
   status?: ApplicationStatus;
+  childFirstName?: string;
+  childLastName?: string;
+  childBirthDate?: string;
+  gender?: Gender;
+  memberType?: MemberType;
+  censusBranch?: string;
+  streetAddress?: string;
+  streetNumber?: string;
+  ApartmentDoor?: string;
+  postalCode?: string;
+  municipality?: string;
+  province?: string;
+  parent1FirstName?: string;
+  parent1LastName?: string;
+  parent1Phone?: string;
+  parent1Email?: string;
+  parent2FirstName?: string;
+  parent2LastName?: string;
+  parent2Phone?: string;
+  parent2Email?: string;
   socialInclusionPriority?: boolean;
   kraalInternalNotes?: string;
 }
@@ -103,6 +126,13 @@ export const applicationsApi = {
       throw new Error('No se pudieron cargar las solicitudes del servidor.');
     }
     return response.json();
+  },
+
+  async createCensusMember(data: CreateApplicationPayload & { memberType: MemberType; censusBranch: string }): Promise<ApplicantRecord> {
+    return apiJson<ApplicantRecord>('/applications/census/members', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
   // Fase 4: Actualizar estado, prioridad de inclusión o notas del Kraal
@@ -172,7 +202,7 @@ export const applicationsApi = {
   },
 
   // Importación masiva desde Excel (Censo o Lista de Espera)
-  async bulkImport(items: Record<string, unknown>[]): Promise<{ importedCount: number }> {
+  async bulkImport(items: Record<string, unknown>[]): Promise<{ importedCount: number; skippedCount: number }> {
     const response = await authFetch(`${API_URL}/applications/bulk-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -1,5 +1,5 @@
 import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
-import { ApplicationStatus, Gender } from '@prisma/client';
+import { ApplicationStatus, Gender, MemberType } from '@prisma/client';
 
 export class UpdateApplicationDto {
   @IsEnum(ApplicationStatus)
@@ -45,4 +45,68 @@ export class UpdateApplicationDto {
   @IsString()
   @IsOptional()
   kraalInternalNotes?: string;
+
+  @IsEnum(MemberType)
+  @IsOptional()
+  memberType?: MemberType;
+
+  @IsString()
+  @IsOptional()
+  censusBranch?: string;
+
+  @IsString()
+  @IsOptional()
+  streetAddress?: string;
+
+  @IsString()
+  @IsOptional()
+  streetNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  ApartmentDoor?: string;
+
+  @IsString()
+  @IsOptional()
+  postalCode?: string;
+
+  @IsString()
+  @IsOptional()
+  municipality?: string;
+
+  @IsString()
+  @IsOptional()
+  province?: string;
+
+  @IsString()
+  @IsOptional()
+  parent1FirstName?: string;
+
+  @IsString()
+  @IsOptional()
+  parent1LastName?: string;
+
+  @IsString()
+  @IsOptional()
+  parent1Phone?: string;
+
+  @IsString()
+  @IsOptional()
+  parent1Email?: string;
+
+  @IsString()
+  @IsOptional()
+  parent2FirstName?: string;
+
+  @IsString()
+  @IsOptional()
+  parent2LastName?: string;
+
+  @IsString()
+  @IsOptional()
+  parent2Phone?: string;
+
+  @IsString()
+  @IsOptional()
+  parent2Email?: string;
 }

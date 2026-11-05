@@ -14,6 +14,7 @@ import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
+import { CreateCensusMemberDto } from './dto/create-census-member.dto';
 import { ApplicationStatus } from '@prisma/client';
 import { AuthGuard, ensurePermission } from '../auth.guard';
 import type { AuthenticatedRequest } from '../auth.guard';
@@ -39,9 +40,23 @@ export class ApplicationsController {
   // Panel Kraal: Obtener el Censo Oficial
   @Get('census')
   @UseGuards(AuthGuard)
-  findCensus(@Req() req: AuthenticatedRequest) {
+  findCensus(
+    @Query('memberType') memberType: 'EDUCANDO' | 'RESPONSABLE' | undefined,
+    @Query('branch') branch: string | undefined,
+    @Req() req: AuthenticatedRequest,
+  ) {
     ensurePermission(req, 'Secretaría', 'canRead');
-    return this.applicationsService.findCensus();
+    return this.applicationsService.findCensus(memberType, branch);
+  }
+
+  @Post('census/members')
+  @UseGuards(AuthGuard)
+  createCensusMember(
+    @Body() dto: CreateCensusMemberDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    ensurePermission(req, 'Secretaría', 'canCreate');
+    return this.applicationsService.createCensusMember(dto, req);
   }
 
   // Fase 2 (Padres): Abrir enlace mágico por Token
@@ -85,7 +100,7 @@ export class ApplicationsController {
     @Req() req: AuthenticatedRequest,
   ) {
     ensurePermission(req, 'Secretaría', 'canUpdate');
-    return this.applicationsService.update(id, updateApplicationDto);
+    return this.applicationsService.update(id, updateApplicationDto, req);
   }
 
   @Delete(':id')

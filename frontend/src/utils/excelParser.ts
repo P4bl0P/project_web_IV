@@ -55,6 +55,9 @@ export async function parseScoutExcelFile(
       if (!childFirstName && !childLastName) return null;
 
       const childDni = String(getVal(row, ['DNI', 'NIF'])).trim().toUpperCase();
+      const rawMemberType = normalize(String(getVal(row, ['TIPO', 'TIPO DE INTEGRANTE', 'PERFIL'])));
+      const memberType = rawMemberType.includes('RESPONS') ? 'RESPONSABLE' : 'EDUCANDO';
+      const censusBranch = String(getVal(row, ['RAMA', 'SECCION', 'SECCIÓN'])).trim();
       const childBirthDate = parseExcelDate(getVal(row, ['FECHA NACIMIENTO', 'FECHA DE NACIMIENTO']));
       const email = String(getVal(row, ['E-MAIL', 'EMAIL', 'CORREO'])).trim() || 'censo@scoutsmontequinto.es';
       const streetAddress = String(getVal(row, ['DIRECCIÓN', 'DIRECCION', 'DOMICILIO'])).trim() || 'Sin especificar';
@@ -79,6 +82,8 @@ export async function parseScoutExcelFile(
         parent1Phone,
         parent1Email: email,
         childDni: childDni || undefined,
+        memberType,
+        censusBranch: censusBranch || undefined,
         status: targetStatus,
       };
     })
