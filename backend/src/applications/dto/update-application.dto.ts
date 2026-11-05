@@ -46,6 +46,10 @@ export class UpdateApplicationDto {
   @IsOptional()
   kraalInternalNotes?: string;
 
+  @IsString()
+  @IsOptional()
+  motivation?: string;
+
   @IsEnum(MemberType)
   @IsOptional()
   memberType?: MemberType;
