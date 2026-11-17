@@ -70,22 +70,60 @@ const emptyForm: DirectCensusPayload = {
   signatureParent2: '',
 };
 
+const fieldLabels: Record<string, string> = {
+  childFirstName: 'nombre del educando',
+  childLastName: 'apellidos del educando',
+  childBirthDate: 'fecha de nacimiento',
+  streetAddress: 'dirección',
+  postalCode: 'código postal',
+  municipality: 'municipio',
+  province: 'provincia',
+  parent1FirstName: 'nombre del tutor 1',
+  parent1LastName: 'apellidos del tutor 1',
+  parent1Phone: 'teléfono del tutor 1',
+  parent1Email: 'email del tutor 1',
+  parent2Phone: 'teléfono del tutor 2',
+  parent2Email: 'email del tutor 2',
+  familyMemberDetails: 'familiar en el grupo',
+  originGroupDetails: 'grupo de procedencia',
+  parent1Dni: 'DNI del tutor 1',
+  parent2Dni: 'DNI del tutor 2',
+  childDni: 'DNI del educando',
+  accountHolderName: 'titular de la cuenta',
+  accountHolderDni: 'DNI del titular',
+  iban: 'IBAN',
+  signatureParent1: 'firma del tutor 1',
+  signatureParent2: 'firma del tutor 2',
+};
+
 function formFromRecord(record?: ApplicantRecord | null): DirectCensusPayload {
   if (!record) return { ...emptyForm };
   return {
     ...emptyForm,
-    ...record,
-    ...record.enrollment,
+    childFirstName: record.childFirstName,
+    childLastName: record.childLastName,
     childBirthDate: record.childBirthDate.slice(0, 10),
+    gender: record.gender,
+    streetAddress: record.streetAddress,
     streetNumber: record.streetNumber || '',
     ApartmentDoor: record.ApartmentDoor || '',
+    postalCode: record.postalCode,
+    municipality: record.municipality,
+    province: record.province,
+    parent1FirstName: record.parent1FirstName,
+    parent1LastName: record.parent1LastName,
+    parent1Phone: record.parent1Phone,
+    parent1Email: record.parent1Email,
     parent2FirstName: record.parent2FirstName || '',
     parent2LastName: record.parent2LastName || '',
     parent2Phone: record.parent2Phone || '',
     parent2Email: record.parent2Email || '',
     motivation: record.motivation || '',
+    hasFamilyInGroup: record.hasFamilyInGroup,
     familyMemberDetails: record.familyMemberDetails || '',
+    comesFromOtherGroup: record.comesFromOtherGroup,
     originGroupDetails: record.originGroupDetails || '',
+    ...(record.enrollment || {}),
     signatureParent2: record.enrollment?.signatureParent2 || '',
   };
 }
@@ -95,6 +133,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
   const [formData, setFormData] = useState<DirectCensusPayload>(() => formFromRecord(record));
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const showSecondParent = useMemo(
@@ -107,11 +146,18 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     const nextValue = type === 'checkbox' ? (event.target as HTMLInputElement).checked : value;
     setFormData((previous) => ({ ...previous, [name]: nextValue }));
     setError(null);
+    setFieldErrors((previous) => {
+      if (!previous[name]) return previous;
+      const next = { ...previous };
+      delete next[name];
+      return next;
+    });
   };
 
   const validateStep = () => {
     if (step === 1) {
       const solicitudErrors = validateSolicitudForm(formData, showSecondParent);
+      setFieldErrors(solicitudErrors as Record<string, string>);
       if (solicitudErrors.childFirstName || solicitudErrors.childLastName || solicitudErrors.childBirthDate) {
         return 'Completa correctamente los datos básicos del educando.';
       }
@@ -119,7 +165,16 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
         return 'Completa correctamente los datos del tutor principal.';
       }
     }
-    return validateEnrollmentStep(step, formData);
+    const enrollmentError = validateEnrollmentStep(step, formData);
+    if (enrollmentError) {
+      const field =
+        step === 1 ? 'parent1Dni' :
+        step === 2 ? 'authorizesEmergency' :
+        step === 3 ? (formData.iban.replace(/\s+/g, '').length !== 24 ? 'iban' : 'accountHolderDni') :
+        formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2 ? 'signatureParent2' : 'signatureParent1';
+      setFieldErrors((previous) => ({ ...previous, [field]: enrollmentError }));
+    }
+    return enrollmentError;
   };
 
   const handleNext = () => {
@@ -134,6 +189,12 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
       if (stepError) {
         setStep(currentStep);
         setError(stepError);
+        const field =
+          currentStep === 1 ? 'parent1Dni' :
+          currentStep === 2 ? 'authorizesEmergency' :
+          currentStep === 3 ? 'iban' :
+          formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2 ? 'signatureParent2' : 'signatureParent1';
+        setFieldErrors((previous) => ({ ...previous, [field]: stepError }));
         return;
       }
     }
@@ -141,23 +202,63 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     if (Object.keys(solicitudErrors).length > 0) {
       setStep(1);
       setError('Revisa los datos personales, de contacto y dirección.');
+      setFieldErrors(solicitudErrors as Record<string, string>);
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      const payload = {
-        ...formData,
+      const payload: DirectCensusPayload = {
+        childFirstName: formData.childFirstName.trim(),
+        childLastName: formData.childLastName.trim(),
+        childBirthDate: formData.childBirthDate,
+        gender: formData.gender,
+        streetAddress: formData.streetAddress.trim(),
+        streetNumber: formData.streetNumber?.trim() || undefined,
+        ApartmentDoor: formData.ApartmentDoor?.trim() || undefined,
+        postalCode: formData.postalCode.trim(),
+        municipality: formData.municipality.trim(),
+        province: formData.province.trim(),
+        parent1FirstName: formData.parent1FirstName.trim(),
+        parent1LastName: formData.parent1LastName.trim(),
         parent1Phone: formData.parent1Phone.replace(/\s+/g, ''),
+        parent1Email: formData.parent1Email.trim(),
+        parent2FirstName: formData.parent2FirstName?.trim() || undefined,
+        parent2LastName: formData.parent2LastName?.trim() || undefined,
         parent2Phone: formData.parent2Phone?.replace(/\s+/g, '') || undefined,
         parent2Email: formData.parent2Email?.trim() || undefined,
+        motivation: formData.motivation?.trim() || undefined,
+        hasFamilyInGroup: formData.hasFamilyInGroup,
+        familyMemberDetails: formData.hasFamilyInGroup ? formData.familyMemberDetails?.trim() : undefined,
+        comesFromOtherGroup: formData.comesFromOtherGroup,
+        originGroupDetails: formData.comesFromOtherGroup ? formData.originGroupDetails?.trim() : undefined,
         childEmail: formData.childEmail?.trim() || undefined,
         childDni: formData.childDni?.trim().toUpperCase() || undefined,
+        childPhone: formData.childPhone?.trim() || undefined,
+        legalStatus: formData.legalStatus,
+        circularPreference: formData.circularPreference,
         parent1Dni: formData.parent1Dni.trim().toUpperCase(),
         parent2Dni: formData.parent2Dni?.trim().toUpperCase() || undefined,
+        parentsMaritalStatus: formData.parentsMaritalStatus?.trim() || undefined,
+        custodyType: formData.custodyType,
+        acceptsDataStorage: formData.acceptsDataStorage,
+        acceptsDataTransfer: formData.acceptsDataTransfer,
+        authorizesImages: formData.authorizesImages,
+        bloodType: formData.bloodType?.trim() || undefined,
+        chronicDiseases: formData.chronicDiseases?.trim() || undefined,
+        allergies: formData.allergies?.trim() || undefined,
+        medHeadache: formData.medHeadache?.trim() || undefined,
+        medFever: formData.medFever?.trim() || undefined,
+        medStomach: formData.medStomach?.trim() || undefined,
+        medThroat: formData.medThroat?.trim() || undefined,
+        medicalObservations: formData.medicalObservations?.trim() || undefined,
+        authorizesEmergency: formData.authorizesEmergency,
+        accountHolderName: formData.accountHolderName.trim(),
         accountHolderDni: formData.accountHolderDni.trim().toUpperCase(),
         iban: formData.iban.replace(/\s+/g, '').toUpperCase(),
+        authorizesSepa: formData.authorizesSepa,
+        signatureParent1: formData.signatureParent1,
         signatureParent2: formData.signatureParent2 || undefined,
       };
       const saved = isEditing
@@ -190,7 +291,14 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
           {error && (
             <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
+              <div>
+                <p>{error}</p>
+                {Object.keys(fieldErrors).length > 0 && (
+                  <p className="mt-1 font-normal">
+                    Campos a revisar: {Object.keys(fieldErrors).map((field) => fieldLabels[field] || field).join(', ')}.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -200,13 +308,13 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
                 <h3 className="text-lg font-bold text-slate-900">Datos del educando y tutores</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <label className="text-xs font-semibold text-slate-700">Nombre del educando
-                    <input name="childFirstName" value={formData.childFirstName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    <input name="childFirstName" value={formData.childFirstName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.childFirstName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.childFirstName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
                   </label>
                   <label className="text-xs font-semibold text-slate-700 md:col-span-2">Apellidos
-                    <input name="childLastName" value={formData.childLastName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    <input name="childLastName" value={formData.childLastName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.childLastName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.childLastName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
                   </label>
                   <label className="text-xs font-semibold text-slate-700">Nacimiento
-                    <input type="date" name="childBirthDate" value={formData.childBirthDate} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    <input type="date" name="childBirthDate" value={formData.childBirthDate} onChange={handleChange} aria-invalid={Boolean(fieldErrors.childBirthDate)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.childBirthDate ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
                   </label>
                   <label className="text-xs font-semibold text-slate-700">Género
                     <select name="gender" value={formData.gender} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
@@ -216,10 +324,10 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
                     </select>
                   </label>
                   <label className="text-xs font-semibold text-slate-700">Nombre Tutor 1
-                    <input name="parent1FirstName" value={formData.parent1FirstName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    <input name="parent1FirstName" value={formData.parent1FirstName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.parent1FirstName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.parent1FirstName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
                   </label>
                   <label className="text-xs font-semibold text-slate-700 md:col-span-2">Apellidos Tutor 1
-                    <input name="parent1LastName" value={formData.parent1LastName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    <input name="parent1LastName" value={formData.parent1LastName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.parent1LastName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.parent1LastName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
                   </label>
                   <label className="text-xs font-semibold text-slate-700">Nombre Tutor 2
                     <input name="parent2FirstName" value={formData.parent2FirstName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
