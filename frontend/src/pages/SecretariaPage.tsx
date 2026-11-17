@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Upload, RefreshCw, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Lock, Unlock, UserPlus } from 'lucide-react';
 import { applicationsApi, type ApplicantRecord, type ApplicationStatus } from '../services/api';
 import ApplicantCard from '../components/secretaria/ApplicantCard';
 import ExcelImportModal from '../components/secretaria/ExcelImportModal';
+import SecretariaCensoForm from '../components/secretaria/SecretariaCensoForm';
 
 type TabType = 'WAITLIST' | 'OFFERED' | 'CENSUS' | 'ARCHIVED';
 const BRANCHES = ['Todas', 'Castores', 'Lobatos', 'Rangers', 'Pioneros', 'Rutas'];
@@ -16,6 +17,7 @@ export default function SecretariaPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [safeModeWhatsApp, setSafeModeWhatsApp] = useState(true);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [censusFormRecord, setCensusFormRecord] = useState<ApplicantRecord | null | undefined>(undefined);
 
   const loadData = async () => {
     setLoading(true);
@@ -72,6 +74,15 @@ export default function SecretariaPage() {
     setRecords((prev) => prev.filter((r) => r.id !== id));
   };
 
+  const handleCensusSaved = (saved: ApplicantRecord) => {
+    setRecords((prev) => {
+      const exists = prev.some((record) => record.id === saved.id);
+      return exists ? prev.map((record) => (record.id === saved.id ? saved : record)) : [...prev, saved];
+    });
+    setActiveTab('CENSUS');
+    setCensusFormRecord(undefined);
+  };
+
   const handleCopyLink = (record: ApplicantRecord) => {
     if (!record.enrollmentToken) return;
     navigator.clipboard.writeText(`${window.location.origin}/inscripcion/${record.enrollmentToken}`);
@@ -123,6 +134,14 @@ export default function SecretariaPage() {
           >
             <Upload size={13} /> Importar Excel
           </button>
+          {activeTab === 'CENSUS' && (
+            <button
+              onClick={() => setCensusFormRecord(null)}
+              className="inline-flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg"
+            >
+              <UserPlus size={13} /> Nuevo educando
+            </button>
+          )}
           <button
             onClick={loadData}
             className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
@@ -134,6 +153,13 @@ export default function SecretariaPage() {
 
       {showImportModal && (
         <ExcelImportModal onClose={() => setShowImportModal(false)} onSuccess={loadData} />
+      )}
+      {censusFormRecord !== undefined && (
+        <SecretariaCensoForm
+          record={censusFormRecord}
+          onClose={() => setCensusFormRecord(undefined)}
+          onSaved={handleCensusSaved}
+        />
       )}
 
       {/* Pestañas y Filtro de Ramas */}
@@ -183,6 +209,7 @@ export default function SecretariaPage() {
             onOpenWhatsApp={handleOpenWhatsApp}
             onCopyLink={handleCopyLink}
             onDelete={handleDelete}
+            onEditCensus={(record) => setCensusFormRecord(record)}
           />
         ))}
       </div>

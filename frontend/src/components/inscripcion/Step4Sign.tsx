@@ -3,7 +3,7 @@ import type { ApplicantRecord, CompleteEnrollmentPayload } from '../../services/
 import SignatureBox from '../ui/SignatureBox';
 
 interface Props {
-  applicant: ApplicantRecord;
+  applicant: Pick<ApplicantRecord, 'parent1FirstName'>;
   formData: CompleteEnrollmentPayload;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSign1: (sig: string) => void;

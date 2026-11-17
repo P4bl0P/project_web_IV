@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
+import { CreateDirectCensusDto, UpdateCensusDto } from './dto/direct-census.dto';
 import { ApplicationStatus, Applicant, EnrollmentDetails } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -102,6 +103,80 @@ export class ApplicationsService {
     return this.findAll(ApplicationStatus.CENSADO);
   }
 
+  // Alta administrativa: crea directamente la solicitud base y su inscripción definitiva.
+  async createDirectCensus(dto: CreateDirectCensusDto): Promise<EnrichedApplicant> {
+    const {
+      childBirthDate,
+      streetAddress,
+      streetNumber,
+      ApartmentDoor,
+      postalCode,
+      municipality,
+      province,
+      parent1Phone,
+      parent1Email,
+      parent2Phone,
+      parent2Email,
+      childFirstName,
+      childLastName,
+      gender,
+      parent1FirstName,
+      parent1LastName,
+      parent2FirstName,
+      parent2LastName,
+      motivation,
+      hasFamilyInGroup,
+      familyMemberDetails,
+      comesFromOtherGroup,
+      originGroupDetails,
+      ...enrollmentData
+    } = dto;
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      return tx.applicant.create({
+        data: {
+          childFirstName,
+          childLastName,
+          childBirthDate: new Date(childBirthDate),
+          gender,
+          streetAddress,
+          streetNumber,
+          ApartmentDoor,
+          postalCode,
+          municipality,
+          province,
+          parent1FirstName,
+          parent1LastName,
+          parent1Phone,
+          parent1Email,
+          parent2FirstName,
+          parent2LastName,
+          parent2Phone,
+          parent2Email,
+          motivation,
+          hasFamilyInGroup,
+          familyMemberDetails,
+          comesFromOtherGroup,
+          originGroupDetails,
+          status: ApplicationStatus.CENSADO,
+          admittedAt: new Date(),
+          enrollment: {
+            create: {
+              ...enrollmentData,
+              iban: enrollmentData.iban.replace(/\s+/g, '').toUpperCase(),
+              ...(enrollmentData.signatureParent2
+                ? { signedAtParent2: new Date() }
+                : {}),
+            },
+          },
+        },
+        include: { enrollment: true },
+      });
+    });
+
+    return this.enrichApplicant(created);
+  }
+
   // 4. Obtener un solicitante por ID
   async findOne(id: string): Promise<EnrichedApplicant> {
     const applicant = await this.prisma.applicant.findUnique({
@@ -128,6 +203,99 @@ export class ApplicationsService {
         ...(childBirthDate ? { childBirthDate: new Date(childBirthDate) } : {}),
       },
       include: { enrollment: true },
+    });
+
+    return this.enrichApplicant(updated);
+  }
+
+  async updateCensus(id: string, dto: UpdateCensusDto): Promise<EnrichedApplicant> {
+    const current = await this.prisma.applicant.findUnique({
+      where: { id },
+      include: { enrollment: true },
+    });
+    if (!current) throw new NotFoundException(`Censado con ID ${id} no encontrado`);
+    if (current.status !== ApplicationStatus.CENSADO) {
+      throw new BadRequestException('Solo se pueden editar personas del censo.');
+    }
+
+    const {
+      childBirthDate,
+      childFirstName,
+      childLastName,
+      gender,
+      streetAddress,
+      streetNumber,
+      ApartmentDoor,
+      postalCode,
+      municipality,
+      province,
+      parent1FirstName,
+      parent1LastName,
+      parent1Phone,
+      parent1Email,
+      parent2FirstName,
+      parent2LastName,
+      parent2Phone,
+      parent2Email,
+      motivation,
+      hasFamilyInGroup,
+      familyMemberDetails,
+      comesFromOtherGroup,
+      originGroupDetails,
+      ...enrollmentData
+    } = dto;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const applicant = await tx.applicant.update({
+        where: { id },
+        data: {
+          ...(childFirstName !== undefined ? { childFirstName } : {}),
+          ...(childLastName !== undefined ? { childLastName } : {}),
+          ...(childBirthDate !== undefined ? { childBirthDate: new Date(childBirthDate) } : {}),
+          ...(gender !== undefined ? { gender } : {}),
+          ...(streetAddress !== undefined ? { streetAddress } : {}),
+          ...(streetNumber !== undefined ? { streetNumber } : {}),
+          ...(ApartmentDoor !== undefined ? { ApartmentDoor } : {}),
+          ...(postalCode !== undefined ? { postalCode } : {}),
+          ...(municipality !== undefined ? { municipality } : {}),
+          ...(province !== undefined ? { province } : {}),
+          ...(parent1FirstName !== undefined ? { parent1FirstName } : {}),
+          ...(parent1LastName !== undefined ? { parent1LastName } : {}),
+          ...(parent1Phone !== undefined ? { parent1Phone } : {}),
+          ...(parent1Email !== undefined ? { parent1Email } : {}),
+          ...(parent2FirstName !== undefined ? { parent2FirstName } : {}),
+          ...(parent2LastName !== undefined ? { parent2LastName } : {}),
+          ...(parent2Phone !== undefined ? { parent2Phone } : {}),
+          ...(parent2Email !== undefined ? { parent2Email } : {}),
+          ...(motivation !== undefined ? { motivation } : {}),
+          ...(hasFamilyInGroup !== undefined ? { hasFamilyInGroup } : {}),
+          ...(familyMemberDetails !== undefined ? { familyMemberDetails } : {}),
+          ...(comesFromOtherGroup !== undefined ? { comesFromOtherGroup } : {}),
+          ...(originGroupDetails !== undefined ? { originGroupDetails } : {}),
+        },
+      });
+
+      if (!current.enrollment) {
+        throw new BadRequestException('El censado no tiene una inscripción asociada.');
+      }
+
+      await tx.enrollmentDetails.update({
+        where: { applicantId: id },
+        data: {
+          ...enrollmentData,
+          ...(enrollmentData.iban !== undefined
+            ? { iban: enrollmentData.iban.replace(/\s+/g, '').toUpperCase() }
+            : {}),
+          ...(enrollmentData.signatureParent2 !== undefined
+            ? { signedAtParent2: enrollmentData.signatureParent2 ? new Date() : null }
+            : {}),
+        },
+      });
+
+      return tx.applicant.findUniqueOrThrow({
+        where: { id: applicant.id },
+        include: { enrollment: true },
+      });
     });
 
     return this.enrichApplicant(updated);

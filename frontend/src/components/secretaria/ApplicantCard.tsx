@@ -11,6 +11,7 @@ import {
   FileCheck2,
   UserCheck,
   FileDown,
+  Pencil,
 } from 'lucide-react';
 import { type ApplicantRecord, type ApplicationStatus } from '../../services/api';
 import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
@@ -27,6 +28,7 @@ interface Props {
   onOpenWhatsApp: (record: ApplicantRecord) => void;
   onCopyLink: (record: ApplicantRecord) => void;
   onDelete: (id: string, name: string) => void;
+  onEditCensus: (record: ApplicantRecord) => void;
 }
 
 export default function ApplicantCard({
@@ -41,6 +43,7 @@ export default function ApplicantCard({
   onOpenWhatsApp,
   onCopyLink,
   onDelete,
+  onEditCensus,
 }: Props) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-indigo-200 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -156,6 +159,15 @@ export default function ApplicantCard({
             className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1"
           >
             <FileDown size={14} /> PDF
+          </button>
+        )}
+
+        {activeTab === 'CENSUS' && (
+          <button
+            onClick={() => onEditCensus(record)}
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1"
+          >
+            <Pencil size={14} /> Editar
           </button>
         )}
 
