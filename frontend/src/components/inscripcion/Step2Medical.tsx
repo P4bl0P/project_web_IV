@@ -4,9 +4,10 @@ import type { CompleteEnrollmentPayload } from '../../services/api';
 interface Props {
   formData: CompleteEnrollmentPayload;
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  fieldErrors?: Record<string, string>;
 }
 
-export default function Step2Medical({ formData, onChange }: Props) {
+export default function Step2Medical({ formData, onChange, fieldErrors = {} }: Props) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-slate-900">2. Ficha Médica</h2>
@@ -78,7 +79,9 @@ export default function Step2Medical({ formData, onChange }: Props) {
         />
       </div>
 
-      <label className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer text-xs text-amber-950">
+      <label className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs text-amber-950 ${
+        fieldErrors.authorizesEmergency ? 'border-red-400 bg-red-50' : 'border-amber-200 bg-amber-50'
+      }`}>
         <input
           type="checkbox"
           name="authorizesEmergency"
@@ -90,6 +93,7 @@ export default function Step2Medical({ formData, onChange }: Props) {
           <strong>Autorización médica de urgencia:</strong> Autorizo a los responsables del Grupo Scout a tomar la decisión médica oportuna en caso de urgencia si no es posible localizarme.
         </span>
       </label>
+      {fieldErrors.authorizesEmergency && <p className="text-[11px] text-red-600">{fieldErrors.authorizesEmergency}</p>}
     </div>
   );
 }

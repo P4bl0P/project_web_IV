@@ -1,5 +1,5 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, X } from 'lucide-react';
 import {
   applicationsApi,
   type ApplicantRecord,
@@ -10,6 +10,15 @@ import Step1Legal from '../inscripcion/Step1Legal';
 import Step2Medical from '../inscripcion/Step2Medical';
 import Step3Bank from '../inscripcion/Step3Bank';
 import Step4Sign from '../inscripcion/Step4Sign';
+import CensusCriteriaSection from './censo/CensusCriteriaSection';
+import CensusErrorSummary from './censo/CensusErrorSummary';
+import CensusIdentitySection from './censo/CensusIdentitySection';
+import {
+  buildCensusPayload,
+  formFromRecord,
+  type CensusChangeHandler,
+  type CensusFieldErrors,
+} from './censo/censusForm';
 
 interface Props {
   record?: ApplicantRecord | null;
@@ -17,123 +26,19 @@ interface Props {
   onSaved: (record: ApplicantRecord) => void;
 }
 
-const emptyForm: DirectCensusPayload = {
-  childFirstName: '',
-  childLastName: '',
-  childBirthDate: '',
-  gender: 'MASCULINO',
-  streetAddress: '',
-  streetNumber: '',
-  ApartmentDoor: '',
-  postalCode: '41089',
-  municipality: 'Dos Hermanas',
-  province: 'Sevilla',
-  parent1FirstName: '',
-  parent1LastName: '',
-  parent1Phone: '',
-  parent1Email: '',
-  parent2FirstName: '',
-  parent2LastName: '',
-  parent2Phone: '',
-  parent2Email: '',
-  motivation: '',
-  hasFamilyInGroup: false,
-  familyMemberDetails: '',
-  comesFromOtherGroup: false,
-  originGroupDetails: '',
-  childDni: '',
-  childPhone: '',
-  childEmail: '',
-  legalStatus: 'MENOR',
-  circularPreference: 'EMAIL',
-  parent1Dni: '',
-  parent2Dni: '',
-  parentsMaritalStatus: '',
-  custodyType: 'SIN_ESPECIFICAR',
-  acceptsDataStorage: true,
-  acceptsDataTransfer: true,
-  authorizesImages: true,
-  bloodType: '',
-  chronicDiseases: 'Ninguna',
-  allergies: 'Ninguna',
-  medHeadache: '',
-  medFever: '',
-  medStomach: '',
-  medThroat: '',
-  medicalObservations: '',
-  authorizesEmergency: true,
-  accountHolderName: '',
-  accountHolderDni: '',
-  iban: 'ES',
-  authorizesSepa: true,
-  signatureParent1: '',
-  signatureParent2: '',
-};
-
-const fieldLabels: Record<string, string> = {
-  childFirstName: 'nombre del educando',
-  childLastName: 'apellidos del educando',
-  childBirthDate: 'fecha de nacimiento',
-  streetAddress: 'dirección',
-  postalCode: 'código postal',
-  municipality: 'municipio',
-  province: 'provincia',
-  parent1FirstName: 'nombre del tutor 1',
-  parent1LastName: 'apellidos del tutor 1',
-  parent1Phone: 'teléfono del tutor 1',
-  parent1Email: 'email del tutor 1',
-  parent2Phone: 'teléfono del tutor 2',
-  parent2Email: 'email del tutor 2',
-  familyMemberDetails: 'familiar en el grupo',
-  originGroupDetails: 'grupo de procedencia',
-  parent1Dni: 'DNI del tutor 1',
-  parent2Dni: 'DNI del tutor 2',
-  childDni: 'DNI del educando',
-  accountHolderName: 'titular de la cuenta',
-  accountHolderDni: 'DNI del titular',
-  iban: 'IBAN',
-  signatureParent1: 'firma del tutor 1',
-  signatureParent2: 'firma del tutor 2',
-};
-
-function formFromRecord(record?: ApplicantRecord | null): DirectCensusPayload {
-  if (!record) return { ...emptyForm };
-  return {
-    ...emptyForm,
-    childFirstName: record.childFirstName,
-    childLastName: record.childLastName,
-    childBirthDate: record.childBirthDate.slice(0, 10),
-    gender: record.gender,
-    streetAddress: record.streetAddress,
-    streetNumber: record.streetNumber || '',
-    ApartmentDoor: record.ApartmentDoor || '',
-    postalCode: record.postalCode,
-    municipality: record.municipality,
-    province: record.province,
-    parent1FirstName: record.parent1FirstName,
-    parent1LastName: record.parent1LastName,
-    parent1Phone: record.parent1Phone,
-    parent1Email: record.parent1Email,
-    parent2FirstName: record.parent2FirstName || '',
-    parent2LastName: record.parent2LastName || '',
-    parent2Phone: record.parent2Phone || '',
-    parent2Email: record.parent2Email || '',
-    motivation: record.motivation || '',
-    hasFamilyInGroup: record.hasFamilyInGroup,
-    familyMemberDetails: record.familyMemberDetails || '',
-    comesFromOtherGroup: record.comesFromOtherGroup,
-    originGroupDetails: record.originGroupDetails || '',
-    ...(record.enrollment || {}),
-    signatureParent2: record.enrollment?.signatureParent2 || '',
-  };
-}
+const STEPS = [
+  { number: 1, title: 'Datos personales', description: 'Identidad, contacto y domicilio' },
+  { number: 2, title: 'Ficha médica', description: 'Salud y autorizaciones médicas' },
+  { number: 3, title: 'Domiciliación', description: 'Cuenta bancaria y SEPA' },
+  { number: 4, title: 'Autorizaciones', description: 'Consentimientos y firmas' },
+];
 
 export default function SecretariaCensoForm({ record, onClose, onSaved }: Props) {
   const isEditing = Boolean(record);
   const [formData, setFormData] = useState<DirectCensusPayload>(() => formFromRecord(record));
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<CensusFieldErrors>({});
   const [saving, setSaving] = useState(false);
 
   const showSecondParent = useMemo(
@@ -141,7 +46,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     [formData.parent2Email, formData.parent2FirstName, formData.parent2Phone],
   );
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange: CensusChangeHandler = (event) => {
     const { name, value, type } = event.target;
     const nextValue = type === 'checkbox' ? (event.target as HTMLInputElement).checked : value;
     setFormData((previous) => ({ ...previous, [name]: nextValue }));
@@ -154,113 +59,69 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     });
   };
 
-  const validateStep = () => {
+  const setEnrollmentError = (currentStep: number) => {
+    const field =
+      currentStep === 1 ? (formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.parent2Dni ? 'parent2Dni' : 'parent1Dni') :
+      currentStep === 2 ? 'authorizesEmergency' :
+      currentStep === 3
+        ? (!formData.accountHolderName.trim()
+          ? 'accountHolderName'
+          : !formData.accountHolderDni.trim()
+            ? 'accountHolderDni'
+            : formData.iban.replace(/\s+/g, '').length !== 24
+              ? 'iban'
+              : 'authorizesSepa') :
+      formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2 ? 'signatureParent2' : 'signatureParent1';
+    setFieldErrors((previous) => ({ ...previous, [field]: 'Revisa este campo.' }));
+  };
+
+  const validateCurrentStep = () => {
     if (step === 1) {
       const solicitudErrors = validateSolicitudForm(formData, showSecondParent);
-      setFieldErrors(solicitudErrors as Record<string, string>);
-      if (solicitudErrors.childFirstName || solicitudErrors.childLastName || solicitudErrors.childBirthDate) {
-        return 'Completa correctamente los datos básicos del educando.';
-      }
-      if (solicitudErrors.parent1FirstName || solicitudErrors.parent1LastName || solicitudErrors.parent1Phone || solicitudErrors.parent1Email) {
-        return 'Completa correctamente los datos del tutor principal.';
-      }
+      setFieldErrors(solicitudErrors as CensusFieldErrors);
+      if (Object.keys(solicitudErrors).length > 0) return 'Revisa los datos personales y de contacto.';
     }
+
     const enrollmentError = validateEnrollmentStep(step, formData);
     if (enrollmentError) {
-      const field =
-        step === 1 ? 'parent1Dni' :
-        step === 2 ? 'authorizesEmergency' :
-        step === 3 ? (formData.iban.replace(/\s+/g, '').length !== 24 ? 'iban' : 'accountHolderDni') :
-        formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2 ? 'signatureParent2' : 'signatureParent1';
-      setFieldErrors((previous) => ({ ...previous, [field]: enrollmentError }));
+      setEnrollmentError(step);
+      return enrollmentError;
     }
-    return enrollmentError;
+    return null;
   };
 
   const handleNext = () => {
-    const validationError = validateStep();
-    if (validationError) return setError(validationError);
+    const validationError = validateCurrentStep();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setStep((current) => current + 1);
   };
 
   const handleSubmit = async () => {
     for (const currentStep of [1, 2, 3, 4]) {
-      const stepError = validateEnrollmentStep(currentStep, formData);
-      if (stepError) {
+      const enrollmentError = validateEnrollmentStep(currentStep, formData);
+      if (enrollmentError) {
         setStep(currentStep);
-        setError(stepError);
-        const field =
-          currentStep === 1 ? 'parent1Dni' :
-          currentStep === 2 ? 'authorizesEmergency' :
-          currentStep === 3 ? 'iban' :
-          formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2 ? 'signatureParent2' : 'signatureParent1';
-        setFieldErrors((previous) => ({ ...previous, [field]: stepError }));
+        setError(enrollmentError);
+        setEnrollmentError(currentStep);
         return;
       }
     }
+
     const solicitudErrors = validateSolicitudForm(formData, showSecondParent);
     if (Object.keys(solicitudErrors).length > 0) {
       setStep(1);
-      setError('Revisa los datos personales, de contacto y dirección.');
-      setFieldErrors(solicitudErrors as Record<string, string>);
+      setError('Revisa los datos personales y de contacto.');
+      setFieldErrors(solicitudErrors as CensusFieldErrors);
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      const payload: DirectCensusPayload = {
-        childFirstName: formData.childFirstName.trim(),
-        childLastName: formData.childLastName.trim(),
-        childBirthDate: formData.childBirthDate,
-        gender: formData.gender,
-        streetAddress: formData.streetAddress.trim(),
-        streetNumber: formData.streetNumber?.trim() || undefined,
-        ApartmentDoor: formData.ApartmentDoor?.trim() || undefined,
-        postalCode: formData.postalCode.trim(),
-        municipality: formData.municipality.trim(),
-        province: formData.province.trim(),
-        parent1FirstName: formData.parent1FirstName.trim(),
-        parent1LastName: formData.parent1LastName.trim(),
-        parent1Phone: formData.parent1Phone.replace(/\s+/g, ''),
-        parent1Email: formData.parent1Email.trim(),
-        parent2FirstName: formData.parent2FirstName?.trim() || undefined,
-        parent2LastName: formData.parent2LastName?.trim() || undefined,
-        parent2Phone: formData.parent2Phone?.replace(/\s+/g, '') || undefined,
-        parent2Email: formData.parent2Email?.trim() || undefined,
-        motivation: formData.motivation?.trim() || undefined,
-        hasFamilyInGroup: formData.hasFamilyInGroup,
-        familyMemberDetails: formData.hasFamilyInGroup ? formData.familyMemberDetails?.trim() : undefined,
-        comesFromOtherGroup: formData.comesFromOtherGroup,
-        originGroupDetails: formData.comesFromOtherGroup ? formData.originGroupDetails?.trim() : undefined,
-        childEmail: formData.childEmail?.trim() || undefined,
-        childDni: formData.childDni?.trim().toUpperCase() || undefined,
-        childPhone: formData.childPhone?.trim() || undefined,
-        legalStatus: formData.legalStatus,
-        circularPreference: formData.circularPreference,
-        parent1Dni: formData.parent1Dni.trim().toUpperCase(),
-        parent2Dni: formData.parent2Dni?.trim().toUpperCase() || undefined,
-        parentsMaritalStatus: formData.parentsMaritalStatus?.trim() || undefined,
-        custodyType: formData.custodyType,
-        acceptsDataStorage: formData.acceptsDataStorage,
-        acceptsDataTransfer: formData.acceptsDataTransfer,
-        authorizesImages: formData.authorizesImages,
-        bloodType: formData.bloodType?.trim() || undefined,
-        chronicDiseases: formData.chronicDiseases?.trim() || undefined,
-        allergies: formData.allergies?.trim() || undefined,
-        medHeadache: formData.medHeadache?.trim() || undefined,
-        medFever: formData.medFever?.trim() || undefined,
-        medStomach: formData.medStomach?.trim() || undefined,
-        medThroat: formData.medThroat?.trim() || undefined,
-        medicalObservations: formData.medicalObservations?.trim() || undefined,
-        authorizesEmergency: formData.authorizesEmergency,
-        accountHolderName: formData.accountHolderName.trim(),
-        accountHolderDni: formData.accountHolderDni.trim().toUpperCase(),
-        iban: formData.iban.replace(/\s+/g, '').toUpperCase(),
-        authorizesSepa: formData.authorizesSepa,
-        signatureParent1: formData.signatureParent1,
-        signatureParent2: formData.signatureParent2 || undefined,
-      };
+      const payload = buildCensusPayload(formData);
       const saved = isEditing
         ? await applicationsApi.updateCensus(record!.id, payload)
         : await applicationsApi.createDirectCensus(payload);
@@ -275,86 +136,55 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
   const applicantForSteps = { parent1FirstName: formData.parent1FirstName };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-4">
-      <div className="mx-auto max-w-5xl rounded-2xl bg-slate-50 shadow-xl">
-        <div className="flex items-center justify-between rounded-t-2xl bg-indigo-900 px-5 py-4 text-white">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="census-form-title">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-slate-50 shadow-xl">
+        <header className="flex items-start justify-between bg-indigo-900 px-5 py-5 text-white">
           <div>
-            <h2 className="text-lg font-bold">{isEditing ? 'Editar inscripción censada' : 'Alta directa en el censo'}</h2>
-            <p className="text-xs text-indigo-200">Paso {step} de 4 · mismos datos que la inscripción oficial</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-200">Secretaría · Censo</p>
+            <h2 id="census-form-title" className="mt-1 text-xl font-bold">
+              {isEditing ? 'Editar inscripción censada' : 'Alta directa en el censo'}
+            </h2>
+            <p className="mt-1 text-xs text-indigo-200">Los campos marcados con * son obligatorios.</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-white/10" aria-label="Cerrar">
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-indigo-100 hover:bg-white/10" aria-label="Cerrar formulario">
             <X size={18} />
           </button>
-        </div>
+        </header>
 
-        <div className="space-y-5 p-5">
-          {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
-              <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              <div>
-                <p>{error}</p>
-                {Object.keys(fieldErrors).length > 0 && (
-                  <p className="mt-1 font-normal">
-                    Campos a revisar: {Object.keys(fieldErrors).map((field) => fieldLabels[field] || field).join(', ')}.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+        <nav className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 md:grid-cols-4" aria-label="Pasos del formulario">
+          {STEPS.map((item) => (
+            <button
+              key={item.number}
+              type="button"
+              onClick={() => item.number < step && setStep(item.number)}
+              className={`rounded-xl px-3 py-2 text-left transition ${
+                item.number === step
+                  ? 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200'
+                  : item.number < step
+                    ? 'text-slate-700 hover:bg-slate-50'
+                    : 'text-slate-400'
+              }`}
+              aria-current={item.number === step ? 'step' : undefined}
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wide">Paso {item.number}</span>
+              <span className="mt-0.5 block text-xs font-bold">{item.title}</span>
+              <span className="mt-0.5 block text-[11px]">{item.description}</span>
+            </button>
+          ))}
+        </nav>
+
+        <main className="space-y-5 p-5">
+          {error && <CensusErrorSummary message={error} fieldErrors={fieldErrors} />}
 
           {step === 1 && (
             <>
-              <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 className="text-lg font-bold text-slate-900">Datos del educando y tutores</h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                  <label className="text-xs font-semibold text-slate-700">Nombre del educando
-                    <input name="childFirstName" value={formData.childFirstName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.childFirstName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.childFirstName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700 md:col-span-2">Apellidos
-                    <input name="childLastName" value={formData.childLastName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.childLastName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.childLastName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700">Nacimiento
-                    <input type="date" name="childBirthDate" value={formData.childBirthDate} onChange={handleChange} aria-invalid={Boolean(fieldErrors.childBirthDate)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.childBirthDate ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700">Género
-                    <select name="gender" value={formData.gender} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                      <option value="MASCULINO">Masculino</option>
-                      <option value="FEMENINO">Femenino</option>
-                      <option value="OTRO">Otro</option>
-                    </select>
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700">Nombre Tutor 1
-                    <input name="parent1FirstName" value={formData.parent1FirstName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.parent1FirstName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.parent1FirstName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700 md:col-span-2">Apellidos Tutor 1
-                    <input name="parent1LastName" value={formData.parent1LastName} onChange={handleChange} aria-invalid={Boolean(fieldErrors.parent1LastName)} className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.parent1LastName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`} />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700">Nombre Tutor 2
-                    <input name="parent2FirstName" value={formData.parent2FirstName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700 md:col-span-2">Apellidos Tutor 2
-                    <input name="parent2LastName" value={formData.parent2LastName} onChange={handleChange} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                  </label>
-                </div>
-              </section>
-              <Step1Legal applicant={applicantForSteps} formData={formData} onChange={handleChange} />
-              <section className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2">
-                <label className="text-xs font-semibold text-slate-700">Familiar en el grupo
-                  <input type="checkbox" name="hasFamilyInGroup" checked={formData.hasFamilyInGroup} onChange={handleChange} className="ml-2 h-4 w-4 rounded text-indigo-600" />
-                  {formData.hasFamilyInGroup && <input name="familyMemberDetails" value={formData.familyMemberDetails} onChange={handleChange} placeholder="Nombre y parentesco" className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />}
-                </label>
-                <label className="text-xs font-semibold text-slate-700">Procede de otro grupo
-                  <input type="checkbox" name="comesFromOtherGroup" checked={formData.comesFromOtherGroup} onChange={handleChange} className="ml-2 h-4 w-4 rounded text-indigo-600" />
-                  {formData.comesFromOtherGroup && <input name="originGroupDetails" value={formData.originGroupDetails} onChange={handleChange} placeholder="Grupo de procedencia" className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />}
-                </label>
-                <label className="text-xs font-semibold text-slate-700 md:col-span-2">Motivación y observaciones
-                  <textarea name="motivation" value={formData.motivation} onChange={handleChange} rows={2} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                </label>
-              </section>
+              <CensusIdentitySection formData={formData} fieldErrors={fieldErrors} onChange={handleChange} />
+              <Step1Legal applicant={applicantForSteps} formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />
+              <CensusCriteriaSection formData={formData} fieldErrors={fieldErrors} onChange={handleChange} />
             </>
           )}
-          {step === 2 && <Step2Medical formData={formData} onChange={handleChange} />}
-          {step === 3 && <Step3Bank formData={formData} onChange={handleChange} />}
+          {step === 2 && <Step2Medical formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
+          {step === 3 && <Step3Bank formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
           {step === 4 && (
             <Step4Sign
               applicant={applicantForSteps}
@@ -365,24 +195,24 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
             />
           )}
 
-          <div className="flex justify-between border-t border-slate-200 pt-4">
+          <footer className="flex justify-between border-t border-slate-200 pt-4">
             {step > 1 ? (
-              <button type="button" onClick={() => setStep((current) => current - 1)} className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-600">
+              <button type="button" onClick={() => setStep((current) => current - 1)} className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-white">
                 <ChevronLeft size={15} /> Anterior
               </button>
             ) : <div />}
             {step < 4 ? (
-              <button type="button" onClick={handleNext} className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white">
+              <button type="button" onClick={handleNext} className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700">
                 Siguiente <ChevronRight size={15} />
               </button>
             ) : (
-              <button type="button" disabled={saving} onClick={handleSubmit} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white disabled:opacity-60">
+              <button type="button" disabled={saving} onClick={handleSubmit} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
                 {isEditing ? <CheckCircle2 size={16} /> : <ShieldCheck size={16} />}
-                {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear y censar'}
+                {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear y censar'}
               </button>
             )}
-          </div>
-        </div>
+          </footer>
+        </main>
       </div>
     </div>
   );

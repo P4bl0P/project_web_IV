@@ -5,9 +5,15 @@ interface Props {
   applicant: Pick<ApplicantRecord, 'parent1FirstName'>;
   formData: CompleteEnrollmentPayload;
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  fieldErrors?: Record<string, string>;
 }
 
-export default function Step1Legal({ applicant, formData, onChange }: Props) {
+export default function Step1Legal({ applicant, formData, onChange, fieldErrors = {} }: Props) {
+  const inputClass = (field: string, extra = '') =>
+    `w-full rounded-xl border px-3 py-2 text-sm ${
+      fieldErrors[field] ? 'border-red-400 bg-red-50' : 'border-slate-300'
+    } ${extra}`;
+
   return (
     <div className="space-y-5">
       <h2 className="text-lg font-bold text-slate-900">1. Domicilio y Datos Legales</h2>
@@ -21,8 +27,9 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             value={formData.childDni}
             onChange={onChange}
             placeholder="12345678A"
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase"
+            className={inputClass('childDni', 'uppercase')}
           />
+          {fieldErrors.childDni && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.childDni}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Situación</label>
@@ -59,8 +66,10 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="streetAddress"
             value={formData.streetAddress}
             onChange={onChange}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            autoComplete="street-address"
+            className={inputClass('streetAddress', 'rounded-lg bg-white')}
           />
+          {fieldErrors.streetAddress && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.streetAddress}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Nº</label>
@@ -69,7 +78,7 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="streetNumber"
             value={formData.streetNumber}
             onChange={onChange}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            className={inputClass('streetNumber', 'rounded-lg bg-white')}
           />
         </div>
         <div>
@@ -79,8 +88,11 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="postalCode"
             value={formData.postalCode}
             onChange={onChange}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            inputMode="numeric"
+            maxLength={5}
+            className={inputClass('postalCode', 'rounded-lg bg-white')}
           />
+          {fieldErrors.postalCode && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.postalCode}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Municipio *</label>
@@ -89,8 +101,9 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="municipality"
             value={formData.municipality}
             onChange={onChange}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            className={inputClass('municipality', 'rounded-lg bg-white')}
           />
+          {fieldErrors.municipality && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.municipality}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Provincia *</label>
@@ -99,8 +112,9 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="province"
             value={formData.province}
             onChange={onChange}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            className={inputClass('province', 'rounded-lg bg-white')}
           />
+          {fieldErrors.province && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.province}</p>}
         </div>
       </div>
 
@@ -112,8 +126,11 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="parent1Phone"
             value={formData.parent1Phone}
             onChange={onChange}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            autoComplete="tel"
+            inputMode="tel"
+            className={inputClass('parent1Phone')}
           />
+          {fieldErrors.parent1Phone && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.parent1Phone}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Email Tutor 1 *</label>
@@ -122,8 +139,10 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="parent1Email"
             value={formData.parent1Email}
             onChange={onChange}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            autoComplete="email"
+            className={inputClass('parent1Email')}
           />
+          {fieldErrors.parent1Email && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.parent1Email}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono Tutor 2</label>
@@ -132,8 +151,10 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="parent2Phone"
             value={formData.parent2Phone}
             onChange={onChange}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            inputMode="tel"
+            className={inputClass('parent2Phone')}
           />
+          {fieldErrors.parent2Phone && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.parent2Phone}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Email Tutor 2</label>
@@ -142,8 +163,9 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="parent2Email"
             value={formData.parent2Email}
             onChange={onChange}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            className={inputClass('parent2Email')}
           />
+          {fieldErrors.parent2Email && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.parent2Email}</p>}
         </div>
       </div>
 
@@ -158,8 +180,9 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             value={formData.parent1Dni}
             onChange={onChange}
             placeholder="12345678A"
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase"
+            className={inputClass('parent1Dni', 'uppercase')}
           />
+          {fieldErrors.parent1Dni && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.parent1Dni}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -170,8 +193,9 @@ export default function Step1Legal({ applicant, formData, onChange }: Props) {
             name="parent2Dni"
             value={formData.parent2Dni}
             onChange={onChange}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase"
+            className={inputClass('parent2Dni', 'uppercase')}
           />
+          {fieldErrors.parent2Dni && <p className="mt-1 text-[11px] text-red-600">{fieldErrors.parent2Dni}</p>}
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Estado Civil Padres</label>
