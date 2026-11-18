@@ -18,6 +18,12 @@ export default function InscripcionMagicaPage() {
   const [stepError, setStepError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const stepItems = [
+    { number: 1, label: 'Datos legales' },
+    { number: 2, label: 'Ficha médica' },
+    { number: 3, label: 'Datos bancarios' },
+    { number: 4, label: 'Firmas' },
+  ];
 
   const [formData, setFormData] = useState<CompleteEnrollmentPayload>({
     streetAddress: '',
@@ -65,7 +71,7 @@ export default function InscripcionMagicaPage() {
       .getByMagicToken(token)
       .then((data) => {
         setApplicant(data);
-        if (data.status === 'INSCRIPCION_COMPLETADA' || data.status === 'CENSADO') setCompleted(true);
+        if (data.status === 'INSCRIPCION_COMPLETADA') setCompleted(true);
         setFormData((prev) => ({
           ...prev,
           streetAddress: data.streetAddress || '',
@@ -77,6 +83,37 @@ export default function InscripcionMagicaPage() {
           parent1Phone: data.parent1Phone || '',
           parent1Email: data.parent1Email || '',
           accountHolderName: `${data.parent1FirstName} ${data.parent1LastName}`,
+          ...(data.enrollment
+            ? {
+                childDni: data.enrollment.childDni || '',
+                childPhone: data.enrollment.childPhone || '',
+                childEmail: data.enrollment.childEmail || '',
+                legalStatus: data.enrollment.legalStatus,
+                circularPreference: data.enrollment.circularPreference,
+                parent1Dni: data.enrollment.parent1Dni || '',
+                parent2Dni: data.enrollment.parent2Dni || '',
+                parentsMaritalStatus: data.enrollment.parentsMaritalStatus || '',
+                custodyType: data.enrollment.custodyType,
+                acceptsDataStorage: data.enrollment.acceptsDataStorage,
+                acceptsDataTransfer: data.enrollment.acceptsDataTransfer,
+                authorizesImages: data.enrollment.authorizesImages,
+                bloodType: data.enrollment.bloodType || '',
+                chronicDiseases: data.enrollment.chronicDiseases || 'Ninguna',
+                allergies: data.enrollment.allergies || 'Ninguna',
+                medHeadache: data.enrollment.medHeadache || '',
+                medFever: data.enrollment.medFever || '',
+                medStomach: data.enrollment.medStomach || '',
+                medThroat: data.enrollment.medThroat || '',
+                medicalObservations: data.enrollment.medicalObservations || '',
+                authorizesEmergency: data.enrollment.authorizesEmergency,
+                accountHolderName: data.enrollment.accountHolderName,
+                accountHolderDni: data.enrollment.accountHolderDni,
+                iban: data.enrollment.iban,
+                authorizesSepa: data.enrollment.authorizesSepa,
+                signatureParent1: data.enrollment.signatureParent1 || '',
+                signatureParent2: data.enrollment.signatureParent2 || '',
+              }
+            : {}),
         }));
       })
       .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Enlace inválido'))
@@ -100,8 +137,20 @@ export default function InscripcionMagicaPage() {
   };
 
   const handleSubmit = async () => {
-    const err = validateEnrollmentStep(4, formData);
-    if (err || !token) return setStepError(err);
+    let err: string | null = null;
+    let invalidStep = 4;
+    for (let checkStep = 1; checkStep <= 4; checkStep++) {
+      err = validateEnrollmentStep(checkStep, formData);
+      if (err) {
+        invalidStep = checkStep;
+        break;
+      }
+    }
+      if (err) {
+        setStep(invalidStep);
+        return setStepError(err);
+      }
+      if (!token) return setStepError('Enlace inválido');
     setIsSubmitting(true);
     try {
       await applicationsApi.submitMagicEnrollment(token, {
@@ -157,25 +206,34 @@ export default function InscripcionMagicaPage() {
       {stepError && <FormAlert>{stepError}</FormAlert>}
 
       <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-4">
-          {[
-            ['1', 'Datos legales'],
-            ['2', 'Ficha médica'],
-            ['3', 'Domiciliación'],
-            ['4', 'Autorizaciones'],
-          ].map(([number, label]) => (
-            <div
-              key={number}
-              className={`rounded-xl px-3 py-2 text-xs font-bold ${
-                step === Number(number) ? 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200' : 'text-slate-500'
+      <nav className="enrollment-step-nav" aria-label="Apartados de la inscripción">
+        {stepItems.map((item) => {
+          const isCurrent = step === item.number;
+          const isComplete =
+            !isCurrent && validateEnrollmentStep(item.number, formData) === null;
+          return (
+            <button
+              key={item.number}
+              type="button"
+              onClick={() => {
+                setStep(item.number);
+                setStepError(null);
+              }}
+              aria-current={isCurrent ? 'step' : undefined}
+              className={`enrollment-step-button ${
+                isCurrent ? 'is-current' : isComplete ? 'is-complete' : 'is-pending'
               }`}
             >
-              <span className="block text-[11px] uppercase tracking-wide">Paso {number}</span>
-              <span className="mt-0.5 block">{label}</span>
-            </div>
-          ))}
-        </div>
+              <span className="enrollment-step-number">
+                {isComplete ? <CheckCircle2 size={16} /> : item.number}
+              </span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
         {step === 1 && <Step1Legal applicant={applicant} formData={formData} onChange={handleChange} />}
         {step === 2 && <Step2Medical formData={formData} onChange={handleChange} />}
         {step === 3 && <Step3Bank formData={formData} onChange={handleChange} />}
@@ -222,6 +280,7 @@ export default function InscripcionMagicaPage() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

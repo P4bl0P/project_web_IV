@@ -28,7 +28,8 @@ interface Props {
   onOpenWhatsApp: (record: ApplicantRecord) => void;
   onCopyLink: (record: ApplicantRecord) => void;
   onDelete: (id: string, name: string) => void;
-  onEditCensus: (record: ApplicantRecord) => void;
+  onEditCensus?: (record: ApplicantRecord) => void;
+  onEdit?: (record: ApplicantRecord) => void;
 }
 
 export default function ApplicantCard({
@@ -44,9 +45,27 @@ export default function ApplicantCard({
   onCopyLink,
   onDelete,
   onEditCensus,
+  onEdit,
 }: Props) {
+  const sectionName =
+    ['Castores', 'Lobatos', 'Rangers', 'Pioneros'].find((section) =>
+      record.calculatedBranch.toLowerCase().startsWith(section.toLowerCase()),
+    ) || 'Rutas';
+  const sectionStyles: Record<string, string> = {
+    Castores: 'bg-orange-500 text-white border-orange-600',
+    Lobatos: 'bg-yellow-300 text-yellow-950 border-yellow-400',
+    Rangers: 'bg-sky-600 text-white border-sky-700',
+    Pioneros: 'bg-red-600 text-white border-red-700',
+    Rutas: 'bg-violet-600 text-white border-violet-700',
+  };
+  const birthDate = new Date(record.childBirthDate).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-indigo-200 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-[0_5px_18px_rgba(15,23,42,.035)] hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(15,23,42,.08)] transition-all duration-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
           {activeTab === 'WAITLIST' && (
@@ -57,8 +76,8 @@ export default function ApplicantCard({
           <h3 className="text-base font-bold text-slate-900">
             {record.childFirstName} {record.childLastName}
           </h3>
-          <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-            {record.calculatedBranch} ({record.currentAge} años)
+          <span className={`border text-xs font-bold px-2.5 py-1 rounded-full ${sectionStyles[sectionName]}`}>
+            {sectionName}
           </span>
         </div>
 
@@ -86,13 +105,10 @@ export default function ApplicantCard({
         </div>
 
         <div className="text-xs text-slate-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span>{new Date(record.createdAt).toLocaleDateString('es-ES')}</span>
-          <span>
-            {record.parent1FirstName} ({record.parent1Phone} · {record.parent1Email})
-          </span>
-          <span>
-            {record.streetAddress}, {record.municipality}
-          </span>
+          <span><strong className="font-semibold text-slate-700">Nacimiento:</strong> {birthDate} ({record.currentAge} años)</span>
+          <span><strong className="font-semibold text-slate-700">Tutor:</strong> {record.parent1FirstName} {record.parent1LastName}</span>
+          {record.parent1Phone && <span>{record.parent1Phone}</span>}
+          <span>{record.municipality}</span>
         </div>
       </div>
 
@@ -168,8 +184,19 @@ export default function ApplicantCard({
 
         {activeTab === 'CENSUS' && (
           <button
-            onClick={() => onEditCensus(record)}
+            onClick={() => onEditCensus?.(record)}
             className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1"
+          >
+            <Pencil size={14} /> Editar
+          </button>
+        )}
+
+        {activeTab !== 'CENSUS' && onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(record)}
+            className="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 hover:border-indigo-300 text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all duration-200 active:scale-[.97]"
+            aria-label={`Editar la información completa de ${record.childFirstName} ${record.childLastName}`}
           >
             <Pencil size={14} /> Editar
           </button>
