@@ -1,10 +1,14 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
-import { Trash2, AlertCircle } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { applicationsApi, type CreateApplicationPayload } from '../services/api';
 import { validateSolicitudForm, type SolicitudFieldErrors } from '../utils/scoutValidators';
 import EducandoSection from '../components/solicitud/EducandoSection';
 import FamilySection from '../components/solicitud/FamilySection';
 import SolicitudSuccess from '../components/solicitud/SolicitudSuccess';
+import FormAlert from '../components/ui/forms/FormAlert';
+import FormField from '../components/ui/forms/FormField';
+import FormSection from '../components/ui/forms/FormSection';
+import { formCheckboxClass, formInputClass } from '../components/ui/forms/formStyles';
 
 const STORAGE_KEY = 'grupo_iv_solicitud_draft';
 
@@ -158,13 +162,10 @@ export default function SolicitudPage() {
       </div>
 
       {(serverError || Object.keys(fieldErrors).length > 0) && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3.5 rounded-xl flex items-start gap-3">
-          <AlertCircle size={20} className="shrink-0 mt-0.5" />
-          <div className="text-xs sm:text-sm">
-            <p className="font-semibold">Por favor, revisa los campos marcados en rojo:</p>
-            {serverError && <p className="mt-1">{serverError}</p>}
-          </div>
-        </div>
+        <FormAlert>
+          <p className="font-semibold">Por favor, revisa los campos marcados en rojo.</p>
+          {serverError && <p className="mt-1">{serverError}</p>}
+        </FormAlert>
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6 form-stack">
@@ -179,8 +180,7 @@ export default function SolicitudPage() {
         />
 
         {/* Bloque Criterios y Motivación */}
-        <section className="bg-white rounded-2xl shadow-2xs border border-slate-200 p-6 space-y-4">
-          <h2 className="text-lg font-bold text-slate-800">4. Criterios de Prioridad y Motivación</h2>
+        <FormSection title="4. Criterios de prioridad y motivación" description="Esta información ayuda al Kraal a gestionar la lista de espera.">
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
             <label className="flex items-start gap-3 cursor-pointer">
@@ -189,7 +189,7 @@ export default function SolicitudPage() {
                 name="hasFamilyInGroup"
                 checked={formData.hasFamilyInGroup}
                 onChange={handleChange}
-                className="mt-1 h-4 w-4 rounded text-indigo-600"
+                className={formCheckboxClass}
               />
               <div>
                 <span className="block text-xs sm:text-sm font-semibold text-slate-800">
@@ -206,7 +206,7 @@ export default function SolicitudPage() {
                   value={formData.familyMemberDetails}
                   onChange={handleChange}
                   placeholder="Nombre completo y parentesco"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm"
+                  className={formInputClass(Boolean(fieldErrors.familyMemberDetails))}
                 />
               </div>
             )}
@@ -219,7 +219,7 @@ export default function SolicitudPage() {
                 name="comesFromOtherGroup"
                 checked={formData.comesFromOtherGroup}
                 onChange={handleChange}
-                className="mt-1 h-4 w-4 rounded text-indigo-600"
+                className={formCheckboxClass}
               />
               <div>
                 <span className="block text-xs sm:text-sm font-semibold text-slate-800">
@@ -235,24 +235,23 @@ export default function SolicitudPage() {
                   value={formData.originGroupDetails}
                   onChange={handleChange}
                   placeholder="Nombre del grupo scout y localidad"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm"
+                  className={formInputClass(Boolean(fieldErrors.originGroupDetails))}
                 />
               </div>
             )}
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Motivación y Observaciones</label>
+          <FormField label="Motivación y observaciones" error={fieldErrors.motivation}>
             <textarea
               name="motivation"
               rows={3}
               value={formData.motivation}
               onChange={handleChange}
               placeholder="Cuéntanos por qué os gustaría formar parte del Grupo IV..."
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-indigo-600"
+              className={formInputClass(false, 'resize-y')}
             />
-          </div>
-        </section>
+          </FormField>
+        </FormSection>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-2xs border border-slate-200">
           <p className="text-xs text-slate-500">Tus respuestas se guardan automáticamente mientras escribes.</p>

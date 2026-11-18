@@ -9,7 +9,7 @@ interface Props {
   className?: string;
 }
 
-export default function CensusField({ label, required, error, hint, children, className = '' }: Props) {
+export default function FormField({ label, required, error, hint, children, className = '' }: Props) {
   return (
     <div className={className}>
       <label className="block text-xs font-semibold text-slate-700">
@@ -17,7 +17,7 @@ export default function CensusField({ label, required, error, hint, children, cl
       </label>
       {hint && <p className="mt-0.5 text-[11px] font-normal text-slate-500">{hint}</p>}
       <div className="mt-1">{children}</div>
-      {error && <p className="mt-1 text-[11px] font-medium text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }

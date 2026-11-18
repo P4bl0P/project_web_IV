@@ -1,6 +1,6 @@
 import type { DirectCensusPayload } from '../../../services/api';
-import CensusField from './CensusField';
-import { censusInputClass } from './censusStyles';
+import FormField from '../../ui/forms/FormField';
+import { formInputClass } from '../../ui/forms/formStyles';
 import type { CensusChangeHandler, CensusFieldErrors } from './censusForm';
 
 interface Props {
@@ -23,9 +23,9 @@ export default function CensusCriteriaSection({ formData, fieldErrors, onChange 
             <span>Familiar directo en el Grupo IV</span>
           </label>
           {formData.hasFamilyInGroup && (
-            <CensusField label="Nombre y parentesco" required error={fieldErrors.familyMemberDetails} className="mt-3">
-              <input name="familyMemberDetails" value={formData.familyMemberDetails} onChange={onChange} aria-invalid={Boolean(fieldErrors.familyMemberDetails)} className={censusInputClass(Boolean(fieldErrors.familyMemberDetails))} />
-            </CensusField>
+            <FormField label="Nombre y parentesco" required error={fieldErrors.familyMemberDetails} className="mt-3">
+              <input name="familyMemberDetails" value={formData.familyMemberDetails} onChange={onChange} aria-invalid={Boolean(fieldErrors.familyMemberDetails)} className={formInputClass(Boolean(fieldErrors.familyMemberDetails))} />
+            </FormField>
           )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -34,14 +34,14 @@ export default function CensusCriteriaSection({ formData, fieldErrors, onChange 
             <span>Procede de otro grupo scout</span>
           </label>
           {formData.comesFromOtherGroup && (
-            <CensusField label="Grupo de procedencia" required error={fieldErrors.originGroupDetails} className="mt-3">
-              <input name="originGroupDetails" value={formData.originGroupDetails} onChange={onChange} aria-invalid={Boolean(fieldErrors.originGroupDetails)} className={censusInputClass(Boolean(fieldErrors.originGroupDetails))} />
-            </CensusField>
+            <FormField label="Grupo de procedencia" required error={fieldErrors.originGroupDetails} className="mt-3">
+              <input name="originGroupDetails" value={formData.originGroupDetails} onChange={onChange} aria-invalid={Boolean(fieldErrors.originGroupDetails)} className={formInputClass(Boolean(fieldErrors.originGroupDetails))} />
+            </FormField>
           )}
         </div>
-        <CensusField label="Motivación y observaciones" className="md:col-span-2">
-          <textarea name="motivation" value={formData.motivation} onChange={onChange} rows={3} className={censusInputClass(false, 'resize-y')} />
-        </CensusField>
+        <FormField label="Motivación y observaciones" className="md:col-span-2">
+          <textarea name="motivation" value={formData.motivation} onChange={onChange} rows={3} className={formInputClass(false, 'resize-y')} />
+        </FormField>
       </div>
     </section>
   );

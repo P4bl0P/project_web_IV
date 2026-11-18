@@ -1,6 +1,8 @@
 import type { ChangeEvent } from 'react';
 import type { ApplicantRecord, CompleteEnrollmentPayload } from '../../services/api';
 import SignatureBox from '../ui/SignatureBox';
+import FormSection from '../ui/forms/FormSection';
+import { formCheckboxClass } from '../ui/forms/formStyles';
 
 interface Props {
   applicant: Pick<ApplicantRecord, 'parent1FirstName'>;
@@ -12,8 +14,7 @@ interface Props {
 
 export default function Step4Sign({ applicant, formData, onChange, onSign1, onSign2 }: Props) {
   return (
-    <div className="space-y-5">
-      <h2 className="text-lg font-bold text-slate-900">4. Autorizaciones y Firma</h2>
+    <FormSection title="4. Autorizaciones y firma" description="Revisa los consentimientos y completa las firmas necesarias.">
 
       <div className="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700">
         <label className="flex items-start gap-2.5 cursor-pointer">
@@ -22,7 +23,7 @@ export default function Step4Sign({ applicant, formData, onChange, onSign1, onSi
             name="acceptsDataStorage"
             checked={formData.acceptsDataStorage}
             onChange={onChange}
-            className="mt-0.5 h-4 w-4 rounded text-indigo-600"
+            className={formCheckboxClass}
           />
           <span>
             <strong>Protección de Datos (Obligatorio):</strong> Autorizo el tratamiento de datos personales y la participación en las actividades del Grupo Scout.
@@ -35,7 +36,7 @@ export default function Step4Sign({ applicant, formData, onChange, onSign1, onSi
             name="acceptsDataTransfer"
             checked={formData.acceptsDataTransfer}
             onChange={onChange}
-            className="mt-0.5 h-4 w-4 rounded text-indigo-600"
+            className={formCheckboxClass}
           />
           <span>
             <strong>Cesión MSC (Obligatorio):</strong> Autorizo la cesión federativa al Movimiento Scout Católico para seguros y censo.
@@ -48,7 +49,7 @@ export default function Step4Sign({ applicant, formData, onChange, onSign1, onSi
             name="authorizesImages"
             checked={formData.authorizesImages}
             onChange={onChange}
-            className="mt-0.5 h-4 w-4 rounded text-indigo-600"
+            className={formCheckboxClass}
           />
           <span>
             <strong>Derechos de Imagen:</strong> Autorizo el uso no comercial de fotos y vídeos en actividades scouts (desmarcar si NO se autoriza).
@@ -67,6 +68,6 @@ export default function Step4Sign({ applicant, formData, onChange, onSign1, onSi
           onChange={onSign2}
         />
       )}
-    </div>
+    </FormSection>
   );
 }
