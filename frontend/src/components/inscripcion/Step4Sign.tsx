@@ -10,9 +10,17 @@ interface Props {
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSign1: (sig: string) => void;
   onSign2: (sig: string) => void;
+  readOnly?: boolean;
 }
 
-export default function Step4Sign({ applicant, formData, onChange, onSign1, onSign2 }: Props) {
+export default function Step4Sign({
+  applicant,
+  formData,
+  onChange,
+  onSign1,
+  onSign2,
+  readOnly = false,
+}: Props) {
   return (
     <FormSection title="4. Autorizaciones y firma" description="Revisa los consentimientos y completa las firmas necesarias.">
 
@@ -60,12 +68,16 @@ export default function Step4Sign({ applicant, formData, onChange, onSign1, onSi
       <SignatureBox
         label={`Firma Tutor 1 (${applicant.parent1FirstName} - DNI ${formData.parent1Dni}) *`}
         onChange={onSign1}
+        readOnly={readOnly}
+        value={formData.signatureParent1}
       />
 
       {formData.custodyType === 'CUSTODIA_CONJUNTA' && (
         <SignatureBox
           label={`Segunda Firma por Custodia Conjunta (DNI ${formData.parent2Dni}) *`}
           onChange={onSign2}
+          readOnly={readOnly}
+          value={formData.signatureParent2}
         />
       )}
     </FormSection>

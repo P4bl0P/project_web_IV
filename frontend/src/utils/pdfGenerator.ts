@@ -1,328 +1,154 @@
-import { jsPDF } from 'jspdf';
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { type ApplicantRecord } from '../services/api';
 
-export function generateOfficialScoutPdf(record: ApplicantRecord): void {
-  const e = record.enrollment;
-  if (!e) {
+const TEMPLATE_URL = '/templates/HOJA_DE_INSCRIPCION_SCOUT.pdf';
+const TEXT_COLOR = rgb(0.08, 0.11, 0.18);
+
+function value(value: unknown, fallback = ''): string {
+  return value === null || value === undefined || value === '' ? fallback : String(value);
+}
+
+function formatDate(date: string | Date | undefined): string {
+  return date ? new Date(date).toLocaleDateString('es-ES') : '';
+}
+
+function cleanFileName(valueToClean: string): string {
+  return valueToClean
+    .replace(/\s+/g, '_')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function drawText(page: PDFPage, font: PDFFont, text: string, x: number, y: number, size = 8, maxWidth?: number) {
+  if (!text) return;
+  let output = text;
+  if (maxWidth) {
+    while (font.widthOfTextAtSize(output, size) > maxWidth && output.length > 1) {
+      output = `${output.slice(0, -2)}…`;
+    }
+  }
+  page.drawText(output, { x, y, size, font, color: TEXT_COLOR });
+}
+
+function drawWrappedText(page: PDFPage, font: PDFFont, text: string, x: number, y: number, width: number, size = 7) {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) > width && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  lines.slice(0, 5).forEach((currentLine, index) => {
+    drawText(page, font, currentLine, x, y - index * (size + 2), size);
+  });
+}
+
+function drawCheck(page: PDFPage, font: PDFFont, checked: boolean, x: number, y: number) {
+  drawText(page, font, checked ? 'X' : '', x, y, 9);
+}
+
+async function addSignature(
+  pdfDocument: PDFDocument,
+  page: PDFPage,
+  font: PDFFont,
+  signature: string | undefined,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  if (!signature) return;
+  try {
+    const base64 = signature.split(',')[1] || signature;
+    const image = await pdfDocument.embedPng(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)));
+    page.drawImage(image, { x, y, width, height });
+  } catch {
+    drawText(page, font, 'Firma registrada', x, y + height / 2, 7);
+  }
+}
+
+export async function generateOfficialScoutPdf(record: ApplicantRecord): Promise<void> {
+  const enrollment = record.enrollment;
+  if (!enrollment) {
     alert('Este solicitante aún no tiene completada la Fase 2 (Hoja de Inscripción).');
     return;
   }
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const birthDateFormatted = new Date(record.childBirthDate).toLocaleDateString('es-ES');
-  const signedDate = e.signedAtParent1
-    ? new Date(e.signedAtParent1).toLocaleDateString('es-ES')
-    : new Date().toLocaleDateString('es-ES');
+  const response = await fetch(TEMPLATE_URL);
+  if (!response.ok) throw new Error('No se pudo cargar la plantilla oficial de inscripción.');
 
-  const drawHeader = (subtitle: string) => {
-    doc.setFillColor(30, 58, 138); // Azul marino scout
-    doc.rect(10, 10, 190, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('GRUPO SCOUT IV SAN JOSÉ DE CALASANZ · MONTEQUINTO', 15, 17);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Movimiento Scout Católico (MSC) · CIF G-41080912 · Reg. Entidades Religiosas nº 1706 SE/C', 15, 23);
+  const pdfDocument = await PDFDocument.load(await response.arrayBuffer());
+  const font = await pdfDocument.embedFont(StandardFonts.Helvetica);
+  const [page1, page2, page3] = pdfDocument.getPages();
+  const birthDate = formatDate(record.childBirthDate);
+  const signedDate = formatDate(enrollment.signedAtParent1) || formatDate(new Date());
+  const parent1Name = `${record.parent1FirstName} ${record.parent1LastName}`;
+  const parent2Name = [record.parent2FirstName, record.parent2LastName].filter(Boolean).join(' ');
 
-    doc.setFillColor(241, 245, 249);
-    doc.rect(10, 30, 190, 8, 'F');
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(subtitle, 15, 35.5);
-  };
+  // The source is a fixed A4 administrative form. These positions intentionally
+  // stay local to the template so replacing the template only requires updating
+  // this mapping, not the data or download flow.
+  drawText(page1, font, `${record.childFirstName} ${record.childLastName}`, 95, 696, 8, 205);
+  drawText(page1, font, value(enrollment.childDni), 475, 696, 8, 80);
+  drawText(page1, font, birthDate, 95, 672, 8);
+  drawText(page1, font, value(record.gender), 250, 672, 8);
+  drawText(page1, font, value(enrollment.childPhone), 395, 672, 8);
+  drawText(page1, font, value(enrollment.childEmail), 95, 648, 8, 190);
+  drawText(page1, font, `${record.streetAddress} ${record.streetNumber || ''} ${record.ApartmentDoor || ''}`.trim(), 95, 624, 8, 300);
+  drawText(page1, font, `${record.postalCode} ${record.municipality}`, 95, 600, 8, 220);
+  drawText(page1, font, value(record.province), 350, 600, 8, 120);
+  drawText(page1, font, parent1Name, 95, 565, 8, 200);
+  drawText(page1, font, value(enrollment.parent1Dni), 410, 565, 8);
+  drawText(page1, font, value(record.parent1Phone), 95, 541, 8);
+  drawText(page1, font, value(record.parent1Email), 270, 541, 8, 220);
+  drawText(page1, font, parent2Name, 95, 517, 8, 200);
+  drawText(page1, font, value(enrollment.parent2Dni), 410, 517, 8);
+  drawText(page1, font, value(record.parent2Phone), 95, 493, 8);
+  drawText(page1, font, value(record.parent2Email), 270, 493, 8, 220);
+  drawCheck(page1, font, enrollment.acceptsDataStorage, 40, 390);
+  drawCheck(page1, font, enrollment.acceptsDataTransfer, 40, 365);
+  drawCheck(page1, font, enrollment.authorizesImages, 40, 340);
+  drawCheck(page1, font, !enrollment.authorizesImages, 40, 315);
+  await addSignature(pdfDocument, page1, font, enrollment.signatureParent1, 60, 110, 150, 55);
+  await addSignature(pdfDocument, page1, font, enrollment.signatureParent2, 330, 110, 150, 55);
+  drawText(page1, font, signedDate, 70, 91, 8);
 
-  const drawField = (label: string, value: string, x: number, y: number, width: number) => {
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(x, y, width, 11);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(label.toUpperCase(), x + 2, y + 3.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.text(value || '-', x + 2, y + 8.8);
-  };
+  drawText(page2, font, `${record.childFirstName} ${record.childLastName}`, 100, 689, 8, 250);
+  drawText(page2, font, value(record.calculatedBranch), 420, 689, 8);
+  drawText(page2, font, value(record.parent1Phone), 100, 665, 8);
+  drawText(page2, font, value(enrollment.bloodType), 100, 620, 8);
+  drawWrappedText(page2, font, value(enrollment.chronicDiseases), 100, 594, 400);
+  drawWrappedText(page2, font, value(enrollment.allergies), 100, 552, 400);
+  drawText(page2, font, value(enrollment.medHeadache), 100, 492, 8, 180);
+  drawText(page2, font, value(enrollment.medFever), 330, 492, 8, 180);
+  drawText(page2, font, value(enrollment.medStomach), 100, 468, 8, 180);
+  drawText(page2, font, value(enrollment.medThroat), 330, 468, 8, 180);
+  drawWrappedText(page2, font, value(enrollment.medicalObservations), 100, 430, 400);
+  drawCheck(page2, font, enrollment.authorizesEmergency, 40, 343);
+  await addSignature(pdfDocument, page2, font, enrollment.signatureParent1, 70, 150, 180, 60);
+  drawText(page2, font, signedDate, 70, 135, 8);
 
-  // =========================================================================
-  // PÁGINA 1: HOJA DE INSCRIPCIÓN OFICIAL Y AUTORIZACIONES
-  // =========================================================================
-  drawHeader('HOJA OFICIAL DE INSCRIPCIÓN EN EL GRUPO SCOUT (PÁGINA 1 DE 3)');
+  drawText(page3, font, value(enrollment.accountHolderName), 100, 702, 8, 350);
+  drawText(page3, font, value(enrollment.accountHolderDni), 465, 702, 8);
+  drawText(page3, font, `${record.childFirstName} ${record.childLastName}`, 100, 678, 8, 350);
+  drawText(page3, font, `${record.streetAddress} ${record.streetNumber || ''} ${record.ApartmentDoor || ''}`.trim(), 100, 654, 8, 300);
+  drawText(page3, font, `${record.municipality} ${record.postalCode}`, 420, 654, 8);
+  drawText(page3, font, value(enrollment.iban).replace(/\s+/g, ''), 100, 610, 10, 390);
+  drawCheck(page3, font, enrollment.authorizesSepa, 40, 525);
+  await addSignature(pdfDocument, page3, font, enrollment.signatureParent1, 70, 190, 180, 60);
+  drawText(page3, font, signedDate, 70, 175, 8);
 
-  // Bloque Datos del Asociado
-  drawField('Nombre del Asociado/a', record.childFirstName, 10, 41, 60);
-  drawField('Apellidos', record.childLastName, 70, 41, 80);
-  drawField('DNI / NIE', e.childDni || 'Sin DNI', 150, 41, 50);
-
-  drawField('Fecha Nacimiento', birthDateFormatted, 10, 52, 40);
-  drawField('Edad Ronda', `${record.currentAge} años`, 50, 52, 30);
-  drawField('Rama Asignada', record.calculatedBranch, 80, 52, 50);
-  drawField('Situación Legal', e.legalStatus, 130, 52, 70);
-
-  drawField('Dirección Postal', record.streetAddress, 10, 63, 110);
-  drawField('Nº', record.streetNumber || 's/n', 120, 63, 25);
-  drawField('Piso / Pta.', record.ApartmentDoor || '-', 145, 63, 25);
-  drawField('C.P.', record.postalCode, 170, 63, 30);
-
-  drawField('Municipio', record.municipality, 10, 74, 65);
-  drawField('Provincia', record.province, 75, 74, 55);
-  drawField('Circulares vía', e.circularPreference, 130, 74, 70);
-
-  // Bloque Datos de los Padres / Tutores Legales
-  doc.setFillColor(241, 245, 249);
-  doc.rect(10, 88, 190, 7, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('DATOS DE LOS PADRES / TUTORES LEGALES Y CUSTODIA', 15, 93);
-
-  drawField('Estado Civil Padres', e.parentsMaritalStatus || '-', 10, 96, 95);
-  drawField('Tipo de Custodia', e.custodyType.replace('_', ' '), 105, 96, 95);
-
-  drawField(
-    'Tutor 1 (Nombre y Apellidos)',
-    `${record.parent1FirstName} ${record.parent1LastName}`,
-    10,
-    107,
-    85,
-  );
-  drawField('DNI Tutor 1', e.parent1Dni, 95, 107, 35);
-  drawField('Móvil Tutor 1', record.parent1Phone, 130, 107, 30);
-  drawField('Email Tutor 1', record.parent1Email, 160, 107, 40);
-
-  const parent2FullName = [record.parent2FirstName, record.parent2LastName]
-    .filter(Boolean)
-    .join(' ');
-  drawField('Tutor 2 (Nombre y Apellidos)', parent2FullName || '-', 10, 118, 85);
-  drawField('DNI Tutor 2', e.parent2Dni || '-', 95, 118, 35);
-  drawField('Móvil Tutor 2', record.parent2Phone || '-', 130, 118, 30);
-  drawField('Email Tutor 2', record.parent2Email || '-', 160, 118, 40);
-
-  // Declaración y Autorizaciones Legales
-  doc.setFillColor(241, 245, 249);
-  doc.rect(10, 132, 190, 7, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('DECLARACIÓN, PROTECCIÓN DE DATOS (LOPDGDD) Y DERECHOS DE IMAGEN', 15, 137);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(51, 65, 85);
-  const legalText =
-    '1º.- Declaro que todos los datos expresados en esta ficha son ciertos.\n' +
-    '2º.- En cumplimiento de la LOPDGDD (art. 6 y 7), autorizo al Grupo Scout San José de Calasanz y al Movimiento Scout Católico ' +
-    'al tratamiento y cesión federativa de los datos personales para el desarrollo de las actividades propias del escultismo.\n' +
-    '3º.- Comunico mi total acuerdo para que mi hijo/a participe en todas las actividades realizadas con el grupo (talleres, juegos, ' +
-    'salidas, acampadas y campamentos) durante su permanencia en dicho Grupo Scout.';
-  doc.text(doc.splitTextToSize(legalText, 185), 12, 144);
-
-  // Casillas de verificación marcadas
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(15, 23, 42);
-  doc.text(
-    `[${e.acceptsDataStorage ? 'X' : ' '}] Autorizo el almacenamiento y tratamiento de datos personales (LOPDGDD).`,
-    12,
-    166,
-  );
-  doc.text(
-    `[${e.acceptsDataTransfer ? 'X' : ' '}] Autorizo la cesión de datos a las entidades del Movimiento Scout Católico.`,
-    12,
-    172,
-  );
-  doc.text(
-    `[${e.authorizesImages ? 'X' : ' '}] SÍ AUTORIZO la captación y uso no comercial de fotografías y vídeos en actividades scouts.`,
-    12,
-    178,
-  );
-  doc.text(
-    `[${!e.authorizesImages ? 'X' : ' '}] NO AUTORIZO la utilización de imágenes y vídeos del menor.`,
-    12,
-    184,
-  );
-
-  // Cajas de Firma Página 1
-  doc.setDrawColor(148, 163, 184);
-  doc.rect(10, 195, 92, 48);
-  doc.setFontSize(7.5);
-  doc.text(`FIRMA TUTOR 1 (DNI: ${e.parent1Dni})`, 14, 201);
-  if (e.signatureParent1) {
-    try {
-      doc.addImage(e.signatureParent1, 'PNG', 15, 204, 75, 32);
-    } catch {
-      doc.text('[Firma registrada digitalmente]', 15, 220);
-    }
-  }
-
-  doc.rect(108, 195, 92, 48);
-  doc.text(
-    `FIRMA TUTOR 2 ${e.custodyType === 'CUSTODIA_CONJUNTA' ? '(CUSTODIA CONJUNTA)' : '(OPCIONAL)'}`,
-    112,
-    201,
-  );
-  if (e.signatureParent2) {
-    try {
-      doc.addImage(e.signatureParent2, 'PNG', 113, 204, 75, 32);
-    } catch {
-      doc.text('[Firma 2 registrada digitalmente]', 113, 220);
-    }
-  }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`En Montequinto (Dos Hermanas), a fecha ${signedDate}`, 10, 252);
-
-  // =========================================================================
-  // PÁGINA 2: FICHA MÉDICA Y AUTORIZACIÓN DE URGENCIA
-  // =========================================================================
-  doc.addPage();
-  drawHeader('FICHA MÉDICA Y AUTORIZACIÓN DE URGENCIA (PÁGINA 2 DE 3)');
-
-  drawField(
-    'Nombre y Apellidos del Educando',
-    `${record.childFirstName} ${record.childLastName}`,
-    10,
-    41,
-    100,
-  );
-  drawField('Rama', record.calculatedBranch, 110, 41, 45);
-  drawField('Teléfono Urgencia', record.parent1Phone, 155, 41, 45);
-
-  drawField('Grupo Sanguíneo', e.bloodType || 'No especificado', 10, 52, 50);
-  drawField('Enfermedades Crónicas', e.chronicDiseases || 'Ninguna', 60, 52, 140);
-
-  drawField('Alergias Conocidas (Alimentarias, Medicamentosas, etc.)', e.allergies || 'Ninguna', 10, 66, 190);
-
-  doc.setFillColor(241, 245, 249);
-  doc.rect(10, 82, 190, 7, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('PAUTA DE MEDICACIÓN HABITUAL AUTORIZADA POR LOS PADRES EN CASO LEVE DE:', 15, 87);
-
-  drawField('Dolor de Cabeza', e.medHeadache || 'No administrar / Consultar', 10, 91, 95);
-  drawField('Fiebre', e.medFever || 'No administrar / Consultar', 105, 91, 95);
-  drawField('Molestias de Estómago', e.medStomach || 'No administrar / Consultar', 10, 102, 95);
-  drawField('Dolor de Garganta', e.medThroat || 'No administrar / Consultar', 105, 102, 95);
-
-  drawField(
-    'Observaciones Médicas Adicionales / Tratamientos',
-    e.medicalObservations || 'Sin observaciones adicionales.',
-    10,
-    116,
-    190,
-  );
-
-  // Bloque Autorización Quirúrgica/Médica de Urgencia
-  doc.setDrawColor(217, 119, 6);
-  doc.setFillColor(254, 243, 199);
-  doc.rect(10, 135, 190, 25, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(146, 64, 14);
-  doc.text('AUTORIZACIÓN DE INTERVENCIÓN MÉDICA DE URGENCIA:', 15, 142);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  const medAuthText =
-    `[${e.authorizesEmergency ? 'X' : ' '}] De igual forma, autorizo bajo mi responsabilidad a los responsables del Grupo Scout ` +
-    'para que, en caso de accidente o enfermedad que requiera algún tipo de tratamiento médico o intervención quirúrgica urgente ' +
-    'y no siendo posible mi localización, puedan tomar la decisión oportuna.';
-  doc.text(doc.splitTextToSize(medAuthText, 180), 15, 148);
-
-  // Firma Ficha Médica
-  doc.setTextColor(15, 23, 42);
-  doc.setDrawColor(148, 163, 184);
-  doc.rect(10, 170, 95, 48);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text(`FIRMA DEL PADRE, MADRE O TUTOR (${record.parent1FirstName} ${record.parent1LastName})`, 14, 176);
-  if (e.signatureParent1) {
-    try {
-      doc.addImage(e.signatureParent1, 'PNG', 15, 179, 75, 32);
-    } catch {
-      doc.text('[Firma registrada digitalmente]', 15, 195);
-    }
-  }
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Fecha: ${signedDate}`, 10, 226);
-
-  // =========================================================================
-  // PÁGINA 3: ORDEN DE DOMICILIACIÓN BANCARIA SEPA
-  // =========================================================================
-  doc.addPage();
-  drawHeader('ORDEN DE DOMICILIACIÓN BANCARIA DE CUOTAS - SEPA (PÁGINA 3 DE 3)');
-
-  drawField('Titular de la Cuenta Bancaria', e.accountHolderName, 10, 43, 130);
-  drawField('DNI / NIE del Titular', e.accountHolderDni, 140, 43, 60);
-
-  drawField(
-    'Nombre del Educando Inscrito/a',
-    `${record.childFirstName} ${record.childLastName} (${record.calculatedBranch})`,
-    10,
-    56,
-    190,
-  );
-
-  drawField(
-    'Dirección del Titular',
-    `${record.streetAddress} ${record.streetNumber || ''} ${record.ApartmentDoor || ''}`.trim(),
-    10,
-    69,
-    110,
-  );
-  drawField('Población', record.municipality, 120, 69, 50);
-  drawField('C.P.', record.postalCode, 170, 69, 30);
-
-  // Dibujar las 24 casillas del IBAN exactamente como en la hoja oficial
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('NÚMERO DE CUENTA - IBAN (24 CARACTERES):', 10, 89);
-
-  const cleanIban = (e.iban || '').replace(/\s+/g, '').toUpperCase().padEnd(24, ' ');
-  const boxWidth = 190 / 24;
-  for (let i = 0; i < 24; i++) {
-    const bx = 10 + i * boxWidth;
-    doc.setDrawColor(71, 85, 105);
-    doc.rect(bx, 92, boxWidth, 10);
-    doc.setFont('courier', 'bold');
-    doc.setFontSize(10);
-    doc.text(cleanIban[i], bx + boxWidth / 2 - 1.5, 98.5);
-  }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 41, 59);
-  const sepaText =
-    `[${e.authorizesSepa ? 'X' : ' '}] AUTORIZO a mi Entidad Bancaria para que en mi nombre y con cargo a mi cuenta, tenga a bien ` +
-    'abonar mis cuotas al Grupo Scout IV San José de Calasanz. Estos pagos van destinados al desarrollo de las actividades de los niños/as: ' +
-    'talleres, pago de autobuses, acampadas, seguros y actividades que se realicen.\n\n' +
-    'ACEPTO que, en caso de producirse la devolución de alguno de mis recibos, este importe y los gastos ocasionados se cargarán ' +
-    'en el siguiente cobro que se realice a mi persona.';
-  doc.text(doc.splitTextToSize(sepaText, 188), 10, 114);
-
-  // Firma del Titular de la cuenta
-  doc.setDrawColor(148, 163, 184);
-  doc.rect(10, 148, 95, 48);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text(`FIRMA DEL TITULAR DE LA CUENTA (DNI: ${e.accountHolderDni})`, 14, 154);
-  if (e.signatureParent1) {
-    try {
-      doc.addImage(e.signatureParent1, 'PNG', 15, 157, 75, 32);
-    } catch {
-      doc.text('[Firma registrada digitalmente]', 15, 175);
-    }
-  }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`Fecha de mandato SEPA: ${signedDate}`, 10, 204);
-
-  // Descargar archivo con el nombre limpio del educando
-  const safeFileName = `Inscripcion_MSC_${record.childFirstName}_${record.childLastName}`
-    .replace(/\s+/g, '_')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  doc.save(`${safeFileName}.pdf`);
+  const bytes = await pdfDocument.save();
+  const blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const link = window.document.createElement('a');
+  link.href = blobUrl;
+  link.download = `Inscripcion_MSC_${cleanFileName(`${record.childFirstName}_${record.childLastName}`)}.pdf`;
+  link.click();
+  URL.revokeObjectURL(blobUrl);
 }

@@ -286,9 +286,6 @@ export class ApplicationsService {
           ...(enrollmentData.iban !== undefined
             ? { iban: enrollmentData.iban.replace(/\s+/g, '').toUpperCase() }
             : {}),
-          ...(enrollmentData.signatureParent2 !== undefined
-            ? { signedAtParent2: enrollmentData.signatureParent2 ? new Date() : null }
-            : {}),
         },
       });
 

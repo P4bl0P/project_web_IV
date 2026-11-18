@@ -121,10 +121,16 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     setSaving(true);
     setError(null);
     try {
-      const payload = buildCensusPayload(formData);
-      const saved = isEditing
-        ? await applicationsApi.updateCensus(record!.id, payload)
-        : await applicationsApi.createDirectCensus(payload);
+      const completePayload = buildCensusPayload(formData);
+      let saved: ApplicantRecord;
+      if (isEditing) {
+        const editablePayload: Partial<DirectCensusPayload> = { ...completePayload };
+        delete editablePayload.signatureParent1;
+        delete editablePayload.signatureParent2;
+        saved = await applicationsApi.updateCensus(record!.id, editablePayload);
+      } else {
+        saved = await applicationsApi.createDirectCensus(completePayload);
+      }
       onSaved(saved);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo guardar el censo.');
@@ -192,6 +198,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
               onChange={handleChange}
               onSign1={(signatureParent1) => setFormData((previous) => ({ ...previous, signatureParent1 }))}
               onSign2={(signatureParent2) => setFormData((previous) => ({ ...previous, signatureParent2 }))}
+              readOnly={isEditing}
             />
           )}
 

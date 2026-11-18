@@ -155,7 +155,11 @@ export default function ApplicantCard({
 
         {record.enrollment && (
           <button
-            onClick={() => generateOfficialScoutPdf(record)}
+            onClick={() => {
+              void generateOfficialScoutPdf(record).catch((reason: unknown) => {
+                alert(reason instanceof Error ? reason.message : 'No se pudo generar el PDF.');
+              });
+            }}
             className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1"
           >
             <FileDown size={14} /> PDF
