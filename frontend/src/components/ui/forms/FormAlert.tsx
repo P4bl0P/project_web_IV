@@ -8,15 +8,18 @@ interface Props {
 }
 
 const tones = {
-  error: 'border-red-200 bg-red-50 text-red-700',
-  info: 'border-blue-100 bg-blue-50 text-blue-900',
-  success: 'border-emerald-100 bg-emerald-50 text-emerald-800',
+  error: 'border-rose-200/90 bg-rose-50/90 text-rose-800',
+  info: 'border-[#01317b]/20 bg-[#01317b]/5 text-[#000254]',
+  success: 'border-emerald-200/90 bg-emerald-50/90 text-emerald-800',
 };
 
 export default function FormAlert({ children, tone = 'error', className = '' }: Props) {
   return (
-    <div role={tone === 'error' ? 'alert' : undefined} className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 text-xs sm:text-sm ${tones[tone]} ${className}`}>
-      {tone === 'error' && <AlertCircle size={20} className="mt-0.5 shrink-0" />}
+    <div
+      role={tone === 'error' ? 'alert' : undefined}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs sm:text-sm ${tones[tone]} ${className}`}
+    >
+      {tone === 'error' && <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose-600" />}
       <div className="min-w-0">{children}</div>
     </div>
   );

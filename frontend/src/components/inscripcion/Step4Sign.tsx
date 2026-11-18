@@ -24,7 +24,7 @@ export default function Step4Sign({
   return (
     <FormSection title="4. Autorizaciones y firma" description="Revisa los consentimientos y completa las firmas necesarias.">
 
-      <div className="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700">
+      <div className="space-y-3 bg-[#f8f9fc] p-4 rounded-xl border border-slate-200/80 text-xs text-slate-700">
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
             type="checkbox"

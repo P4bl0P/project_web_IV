@@ -46,7 +46,7 @@ export default function Step2Medical({ formData, onChange, fieldErrors = {} }: P
         />
       </FormField>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-[#f8f9fc] p-4 rounded-xl border border-slate-200/80">
         {([
           ['medHeadache', 'Dolor de Cabeza'],
           ['medFever', 'Fiebre'],
@@ -76,9 +76,13 @@ export default function Step2Medical({ formData, onChange, fieldErrors = {} }: P
         />
       </FormField>
 
-      <label className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs text-amber-950 ${
-        fieldErrors.authorizesEmergency ? 'border-red-400 bg-red-50' : 'border-amber-200 bg-amber-50'
-      }`}>
+      <label
+        className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs transition-colors ${
+          fieldErrors.authorizesEmergency
+            ? 'border-rose-400 bg-rose-50 text-rose-900'
+            : 'border-amber-200/90 bg-amber-50/75 text-amber-950'
+        }`}
+      >
         <input
           type="checkbox"
           name="authorizesEmergency"
@@ -90,7 +94,7 @@ export default function Step2Medical({ formData, onChange, fieldErrors = {} }: P
           <strong>Autorización médica de urgencia:</strong> Autorizo a los responsables del Grupo Scout a tomar la decisión médica oportuna en caso de urgencia si no es posible localizarme.
         </span>
       </label>
-      {fieldErrors.authorizesEmergency && <p className="text-[11px] text-red-600">{fieldErrors.authorizesEmergency}</p>}
+      {fieldErrors.authorizesEmergency && <p className="text-[11px] font-medium text-rose-600">{fieldErrors.authorizesEmergency}</p>}
     </FormSection>
   );
 }

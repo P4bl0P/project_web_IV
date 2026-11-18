@@ -183,11 +183,14 @@ a { color: inherit; }
   .enrollment-step-nav { grid-template-columns: repeat(2, 1fr); }
   .enrollment-step-button { min-height: 48px; }
 }
-.secretaria-page { background: linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%); }
-.secretaria-page > div { border-radius: 18px; box-shadow: 0 8px 26px rgba(0,5,84,.045); }
-.secretaria-page button { transition: transform .2s ease, box-shadow .2s ease; }
-.secretaria-page button:hover { transform: translateY(-1px); }
+.secretaria-page { background: linear-gradient(180deg, #f8fafd 0%, #f2f5fa 100%); }
 .solicitud-page .form-hero { background: linear-gradient(120deg, var(--navy), var(--blue)); }
+@keyframes secBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes secModalIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes secExpandIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.animate-sec-backdrop { animation: secBackdropIn .18s cubic-bezier(.2,.8,.2,1) both; }
+.animate-sec-modal { animation: secModalIn .22s cubic-bezier(.16,1,.3,1) both; }
+.animate-sec-expand { animation: secExpandIn .18s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

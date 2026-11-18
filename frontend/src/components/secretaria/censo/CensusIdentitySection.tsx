@@ -1,5 +1,6 @@
 import type { DirectCensusPayload } from '../../../services/api';
 import FormField from '../../ui/forms/FormField';
+import FormSection from '../../ui/forms/FormSection';
 import { formInputClass } from '../../ui/forms/formStyles';
 import type { CensusChangeHandler, CensusFieldErrors } from './censusForm';
 
@@ -11,11 +12,10 @@ interface Props {
 
 export default function CensusIdentitySection({ formData, fieldErrors, onChange }: Props) {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
-      <div>
-        <h3 className="text-base font-bold text-slate-900">Datos personales y familiares</h3>
-        <p className="mt-1 text-xs text-slate-500">Completa los datos identificativos y de contacto del educando y sus tutores.</p>
-      </div>
+    <FormSection
+      title="Datos personales y familiares"
+      description="Completa los datos identificativos y de contacto del educando y sus tutores."
+    >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <FormField label="Nombre del educando" required error={fieldErrors.childFirstName}>
           <input name="childFirstName" autoComplete="given-name" value={formData.childFirstName} onChange={onChange} aria-invalid={Boolean(fieldErrors.childFirstName)} className={formInputClass(Boolean(fieldErrors.childFirstName))} />
@@ -27,7 +27,7 @@ export default function CensusIdentitySection({ formData, fieldErrors, onChange 
           <input type="date" name="childBirthDate" value={formData.childBirthDate} onChange={onChange} aria-invalid={Boolean(fieldErrors.childBirthDate)} className={formInputClass(Boolean(fieldErrors.childBirthDate))} />
         </FormField>
         <FormField label="Género">
-          <select name="gender" value={formData.gender} onChange={onChange} className={formInputClass(false, 'bg-white')}>
+          <select name="gender" value={formData.gender} onChange={onChange} className={formInputClass(false, 'bg-white cursor-pointer')}>
             <option value="MASCULINO">Masculino</option>
             <option value="FEMENINO">Femenino</option>
             <option value="OTRO">Otro</option>
@@ -46,6 +46,6 @@ export default function CensusIdentitySection({ formData, fieldErrors, onChange 
           <input name="parent2LastName" autoComplete="family-name" value={formData.parent2LastName} onChange={onChange} className={formInputClass()} />
         </FormField>
       </div>
-    </section>
+    </FormSection>
   );
 }

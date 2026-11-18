@@ -50,9 +50,13 @@ export default function Step3Bank({ formData, onChange, fieldErrors = {} }: Prop
         </FormField>
       </div>
 
-      <label className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs text-slate-700 ${
-        fieldErrors.authorizesSepa ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-slate-50'
-      }`}>
+      <label
+        className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs transition-colors ${
+          fieldErrors.authorizesSepa
+            ? 'border-rose-400 bg-rose-50 text-rose-900'
+            : 'border-slate-200/80 bg-[#f8f9fc] text-slate-700'
+        }`}
+      >
         <input
           type="checkbox"
           name="authorizesSepa"
@@ -64,7 +68,7 @@ export default function Step3Bank({ formData, onChange, fieldErrors = {} }: Prop
           Autorizo a mi entidad bancaria a abonar las cuotas y actividades al Grupo Scout IV San José de Calasanz, aceptando el recargo en caso de devolución.
         </span>
       </label>
-      {fieldErrors.authorizesSepa && <p className="text-[11px] text-red-600">{fieldErrors.authorizesSepa}</p>}
+      {fieldErrors.authorizesSepa && <p className="text-[11px] font-medium text-rose-600">{fieldErrors.authorizesSepa}</p>}
     </FormSection>
   );
 }

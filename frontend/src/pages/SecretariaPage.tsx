@@ -10,6 +10,11 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  Inbox,
+  Clock,
+  FileText,
+  Users,
+  Archive,
 } from 'lucide-react';
 import {
   applicationsApi,
@@ -21,6 +26,11 @@ import {
 import ApplicantCard from '../components/secretaria/ApplicantCard';
 import SecretariaCensoForm from '../components/secretaria/SecretariaCensoForm';
 import SecretariaToolbar from '../components/secretaria/SecretariaToolbar';
+import { SecButton } from '../components/secretaria/secretariaTheme';
+import {
+  secButtonClass,
+  secTokens,
+} from '../components/secretaria/secretariaTokens';
 import {
   INITIAL_SECRETARIA_FILTERS,
   SECRETARIA_SECTIONS,
@@ -32,12 +42,16 @@ import {
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const TABS: { id: SecretariaTab; label: string }[] = [
-  { id: 'INITIAL', label: 'Solicitudes Iniciales' },
-  { id: 'WAITLIST', label: 'Lista de Espera' },
-  { id: 'OFFERED', label: 'Inscripciones Pendientes' },
-  { id: 'CENSUS', label: 'Censo Oficial' },
-  { id: 'ARCHIVED', label: 'Bajas' },
+const TABS: {
+  id: SecretariaTab;
+  label: string;
+  icon: typeof Inbox;
+}[] = [
+  { id: 'INITIAL', label: 'Solicitudes Iniciales', icon: Inbox },
+  { id: 'WAITLIST', label: 'Lista de Espera', icon: Clock },
+  { id: 'OFFERED', label: 'Inscripciones Pendientes', icon: FileText },
+  { id: 'CENSUS', label: 'Censo Oficial', icon: Users },
+  { id: 'ARCHIVED', label: 'Bajas', icon: Archive },
 ];
 
 export default function SecretariaPage() {
@@ -202,235 +216,277 @@ export default function SecretariaPage() {
   };
 
   const pageOffset = (safeCurrentPage - 1) * pageSize;
+  const activeSectionMeta = SECRETARIA_SECTIONS[activeTab];
 
   return (
-    <div className="secretaria-page w-full min-h-[calc(100vh-3.5rem)] bg-slate-50 px-4 sm:px-8 py-6 space-y-4">
-      {/* Cabecera de Secretaría */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-[0_8px_28px_rgba(15,23,42,.055)]">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/gestion"
-            aria-label="Volver a gestión"
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 transition-all duration-200"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-indigo-600">
-              Gestión interna
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Secretaría</h1>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setSafeModeWhatsApp((p) => !p)}
-            className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2.5 rounded-xl border transition-all duration-200 active:scale-[.97] ${
-              safeModeWhatsApp
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
-            }`}
-          >
-            {safeModeWhatsApp ? <Lock size={13} /> : <Unlock size={13} />}
-            {safeModeWhatsApp ? 'WhatsApp Bloqueado' : 'WhatsApp Activo'}
-          </button>
-          {activeTab === 'CENSUS' && (
-            <button
-              onClick={() => setCensusFormRecord(null)}
-              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
+    <div className="secretaria-page w-full min-h-[calc(100vh-4.75rem)] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-[1220px] mx-auto space-y-4">
+        {/* Cabecera principal de Secretaría */}
+        <header className={`${secTokens.surface} px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4`}>
+          <div className="flex items-center gap-3.5 min-w-0">
+            <Link
+              to="/gestion"
+              aria-label="Volver a gestión"
+              className={secButtonClass({ variant: 'secondary', size: 'icon' })}
             >
-              <UserPlus size={13} /> Nuevo educando
+              <ArrowLeft size={16} />
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#e22328]">
+                  Gestión interna
+                </span>
+                <span className="text-slate-300 text-xs" aria-hidden="true">·</span>
+                <span className="text-[11px] font-medium text-slate-500 truncate">
+                  {activeSectionMeta.label}
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#000254]">
+                Secretaría
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSafeModeWhatsApp((p) => !p)}
+              className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-xs font-semibold transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+                safeModeWhatsApp
+                  ? 'bg-emerald-50/90 text-emerald-800 border-emerald-200/90 hover:bg-emerald-100/80'
+                  : 'bg-rose-50/90 text-rose-800 border-rose-200/90 hover:bg-rose-100/80'
+              }`}
+            >
+              {safeModeWhatsApp ? <Lock size={13} /> : <Unlock size={13} />}
+              <span>{safeModeWhatsApp ? 'WhatsApp Bloqueado' : 'WhatsApp Activo'}</span>
             </button>
-          )}
-          <button
-            onClick={loadData}
-            aria-label="Actualizar listado"
-            className="p-2.5 rounded-xl border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50 active:scale-95 text-slate-600 transition-all duration-200"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
 
-      {censusFormRecord !== undefined && (
-        <SecretariaCensoForm
-          record={censusFormRecord}
-          onClose={() => setCensusFormRecord(undefined)}
-          onSaved={handleCensusSaved}
-        />
-      )}
-
-      {/* Pestañas de apartados de Secretaría */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-slate-200/90 p-3 shadow-[0_8px_28px_rgba(15,23,42,.04)]">
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Apartados de Secretaría">
-          {TABS.map((t) => {
-            const isActive = activeTab === t.id;
-            const count = sectionCounts[t.id];
-            return (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => handleSelectTab(t.id)}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[.97] ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-[0_6px_16px_rgba(79,70,229,.22)]'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
-                }`}
+            {activeTab === 'CENSUS' && (
+              <SecButton
+                variant="primary"
+                size="md"
+                onClick={() => setCensusFormRecord(null)}
               >
-                <span>{t.label}</span>
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                <UserPlus size={14} />
+                <span>Nuevo educando</span>
+              </SecButton>
+            )}
+
+            <SecButton
+              variant="secondary"
+              size="icon"
+              onClick={loadData}
+              aria-label="Actualizar listado"
+              title="Actualizar listado"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin text-[#01317b]' : ''} />
+            </SecButton>
+          </div>
+        </header>
+
+        {censusFormRecord !== undefined && (
+          <SecretariaCensoForm
+            record={censusFormRecord}
+            onClose={() => setCensusFormRecord(undefined)}
+            onSaved={handleCensusSaved}
+          />
+        )}
+
+        {/* Barra de navegación segmentada (Segmented Control estilo Apple) */}
+        <div className={`${secTokens.surface} p-2`}>
+          <div
+            className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-[#f2f4f8] p-1 rounded-xl overflow-x-auto"
+            role="tablist"
+            aria-label="Apartados de Secretaría"
+          >
+            {TABS.map((t) => {
+              const isActive = activeTab === t.id;
+              const count = sectionCounts[t.id];
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => handleSelectTab(t.id)}
+                  className={`flex-1 min-w-fit inline-flex items-center justify-center gap-2 h-9 px-3.5 rounded-[10px] text-xs font-semibold transition-all duration-150 active:scale-[0.98] cursor-pointer ${
                     isActive
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-200/80 text-slate-700'
+                      ? 'bg-white text-[#000254] shadow-[0_2px_8px_rgba(0,2,84,0.08),0_1px_2px_rgba(12,25,51,0.04)]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Buscador inteligente, filtros avanzados adaptativos y ordenación */}
-      <SecretariaToolbar
-        activeTab={activeTab}
-        filters={filters}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        totalMatchingCount={filteredRecords.length}
-        totalSectionCount={sectionCounts[activeTab]}
-        onChangeFilter={handleChangeFilter}
-        onClearFilter={handleClearFilter}
-        onClearAllFilters={handleClearAllFilters}
-        onChangeSort={handleChangeSort}
-      />
-
-      {/* Listado de resultados */}
-      <div className="space-y-2">
-        {loading ? (
-          <div className="grid gap-2" aria-label="Cargando registros" aria-busy="true">
-            {[0, 1, 2].map((item) => (
-              <div
-                key={item}
-                className="h-24 rounded-2xl border border-slate-200 bg-white animate-pulse"
-              >
-                <div className="h-full w-full rounded-2xl bg-gradient-to-r from-transparent via-slate-100/70 to-transparent" />
-              </div>
-            ))}
-          </div>
-        ) : filteredRecords.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center space-y-3">
-            <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
-              <SearchX size={22} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800">
-                {activeChips.length > 0
-                  ? 'No se han encontrado registros con los criterios actuales'
-                  : `No hay registros en ${SECRETARIA_SECTIONS[activeTab].label}`}
-              </p>
-              <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
-                {activeChips.length > 0
-                  ? 'Prueba a modificar el texto de búsqueda o eliminar alguno de los filtros activos.'
-                  : 'Cambia de apartado en las pestañas superiores para consultar otros registros.'}
-              </p>
-            </div>
-            {activeChips.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearAllFilters}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition"
-              >
-                <RotateCcw size={13} /> Limpiar búsqueda y filtros
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            {paginatedRecords.map((record, index) => (
-              <ApplicantCard
-                key={record.id}
-                record={record}
-                index={pageOffset + index}
-                activeTab={activeTab}
-                safeModeWhatsApp={safeModeWhatsApp}
-                copiedId={copiedId}
-                onToggleInclusion={handleToggleInclusion}
-                onStatusChange={handleStatusChange}
-                onOfferSpot={handleOfferSpot}
-                onOpenWhatsApp={handleOpenWhatsApp}
-                onCopyLink={handleCopyLink}
-                onDelete={handleDelete}
-                onEditCensus={(rec) => setCensusFormRecord(rec)}
-              />
-            ))}
-
-            {/* Controles de paginación (aplicada sobre el conjunto ya filtrado y ordenado) */}
-            {filteredRecords.length > PAGE_SIZE_OPTIONS[0] && (
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-slate-200/90 px-4 py-3 shadow-[0_5px_18px_rgba(15,23,42,.03)]">
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <span>
-                    Mostrando{' '}
-                    <strong className="text-slate-900">{pageOffset + 1}</strong> -{' '}
-                    <strong className="text-slate-900">
-                      {Math.min(pageOffset + pageSize, filteredRecords.length)}
-                    </strong>{' '}
-                    de <strong className="text-slate-900">{filteredRecords.length}</strong>
+                  <Icon
+                    size={13}
+                    className={isActive ? 'text-[#01317b] shrink-0' : 'text-slate-400 shrink-0'}
+                  />
+                  <span>{t.label}</span>
+                  <span
+                    className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold transition-colors ${
+                      isActive
+                        ? 'bg-[#01317b] text-white'
+                        : 'bg-slate-200/80 text-slate-600'
+                    }`}
+                  >
+                    {count}
                   </span>
-                  <span className="text-slate-300">|</span>
-                  <label className="inline-flex items-center gap-1.5">
-                    <span>Por página:</span>
-                    <select
-                      aria-label="Registros por página"
-                      value={pageSize}
-                      onChange={(e) => {
-                        setPageSize(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700"
-                    >
-                      {PAGE_SIZE_OPTIONS.map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={safeCurrentPage <= 1}
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-xs font-bold text-slate-700"
-                    >
-                      <ChevronLeft size={14} /> Anterior
-                    </button>
-                    <span className="text-xs font-semibold text-slate-600 px-2">
-                      Página <strong className="text-slate-900">{safeCurrentPage}</strong> de{' '}
-                      <strong className="text-slate-900">{totalPages}</strong>
-                    </span>
-                    <button
-                      type="button"
-                      disabled={safeCurrentPage >= totalPages}
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-xs font-bold text-slate-700"
-                    >
-                      Siguiente <ChevronRight size={14} />
-                    </button>
+        {/* Buscador inteligente, filtros avanzados adaptativos y ordenación */}
+        <SecretariaToolbar
+          activeTab={activeTab}
+          filters={filters}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          totalMatchingCount={filteredRecords.length}
+          totalSectionCount={sectionCounts[activeTab]}
+          onChangeFilter={handleChangeFilter}
+          onClearFilter={handleClearFilter}
+          onClearAllFilters={handleClearAllFilters}
+          onChangeSort={handleChangeSort}
+        />
+
+        {/* Listado de resultados */}
+        <div className="space-y-2.5">
+          {loading ? (
+            <div className="grid gap-2.5" aria-label="Cargando registros" aria-busy="true">
+              {[0, 1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-24 rounded-2xl border border-slate-200/80 bg-white p-5 flex items-center justify-between gap-4 animate-pulse"
+                >
+                  <div className="space-y-2.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="h-5 w-44 rounded-lg bg-slate-200/70" />
+                      <div className="h-5 w-20 rounded-full bg-slate-100" />
+                    </div>
+                    <div className="h-3.5 w-3/4 max-w-md rounded-md bg-slate-100" />
                   </div>
-                )}
+                  <div className="hidden sm:flex items-center gap-2">
+                    <div className="h-8 w-24 rounded-xl bg-slate-100" />
+                    <div className="h-8 w-24 rounded-xl bg-slate-200/60" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className={`${secTokens.surface} px-6 py-14 text-center space-y-3.5`}>
+              <div className="w-12 h-12 rounded-2xl bg-[#01317b]/[0.07] text-[#01317b] flex items-center justify-center mx-auto">
+                <SearchX size={22} />
               </div>
-            )}
-          </>
-        )}
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-[#0c1933]">
+                  {activeChips.length > 0
+                    ? 'No se han encontrado registros con los criterios actuales'
+                    : `No hay registros en ${SECRETARIA_SECTIONS[activeTab].label}`}
+                </p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  {activeChips.length > 0
+                    ? 'Prueba a modificar el texto de búsqueda o eliminar alguno de los filtros activos.'
+                    : 'Cambia de apartado en las pestañas superiores para consultar otros registros.'}
+                </p>
+              </div>
+              {activeChips.length > 0 && (
+                <div className="pt-1">
+                  <SecButton
+                    variant="secondary"
+                    size="md"
+                    onClick={handleClearAllFilters}
+                  >
+                    <RotateCcw size={13} />
+                    <span>Limpiar búsqueda y filtros</span>
+                  </SecButton>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2.5">
+                {paginatedRecords.map((record, index) => (
+                  <ApplicantCard
+                    key={record.id}
+                    record={record}
+                    index={pageOffset + index}
+                    activeTab={activeTab}
+                    safeModeWhatsApp={safeModeWhatsApp}
+                    copiedId={copiedId}
+                    onToggleInclusion={handleToggleInclusion}
+                    onStatusChange={handleStatusChange}
+                    onOfferSpot={handleOfferSpot}
+                    onOpenWhatsApp={handleOpenWhatsApp}
+                    onCopyLink={handleCopyLink}
+                    onDelete={handleDelete}
+                    onEditCensus={(rec) => setCensusFormRecord(rec)}
+                  />
+                ))}
+              </div>
+
+              {/* Controles de paginación (aplicada sobre el conjunto ya filtrado y ordenado) */}
+              {filteredRecords.length > PAGE_SIZE_OPTIONS[0] && (
+                <div className={`${secTokens.surface} flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3.5`}>
+                  <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-600">
+                    <span>
+                      Mostrando{' '}
+                      <strong className="font-bold text-[#0c1933]">{pageOffset + 1}</strong> -{' '}
+                      <strong className="font-bold text-[#0c1933]">
+                        {Math.min(pageOffset + pageSize, filteredRecords.length)}
+                      </strong>{' '}
+                      de <strong className="font-bold text-[#0c1933]">{filteredRecords.length}</strong>
+                    </span>
+                    <span className="text-slate-300" aria-hidden="true">|</span>
+                    <label className="inline-flex items-center gap-1.5">
+                      <span>Por página:</span>
+                      <select
+                        aria-label="Registros por página"
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="h-8 px-2.5 rounded-lg border border-slate-200/95 bg-[#f8f9fc] hover:border-slate-300 text-xs font-semibold text-slate-700 focus:border-[#01317b] outline-none cursor-pointer transition-colors"
+                      >
+                        {PAGE_SIZE_OPTIONS.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <SecButton
+                        variant="secondary"
+                        size="sm"
+                        disabled={safeCurrentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft size={14} /> Anterior
+                      </SecButton>
+                      <span className="text-xs font-medium text-slate-600 px-2">
+                        Página <strong className="font-bold text-[#0c1933]">{safeCurrentPage}</strong> de{' '}
+                        <strong className="font-bold text-[#0c1933]">{totalPages}</strong>
+                      </span>
+                      <SecButton
+                        variant="secondary"
+                        size="sm"
+                        disabled={safeCurrentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        Siguiente <ChevronRight size={14} />
+                      </SecButton>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

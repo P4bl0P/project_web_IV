@@ -51,7 +51,7 @@ export default function Step1Legal({ applicant, formData, onChange, fieldErrors 
         </FormField>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5 bg-[#f8f9fc] p-4 rounded-xl border border-slate-200/80">
         <FormField label="Dirección" required error={fieldErrors.streetAddress} className="md:col-span-2">
           <input
             type="text"

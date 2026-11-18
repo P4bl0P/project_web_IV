@@ -1,5 +1,11 @@
-import { useMemo, useState } from 'react';
-import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import {
   applicationsApi,
   type ApplicantRecord,
@@ -19,6 +25,8 @@ import {
   type CensusChangeHandler,
   type CensusFieldErrors,
 } from './censo/censusForm';
+import { SecButton } from './secretariaTheme';
+import { secTokens } from './secretariaTokens';
 
 interface Props {
   record?: ApplicantRecord | null;
@@ -46,6 +54,17 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     [formData.parent2Email, formData.parent2FirstName, formData.parent2Phone],
   );
 
+  // Cerrar con tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !saving) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, saving]);
+
   const handleChange: CensusChangeHandler = (event) => {
     const { name, value, type } = event.target;
     const nextValue = type === 'checkbox' ? (event.target as HTMLInputElement).checked : value;
@@ -61,17 +80,23 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
 
   const setEnrollmentError = (currentStep: number) => {
     const field =
-      currentStep === 1 ? (formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.parent2Dni ? 'parent2Dni' : 'parent1Dni') :
-      currentStep === 2 ? 'authorizesEmergency' :
-      currentStep === 3
-        ? (!formData.accountHolderName.trim()
-          ? 'accountHolderName'
-          : !formData.accountHolderDni.trim()
-            ? 'accountHolderDni'
-            : formData.iban.replace(/\s+/g, '').length !== 24
-              ? 'iban'
-              : 'authorizesSepa') :
-      formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2 ? 'signatureParent2' : 'signatureParent1';
+      currentStep === 1
+        ? formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.parent2Dni
+          ? 'parent2Dni'
+          : 'parent1Dni'
+        : currentStep === 2
+          ? 'authorizesEmergency'
+          : currentStep === 3
+            ? !formData.accountHolderName.trim()
+              ? 'accountHolderName'
+              : !formData.accountHolderDni.trim()
+                ? 'accountHolderDni'
+                : formData.iban.replace(/\s+/g, '').length !== 24
+                  ? 'iban'
+                  : 'authorizesSepa'
+            : formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2
+              ? 'signatureParent2'
+              : 'signatureParent1';
     setFieldErrors((previous) => ({ ...previous, [field]: 'Revisa este campo.' }));
   };
 
@@ -142,81 +167,162 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
   const applicantForSteps = { parent1FirstName: formData.parent1FirstName };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="census-form-title">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-slate-50 shadow-xl">
-        <header className="flex items-start justify-between bg-indigo-900 px-5 py-5 text-white">
+    <div
+      className={secTokens.modalBackdrop}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="census-form-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
+      <div className={secTokens.modalPanel}>
+        {/* Cabecera de la ventana modal */}
+        <header className="flex items-start justify-between gap-4 bg-gradient-to-r from-[#000254] to-[#01317b] px-5 sm:px-7 py-5 text-white">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-200">Secretaría · Censo</p>
-            <h2 id="census-form-title" className="mt-1 text-xl font-bold">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
+              Secretaría · Censo Oficial
+            </p>
+            <h2 id="census-form-title" className="mt-1 text-lg sm:text-xl font-bold tracking-tight">
               {isEditing ? 'Editar inscripción censada' : 'Alta directa en el censo'}
             </h2>
-            <p className="mt-1 text-xs text-indigo-200">Los campos marcados con * son obligatorios.</p>
+            <p className="mt-1 text-xs text-blue-100/85">
+              Los campos marcados con * son obligatorios para completar la ficha oficial.
+            </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-indigo-100 hover:bg-white/10" aria-label="Cerrar formulario">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+            aria-label="Cerrar formulario"
+          >
             <X size={18} />
           </button>
         </header>
 
-        <nav className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 md:grid-cols-4" aria-label="Pasos del formulario">
-          {STEPS.map((item) => (
-            <button
-              key={item.number}
-              type="button"
-              onClick={() => item.number < step && setStep(item.number)}
-              className={`rounded-xl px-3 py-2 text-left transition ${
-                item.number === step
-                  ? 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200'
-                  : item.number < step
-                    ? 'text-slate-700 hover:bg-slate-50'
-                    : 'text-slate-400'
-              }`}
-              aria-current={item.number === step ? 'step' : undefined}
-            >
-              <span className="text-[11px] font-bold uppercase tracking-wide">Paso {item.number}</span>
-              <span className="mt-0.5 block text-xs font-bold">{item.title}</span>
-              <span className="mt-0.5 block text-[11px]">{item.description}</span>
-            </button>
-          ))}
+        {/* Navegación por pasos (homogénea con la inscripción mágica) */}
+        <nav
+          className="grid grid-cols-2 gap-2 border-b border-slate-200/85 bg-white px-4 sm:px-6 py-3 md:grid-cols-4"
+          aria-label="Pasos del formulario"
+        >
+          {STEPS.map((item) => {
+            const isCurrent = item.number === step;
+            const isCompleted = item.number < step;
+            return (
+              <button
+                key={item.number}
+                type="button"
+                onClick={() => isCompleted && setStep(item.number)}
+                disabled={!isCompleted && !isCurrent}
+                className={`group flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-150 ${
+                  isCurrent
+                    ? 'border-[#01317b]/30 bg-[#01317b]/[0.06] text-[#000254] shadow-[0_2px_10px_rgba(1,49,123,0.06)]'
+                    : isCompleted
+                      ? 'border-emerald-200/90 bg-emerald-50/50 text-emerald-900 hover:bg-emerald-50 cursor-pointer'
+                      : 'border-slate-200/60 bg-slate-50/60 text-slate-400 cursor-default'
+                }`}
+                aria-current={isCurrent ? 'step' : undefined}
+              >
+                <span
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                    isCurrent
+                      ? 'bg-[#01317b] text-white'
+                      : isCompleted
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-200/80 text-slate-500'
+                  }`}
+                >
+                  {isCompleted ? <CheckCircle2 size={13} /> : item.number}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider opacity-75">
+                    Paso {item.number}
+                  </span>
+                  <span className="mt-0.5 block text-xs font-bold truncate">{item.title}</span>
+                  <span className="mt-0.5 hidden sm:block text-[11px] opacity-80 truncate">
+                    {item.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </nav>
 
-        <main className="space-y-5 p-5">
+        {/* Contenido del paso activo */}
+        <main className="space-y-4 p-4 sm:p-6 max-h-[calc(85vh-9rem)] overflow-y-auto">
           {error && <CensusErrorSummary message={error} fieldErrors={fieldErrors} />}
 
           {step === 1 && (
-            <>
-              <CensusIdentitySection formData={formData} fieldErrors={fieldErrors} onChange={handleChange} />
-              <Step1Legal applicant={applicantForSteps} formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />
-              <CensusCriteriaSection formData={formData} fieldErrors={fieldErrors} onChange={handleChange} />
-            </>
+            <div className="space-y-4">
+              <CensusIdentitySection
+                formData={formData}
+                fieldErrors={fieldErrors}
+                onChange={handleChange}
+              />
+              <Step1Legal
+                applicant={applicantForSteps}
+                formData={formData}
+                onChange={handleChange}
+                fieldErrors={fieldErrors}
+              />
+              <CensusCriteriaSection
+                formData={formData}
+                fieldErrors={fieldErrors}
+                onChange={handleChange}
+              />
+            </div>
           )}
-          {step === 2 && <Step2Medical formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
-          {step === 3 && <Step3Bank formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
+          {step === 2 && (
+            <Step2Medical formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />
+          )}
+          {step === 3 && (
+            <Step3Bank formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />
+          )}
           {step === 4 && (
             <Step4Sign
               applicant={applicantForSteps}
               formData={formData}
               onChange={handleChange}
-              onSign1={(signatureParent1) => setFormData((previous) => ({ ...previous, signatureParent1 }))}
-              onSign2={(signatureParent2) => setFormData((previous) => ({ ...previous, signatureParent2 }))}
+              onSign1={(signatureParent1) =>
+                setFormData((previous) => ({ ...previous, signatureParent1 }))
+              }
+              onSign2={(signatureParent2) =>
+                setFormData((previous) => ({ ...previous, signatureParent2 }))
+              }
               readOnly={isEditing}
             />
           )}
 
-          <footer className="flex justify-between border-t border-slate-200 pt-4">
+          {/* Barra inferior de acciones del formulario */}
+          <footer className="flex items-center justify-between gap-3 border-t border-slate-200/85 pt-4 mt-2">
             {step > 1 ? (
-              <button type="button" onClick={() => setStep((current) => current - 1)} className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-white">
+              <SecButton
+                variant="secondary"
+                size="lg"
+                onClick={() => setStep((current) => current - 1)}
+              >
                 <ChevronLeft size={15} /> Anterior
-              </button>
-            ) : <div />}
-            {step < 4 ? (
-              <button type="button" onClick={handleNext} className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700">
-                Siguiente <ChevronRight size={15} />
-              </button>
+              </SecButton>
             ) : (
-              <button type="button" disabled={saving} onClick={handleSubmit} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+              <SecButton variant="tertiary" size="lg" onClick={onClose}>
+                Cancelar
+              </SecButton>
+            )}
+
+            {step < 4 ? (
+              <SecButton variant="primary" size="lg" onClick={handleNext}>
+                Siguiente <ChevronRight size={15} />
+              </SecButton>
+            ) : (
+              <SecButton
+                variant="success"
+                size="lg"
+                disabled={saving}
+                onClick={handleSubmit}
+              >
                 {isEditing ? <CheckCircle2 size={16} /> : <ShieldCheck size={16} />}
                 {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear y censar'}
-              </button>
+              </SecButton>
             )}
           </footer>
         </main>
