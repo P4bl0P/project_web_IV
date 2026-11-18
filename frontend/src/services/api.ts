@@ -67,7 +67,46 @@ export interface ApplicantRecord extends CreateApplicationPayload {
   calculatedBranch: string;
   currentAge: number;
   priorityScore: number;
+  isIncomplete?: boolean;
+  missingFields?: string[];
   enrollment?: EnrollmentDetailsRecord | null;
+}
+
+export type SortField =
+  | 'priority'
+  | 'childFirstName'
+  | 'childLastName'
+  | 'age'
+  | 'childBirthDate'
+  | 'admittedAt'
+  | 'branch'
+  | 'createdAt';
+
+export type SortOrder = 'asc' | 'desc';
+
+export type RecordStage = 'INITIAL' | 'WAITLIST' | 'PENDING_ENROLLMENT' | 'CENSUS' | 'ARCHIVED';
+
+export interface ApplicationsQueryParams {
+  status?: ApplicationStatus;
+  statuses?: ApplicationStatus[];
+  stage?: RecordStage;
+  search?: string;
+  branch?: string;
+  gender?: Gender;
+  minAge?: number;
+  maxAge?: number;
+  birthDateFrom?: string;
+  birthDateTo?: string;
+  tutorName?: string;
+  email?: string;
+  phone?: string;
+  admittedFrom?: string;
+  admittedTo?: string;
+  incompleteOnly?: boolean;
+  sortBy?: SortField;
+  sortOrder?: SortOrder;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface UpdateApplicationPayload {
@@ -98,9 +137,33 @@ export const applicationsApi = {
     return response.json();
   },
 
-  // Fase 4: Obtener todas las solicitudes y miembros
-  async getAll(): Promise<ApplicantRecord[]> {
-    const response = await authFetch(`${API_URL}/applications`);
+  // Fase 4: Obtener todas las solicitudes y miembros (con soporte opcional de filtros y ordenación en servidor)
+  async getAll(params?: ApplicationsQueryParams): Promise<ApplicantRecord[]> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      if (params.status) searchParams.set('status', params.status);
+      if (params.statuses?.length) searchParams.set('statuses', params.statuses.join(','));
+      if (params.stage) searchParams.set('stage', params.stage);
+      if (params.search?.trim()) searchParams.set('search', params.search.trim());
+      if (params.branch && params.branch !== 'Todas') searchParams.set('branch', params.branch);
+      if (params.gender) searchParams.set('gender', params.gender);
+      if (params.minAge !== undefined) searchParams.set('minAge', String(params.minAge));
+      if (params.maxAge !== undefined) searchParams.set('maxAge', String(params.maxAge));
+      if (params.birthDateFrom) searchParams.set('birthDateFrom', params.birthDateFrom);
+      if (params.birthDateTo) searchParams.set('birthDateTo', params.birthDateTo);
+      if (params.tutorName?.trim()) searchParams.set('tutorName', params.tutorName.trim());
+      if (params.email?.trim()) searchParams.set('email', params.email.trim());
+      if (params.phone?.trim()) searchParams.set('phone', params.phone.trim());
+      if (params.admittedFrom) searchParams.set('admittedFrom', params.admittedFrom);
+      if (params.admittedTo) searchParams.set('admittedTo', params.admittedTo);
+      if (params.incompleteOnly !== undefined) searchParams.set('incompleteOnly', String(params.incompleteOnly));
+      if (params.sortBy) searchParams.set('sortBy', params.sortBy);
+      if (params.sortOrder) searchParams.set('sortOrder', params.sortOrder);
+      if (params.page !== undefined) searchParams.set('page', String(params.page));
+      if (params.pageSize !== undefined) searchParams.set('pageSize', String(params.pageSize));
+    }
+    const queryString = searchParams.toString();
+    const response = await authFetch(`${API_URL}/applications${queryString ? `?${queryString}` : ''}`);
     if (!response.ok) {
       throw new Error('No se pudieron cargar las solicitudes del servidor.');
     }

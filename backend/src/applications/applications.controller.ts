@@ -15,7 +15,7 @@ import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
 import { CreateDirectCensusDto, UpdateCensusDto } from './dto/direct-census.dto';
-import { ApplicationStatus } from '@prisma/client';
+import { QueryApplicationsDto } from './dto/query-applications.dto';
 import { AuthGuard, ensurePermission } from '../auth.guard';
 import type { AuthenticatedRequest } from '../auth.guard';
 
@@ -29,20 +29,20 @@ export class ApplicationsController {
     return this.applicationsService.create(createApplicationDto);
   }
 
-  // Panel Kraal: Listar todas (filtrable por ?status=LISTA_ESPERA)
+  // Panel Kraal: Listar todas (filtrable y ordenable por query params)
   @Get()
   @UseGuards(AuthGuard)
-  findAll(@Query('status') status?: ApplicationStatus, @Req() req?: AuthenticatedRequest) {
+  findAll(@Query() query?: QueryApplicationsDto, @Req() req?: AuthenticatedRequest) {
     ensurePermission(req!, 'Secretaría', 'canRead');
-    return this.applicationsService.findAll(status);
+    return this.applicationsService.findAll(query);
   }
 
   // Panel Kraal: Obtener el Censo Oficial
   @Get('census')
   @UseGuards(AuthGuard)
-  findCensus(@Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canRead');
-    return this.applicationsService.findCensus();
+  findCensus(@Query() query?: QueryApplicationsDto, @Req() req?: AuthenticatedRequest) {
+    ensurePermission(req!, 'Secretaría', 'canRead');
+    return this.applicationsService.findCensus(query);
   }
 
   @Post('census')

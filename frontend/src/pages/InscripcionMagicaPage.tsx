@@ -8,6 +8,7 @@ import Step2Medical from '../components/inscripcion/Step2Medical';
 import Step3Bank from '../components/inscripcion/Step3Bank';
 import Step4Sign from '../components/inscripcion/Step4Sign';
 import FormAlert from '../components/ui/forms/FormAlert';
+import { SecButton } from '../components/secretaria/secretariaTheme';
 
 export default function InscripcionMagicaPage() {
   const { token } = useParams<{ token: string }>();
@@ -192,95 +193,100 @@ export default function InscripcionMagicaPage() {
   }
 
   return (
-    <div className="enrollment-page page-width">
-      <div className="bg-indigo-900 text-white rounded-2xl p-5 flex items-center justify-between">
+    <div className="enrollment-page page-width space-y-5">
+      <div className="bg-gradient-to-r from-[#000254] to-[#01317b] text-white rounded-2xl px-6 py-5 flex flex-wrap items-center justify-between gap-4 shadow-[0_14px_34px_-10px_rgba(0,2,84,0.22)]">
         <div>
-          <h1 className="text-xl font-bold">
-            Inscripción · {applicant.childFirstName} {applicant.childLastName}
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
+            Secretaría · Inscripción Oficial
+          </p>
+          <h1 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight">
+            {applicant.childFirstName} {applicant.childLastName}
           </h1>
-          <p className="text-xs text-indigo-200">{applicant.calculatedBranch}</p>
+          <p className="text-xs text-blue-100/85 mt-0.5">{applicant.calculatedBranch}</p>
         </div>
-        <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full">Paso {step} de 4</span>
+        <span className="text-xs font-bold bg-white/15 border border-white/20 px-3.5 py-1.5 rounded-full">
+          Paso {step} de 4
+        </span>
       </div>
 
       {stepError && <FormAlert>{stepError}</FormAlert>}
 
-      <div className="space-y-5">
-      <nav className="enrollment-step-nav" aria-label="Apartados de la inscripción">
-        {stepItems.map((item) => {
-          const isCurrent = step === item.number;
-          const isComplete =
-            !isCurrent && validateEnrollmentStep(item.number, formData) === null;
-          return (
-            <button
-              key={item.number}
-              type="button"
-              onClick={() => {
-                setStep(item.number);
-                setStepError(null);
-              }}
-              aria-current={isCurrent ? 'step' : undefined}
-              className={`enrollment-step-button ${
-                isCurrent ? 'is-current' : isComplete ? 'is-complete' : 'is-pending'
-              }`}
-            >
-              <span className="enrollment-step-number">
-                {isComplete ? <CheckCircle2 size={16} /> : item.number}
-              </span>
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <div className="space-y-4">
+        <nav className="enrollment-step-nav" aria-label="Apartados de la inscripción">
+          {stepItems.map((item) => {
+            const isCurrent = step === item.number;
+            const isComplete =
+              !isCurrent && validateEnrollmentStep(item.number, formData) === null;
+            return (
+              <button
+                key={item.number}
+                type="button"
+                onClick={() => {
+                  setStep(item.number);
+                  setStepError(null);
+                }}
+                aria-current={isCurrent ? 'step' : undefined}
+                className={`enrollment-step-button ${
+                  isCurrent ? 'is-current' : isComplete ? 'is-complete' : 'is-pending'
+                }`}
+              >
+                <span className="enrollment-step-number">
+                  {isComplete ? <CheckCircle2 size={16} /> : item.number}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
-        {step === 1 && <Step1Legal applicant={applicant} formData={formData} onChange={handleChange} />}
-        {step === 2 && <Step2Medical formData={formData} onChange={handleChange} />}
-        {step === 3 && <Step3Bank formData={formData} onChange={handleChange} />}
-        {step === 4 && (
-          <Step4Sign
-            applicant={applicant}
-            formData={formData}
-            onChange={handleChange}
-            onSign1={(s) => setFormData((p) => ({ ...p, signatureParent1: s }))}
-            onSign2={(s) => setFormData((p) => ({ ...p, signatureParent2: s }))}
-          />
-        )}
-
-        <div className="flex justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
-          {step > 1 ? (
-            <button
-              type="button"
-              onClick={() => setStep((s) => s - 1)}
-              className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 px-4 py-2.5 rounded-xl border border-slate-300"
-            >
-              <ChevronLeft size={15} /> Anterior
-            </button>
-          ) : (
-            <div />
+        <div className="space-y-4">
+          {step === 1 && <Step1Legal applicant={applicant} formData={formData} onChange={handleChange} />}
+          {step === 2 && <Step2Medical formData={formData} onChange={handleChange} />}
+          {step === 3 && <Step3Bank formData={formData} onChange={handleChange} />}
+          {step === 4 && (
+            <Step4Sign
+              applicant={applicant}
+              formData={formData}
+              onChange={handleChange}
+              onSign1={(s) => setFormData((p) => ({ ...p, signatureParent1: s }))}
+              onSign2={(s) => setFormData((p) => ({ ...p, signatureParent2: s }))}
+            />
           )}
 
-          {step < 4 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="inline-flex items-center gap-1 bg-indigo-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl"
-            >
-              Siguiente <ChevronRight size={15} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleSubmit}
-              className="inline-flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-bold px-6 py-3 rounded-xl"
-            >
-              <ShieldCheck size={16} /> {isSubmitting ? 'Guardando...' : 'Firmar y Enviar'}
-            </button>
-          )}
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/85 bg-white px-5 py-4 shadow-[0_2px_10px_-3px_rgba(12,25,51,0.04)]">
+            {step > 1 ? (
+              <SecButton
+                variant="secondary"
+                size="lg"
+                onClick={() => setStep((s) => s - 1)}
+              >
+                <ChevronLeft size={15} /> Anterior
+              </SecButton>
+            ) : (
+              <div />
+            )}
+
+            {step < 4 ? (
+              <SecButton
+                variant="primary"
+                size="lg"
+                onClick={handleNext}
+              >
+                Siguiente <ChevronRight size={15} />
+              </SecButton>
+            ) : (
+              <SecButton
+                variant="success"
+                size="lg"
+                disabled={isSubmitting}
+                onClick={handleSubmit}
+              >
+                <ShieldCheck size={16} /> {isSubmitting ? 'Guardando...' : 'Firmar y Enviar'}
+              </SecButton>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

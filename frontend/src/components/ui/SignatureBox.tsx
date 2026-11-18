@@ -59,32 +59,32 @@ export default function SignatureBox({ label, onChange, readOnly = false, value 
   if (readOnly) {
     return (
       <div className="space-y-1.5">
-        <label className="block text-sm font-semibold text-slate-800">{label}</label>
-        <div className="flex min-h-36 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-3">
+        <label className="block text-xs font-semibold tracking-tight text-slate-800">{label}</label>
+        <div className="flex min-h-36 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-[#f8f9fc] p-3">
           {value ? (
             <img src={value} alt="Firma registrada" className="h-32 max-w-full object-contain" />
           ) : (
             <span className="text-xs italic text-slate-500">Sin firma registrada</span>
           )}
         </div>
-        <p className="text-xs text-slate-500">La firma original no se puede modificar desde Secretaría.</p>
+        <p className="text-[11px] text-slate-500">La firma original no se puede modificar desde Secretaría.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <label className="block text-sm font-semibold text-slate-800">{label}</label>
+      <div className="flex items-center justify-between gap-2">
+        <label className="block text-xs font-semibold tracking-tight text-slate-800">{label}</label>
         <button
           type="button"
           onClick={clearSignature}
-          className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-red-600 bg-slate-100 px-2.5 py-1 rounded-lg"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-rose-700 bg-slate-100 hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 px-2.5 py-1 rounded-lg transition-all duration-150 active:scale-[0.98]"
         >
-          <Eraser size={13} /> Borrar
+          <Eraser size={12} /> Borrar
         </button>
       </div>
-      <div className="border-2 border-dashed border-indigo-300 rounded-xl bg-white overflow-hidden touch-none">
+      <div className="border border-dashed border-[#01317b]/35 rounded-xl bg-white shadow-inner overflow-hidden touch-none">
         <canvas
           ref={canvasRef}
           width={500}
