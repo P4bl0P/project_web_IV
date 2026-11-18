@@ -130,6 +130,17 @@ a { color: inherit; }
 .state-card { margin-top: 55px; max-width: 580px; padding: 50px 28px; border: 1px solid var(--line); border-radius: 24px; background: #fff; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
 .enrollment-page > .bg-indigo-900 { border-radius: 24px; background: var(--navy); box-shadow: var(--shadow); }
 .enrollment-page > .bg-white { border-radius: 22px; border-color: var(--line); }
+.enrollment-step-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.enrollment-step-button { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: #69778d; font-size: 12px; font-weight: 750; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease; }
+.enrollment-step-button:hover { border-color: #bdc9dc; background: #f8fafc; transform: translateY(-1px); }
+.enrollment-step-button:active { transform: translateY(0) scale(.985); }
+.enrollment-step-button.is-current { border-color: var(--blue); background: #eef4fc; color: var(--navy); box-shadow: 0 7px 18px rgba(1,49,123,.08); }
+.enrollment-step-button.is-complete { border-color: #b9dfcb; background: #f3faf6; color: #28704a; }
+.enrollment-step-button.is-pending { background: #f8fafc; }
+.enrollment-step-button:focus-visible { outline: 3px solid rgba(1,49,123,.18); outline-offset: 2px; }
+.enrollment-step-number { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 auto; border-radius: 50%; background: #edf1f6; color: #718096; font-size: 11px; }
+.enrollment-step-button.is-current .enrollment-step-number { background: var(--blue); color: #fff; }
+.enrollment-step-button.is-complete .enrollment-step-number { background: #dff2e7; color: #28704a; }
 
 .reveal { animation: reveal .8s cubic-bezier(.2,.8,.2,1) both; }
 .reveal-delay { animation-delay: .12s; }
@@ -169,6 +180,8 @@ a { color: inherit; }
   .module-grid { grid-template-columns: 1fr; }
   .management-page, .form-page, .enrollment-page { padding-top: 35px; padding-bottom: 52px; }
   .form-hero { align-items: flex-start; flex-direction: column; padding: 27px 23px; }
+  .enrollment-step-nav { grid-template-columns: repeat(2, 1fr); }
+  .enrollment-step-button { min-height: 48px; }
 }
 .secretaria-page { background: linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%); }
 .secretaria-page > div { border-radius: 18px; box-shadow: 0 8px 26px rgba(0,5,84,.045); }
