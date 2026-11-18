@@ -12,14 +12,22 @@ import {
   UserCheck,
   FileDown,
   Pencil,
+  AlertTriangle,
+  Calendar,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import { type ApplicantRecord, type ApplicationStatus } from '../../services/api';
 import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
+import {
+  evaluateRecordCompleteness,
+  type SecretariaTab,
+} from '../../utils/secretariaSearchFilter';
 
 interface Props {
   record: ApplicantRecord;
   index: number;
-  activeTab: 'WAITLIST' | 'OFFERED' | 'CENSUS' | 'ARCHIVED';
+  activeTab: SecretariaTab;
   safeModeWhatsApp: boolean;
   copiedId: string | null;
   onToggleInclusion: (record: ApplicantRecord) => void;
@@ -31,6 +39,12 @@ interface Props {
   onEditCensus?: (record: ApplicantRecord) => void;
   onEdit?: (record: ApplicantRecord) => void;
 }
+
+const GENDER_SHORT_LABELS: Record<string, string> = {
+  MASCULINO: 'Masculino',
+  FEMENINO: 'Femenino',
+  OTRO: 'Otro',
+};
 
 export default function ApplicantCard({
   record,
@@ -64,11 +78,22 @@ export default function ApplicantCard({
     year: 'numeric',
   });
 
+  const admittedDate =
+    activeTab === 'CENSUS' && record.admittedAt
+      ? new Date(record.admittedAt).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : null;
+
+  const completeness = evaluateRecordCompleteness(record, activeTab);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-[0_5px_18px_rgba(15,23,42,.035)] hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(15,23,42,.08)] transition-all duration-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
-          {activeTab === 'WAITLIST' && (
+          {(activeTab === 'INITIAL' || activeTab === 'WAITLIST') && (
             <span className="bg-slate-900 text-white text-xs font-bold px-2 py-0.5 rounded-md">
               #{index + 1}
             </span>
@@ -79,6 +104,11 @@ export default function ApplicantCard({
           <span className={`border text-xs font-bold px-2.5 py-1 rounded-full ${sectionStyles[sectionName]}`}>
             {sectionName}
           </span>
+          {record.gender && (
+            <span className="bg-slate-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+              {GENDER_SHORT_LABELS[record.gender] || record.gender}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -102,18 +132,55 @@ export default function ApplicantCard({
               <FileCheck2 size={12} /> Rellenada
             </span>
           )}
+          {completeness.isIncomplete && (
+            <span
+              title={`Faltan: ${completeness.missingFields.join(', ')}`}
+              className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold px-2 py-0.5 rounded-full"
+            >
+              <AlertTriangle size={12} /> Datos incompletos
+            </span>
+          )}
         </div>
 
         <div className="text-xs text-slate-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span><strong className="font-semibold text-slate-700">Nacimiento:</strong> {birthDate} ({record.currentAge} años)</span>
-          <span><strong className="font-semibold text-slate-700">Tutor:</strong> {record.parent1FirstName} {record.parent1LastName}</span>
-          {record.parent1Phone && <span>{record.parent1Phone}</span>}
+          <span>
+            <strong className="font-semibold text-slate-700">Nacimiento:</strong> {birthDate} (
+            {record.currentAge} años)
+          </span>
+          <span>
+            <strong className="font-semibold text-slate-700">Tutor 1:</strong>{' '}
+            {record.parent1FirstName} {record.parent1LastName}
+          </span>
+          {record.parent2FirstName && (
+            <span>
+              <strong className="font-semibold text-slate-700">Tutor 2:</strong>{' '}
+              {record.parent2FirstName} {record.parent2LastName || ''}
+            </span>
+          )}
+          {record.parent1Phone && (
+            <span className="inline-flex items-center gap-1">
+              <Phone size={11} className="text-slate-400" />
+              {record.parent1Phone}
+            </span>
+          )}
+          {record.parent1Email && (
+            <span className="inline-flex items-center gap-1">
+              <Mail size={11} className="text-slate-400" />
+              {record.parent1Email}
+            </span>
+          )}
+          {admittedDate && (
+            <span className="inline-flex items-center gap-1 text-indigo-700 font-medium">
+              <Calendar size={11} />
+              Alta censo: {admittedDate}
+            </span>
+          )}
           <span>{record.municipality}</span>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 shrink-0">
-        {activeTab === 'WAITLIST' && (
+        {(activeTab === 'INITIAL' || activeTab === 'WAITLIST') && (
           <>
             <button
               onClick={() => onToggleInclusion(record)}
@@ -205,6 +272,7 @@ export default function ApplicantCard({
         <button
           onClick={() => onDelete(record.id, `${record.childFirstName} ${record.childLastName}`)}
           className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg transition"
+          aria-label={`Eliminar a ${record.childFirstName} ${record.childLastName}`}
         >
           <Trash2 size={15} />
         </button>
