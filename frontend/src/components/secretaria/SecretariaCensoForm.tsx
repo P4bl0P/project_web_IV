@@ -11,7 +11,6 @@ import {
   type ApplicantRecord,
   type DirectCensusPayload,
 } from '../../services/api';
-import { validateEnrollmentStep, validateSolicitudForm } from '../../utils/scoutValidators';
 import Step1Legal from '../inscripcion/Step1Legal';
 import Step2Medical from '../inscripcion/Step2Medical';
 import Step3Bank from '../inscripcion/Step3Bank';
@@ -21,9 +20,12 @@ import CensusErrorSummary from './censo/CensusErrorSummary';
 import CensusIdentitySection from './censo/CensusIdentitySection';
 import {
   buildCensusPayload,
+  findFirstInvalidCensusStep,
   formFromRecord,
+  validateAllCensusSteps,
   type CensusChangeHandler,
   type CensusFieldErrors,
+  type CensusStepNumber,
 } from './censo/censusForm';
 import { SecButton } from './secretariaTheme';
 import { secTokens } from './secretariaTokens';
@@ -34,7 +36,11 @@ interface Props {
   onSaved: (record: ApplicantRecord) => void;
 }
 
-const STEPS = [
+const STEPS: {
+  number: CensusStepNumber;
+  title: string;
+  description: string;
+}[] = [
   { number: 1, title: 'Datos personales', description: 'Identidad, contacto y domicilio' },
   { number: 2, title: 'Ficha médica', description: 'Salud y autorizaciones médicas' },
   { number: 3, title: 'Domiciliación', description: 'Cuenta bancaria y SEPA' },
@@ -44,15 +50,32 @@ const STEPS = [
 export default function SecretariaCensoForm({ record, onClose, onSaved }: Props) {
   const isEditing = Boolean(record);
   const [formData, setFormData] = useState<DirectCensusPayload>(() => formFromRecord(record));
-  const [step, setStep] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<CensusFieldErrors>({});
+  const [step, setStep] = useState<CensusStepNumber>(1);
+  const [visitedSteps, setVisitedSteps] = useState<Partial<Record<CensusStepNumber, boolean>>>(() =>
+    isEditing ? { 1: true, 2: true, 3: true, 4: true } : { 1: true },
+  );
+  const [validatedSteps, setValidatedSteps] = useState<Partial<Record<CensusStepNumber, boolean>>>(
+    {},
+  );
+  const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const showSecondParent = useMemo(
     () => Boolean(formData.parent2FirstName || formData.parent2Phone || formData.parent2Email),
     [formData.parent2Email, formData.parent2FirstName, formData.parent2Phone],
   );
+
+  const stepValidations = useMemo(
+    () => validateAllCensusSteps(formData, showSecondParent),
+    [formData, showSecondParent],
+  );
+
+  const currentStepValidation = stepValidations[step];
+  const isCurrentStepValidated = Boolean(validatedSteps[step]);
+  const fieldErrors: CensusFieldErrors = isCurrentStepValidated
+    ? currentStepValidation.fieldErrors
+    : {};
+  const error = serverError ?? (isCurrentStepValidated ? currentStepValidation.message : null);
 
   // Cerrar con tecla Escape
   useEffect(() => {
@@ -69,82 +92,49 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     const { name, value, type } = event.target;
     const nextValue = type === 'checkbox' ? (event.target as HTMLInputElement).checked : value;
     setFormData((previous) => ({ ...previous, [name]: nextValue }));
-    setError(null);
-    setFieldErrors((previous) => {
-      if (!previous[name]) return previous;
-      const next = { ...previous };
-      delete next[name];
-      return next;
-    });
+    setServerError(null);
   };
 
-  const setEnrollmentError = (currentStep: number) => {
-    const field =
-      currentStep === 1
-        ? formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.parent2Dni
-          ? 'parent2Dni'
-          : 'parent1Dni'
-        : currentStep === 2
-          ? 'authorizesEmergency'
-          : currentStep === 3
-            ? !formData.accountHolderName.trim()
-              ? 'accountHolderName'
-              : !formData.accountHolderDni.trim()
-                ? 'accountHolderDni'
-                : formData.iban.replace(/\s+/g, '').length !== 24
-                  ? 'iban'
-                  : 'authorizesSepa'
-            : formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2
-              ? 'signatureParent2'
-              : 'signatureParent1';
-    setFieldErrors((previous) => ({ ...previous, [field]: 'Revisa este campo.' }));
+  const handleSelectStep = (targetStep: CensusStepNumber) => {
+    if (targetStep === step) return;
+    setServerError(null);
+    setVisitedSteps((previous) => ({ ...previous, [step]: true, [targetStep]: true }));
+    setValidatedSteps((previous) => ({ ...previous, [step]: true }));
+    setStep(targetStep);
   };
 
-  const validateCurrentStep = () => {
-    if (step === 1) {
-      const solicitudErrors = validateSolicitudForm(formData, showSecondParent);
-      setFieldErrors(solicitudErrors as CensusFieldErrors);
-      if (Object.keys(solicitudErrors).length > 0) return 'Revisa los datos personales y de contacto.';
+  const handlePrevious = () => {
+    if (step > 1) {
+      handleSelectStep((step - 1) as CensusStepNumber);
     }
-
-    const enrollmentError = validateEnrollmentStep(step, formData);
-    if (enrollmentError) {
-      setEnrollmentError(step);
-      return enrollmentError;
-    }
-    return null;
   };
 
   const handleNext = () => {
-    const validationError = validateCurrentStep();
-    if (validationError) {
-      setError(validationError);
+    setServerError(null);
+    setVisitedSteps((previous) => ({ ...previous, [step]: true }));
+    setValidatedSteps((previous) => ({ ...previous, [step]: true }));
+    if (!currentStepValidation.isValid) {
       return;
     }
-    setStep((current) => current + 1);
+    if (step < 4) {
+      const nextStep = (step + 1) as CensusStepNumber;
+      setVisitedSteps((previous) => ({ ...previous, [nextStep]: true }));
+      setStep(nextStep);
+    }
   };
 
   const handleSubmit = async () => {
-    for (const currentStep of [1, 2, 3, 4]) {
-      const enrollmentError = validateEnrollmentStep(currentStep, formData);
-      if (enrollmentError) {
-        setStep(currentStep);
-        setError(enrollmentError);
-        setEnrollmentError(currentStep);
-        return;
-      }
-    }
+    setServerError(null);
+    setVisitedSteps({ 1: true, 2: true, 3: true, 4: true });
+    setValidatedSteps({ 1: true, 2: true, 3: true, 4: true });
 
-    const solicitudErrors = validateSolicitudForm(formData, showSecondParent);
-    if (Object.keys(solicitudErrors).length > 0) {
-      setStep(1);
-      setError('Revisa los datos personales y de contacto.');
-      setFieldErrors(solicitudErrors as CensusFieldErrors);
+    const firstInvalidStep = findFirstInvalidCensusStep(stepValidations);
+    if (firstInvalidStep) {
+      setStep(firstInvalidStep.step);
       return;
     }
 
     setSaving(true);
-    setError(null);
     try {
       const completePayload = buildCensusPayload(formData);
       let saved: ApplicantRecord;
@@ -158,7 +148,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
       }
       onSaved(saved);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo guardar el censo.');
+      setServerError(reason instanceof Error ? reason.message : 'No se pudo guardar el censo.');
     } finally {
       setSaving(false);
     }
@@ -207,19 +197,28 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
         >
           {STEPS.map((item) => {
             const isCurrent = item.number === step;
-            const isCompleted = item.number < step;
+            const stepValidation = stepValidations[item.number];
+            const isStepValidated = Boolean(validatedSteps[item.number]);
+            const hasStepError = !isCurrent && isStepValidated && !stepValidation.isValid;
+            const isCompleted =
+              !isCurrent &&
+              !hasStepError &&
+              stepValidation.isValid &&
+              (isEditing || Boolean(visitedSteps[item.number]));
+
             return (
               <button
                 key={item.number}
                 type="button"
-                onClick={() => isCompleted && setStep(item.number)}
-                disabled={!isCompleted && !isCurrent}
-                className={`group flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-150 ${
+                onClick={() => handleSelectStep(item.number)}
+                className={`group flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-150 cursor-pointer ${
                   isCurrent
                     ? 'border-[#01317b]/30 bg-[#01317b]/[0.06] text-[#000254] shadow-[0_2px_10px_rgba(1,49,123,0.06)]'
-                    : isCompleted
-                      ? 'border-emerald-200/90 bg-emerald-50/50 text-emerald-900 hover:bg-emerald-50 cursor-pointer'
-                      : 'border-slate-200/60 bg-slate-50/60 text-slate-400 cursor-default'
+                    : hasStepError
+                      ? 'border-rose-200/90 bg-rose-50/60 text-rose-900 hover:bg-rose-50'
+                      : isCompleted
+                        ? 'border-emerald-200/90 bg-emerald-50/50 text-emerald-900 hover:bg-emerald-50'
+                        : 'border-slate-200/80 bg-slate-50/60 text-slate-600 hover:border-slate-300 hover:bg-slate-100/70 hover:text-[#000254]'
                 }`}
                 aria-current={isCurrent ? 'step' : undefined}
               >
@@ -227,9 +226,11 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
                   className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
                     isCurrent
                       ? 'bg-[#01317b] text-white'
-                      : isCompleted
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-200/80 text-slate-500'
+                      : hasStepError
+                        ? 'bg-rose-600 text-white'
+                        : isCompleted
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-200/80 text-slate-600 group-hover:bg-[#01317b]/10 group-hover:text-[#01317b]'
                   }`}
                 >
                   {isCompleted ? <CheckCircle2 size={13} /> : item.number}
@@ -283,12 +284,14 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
               applicant={applicantForSteps}
               formData={formData}
               onChange={handleChange}
-              onSign1={(signatureParent1) =>
-                setFormData((previous) => ({ ...previous, signatureParent1 }))
-              }
-              onSign2={(signatureParent2) =>
-                setFormData((previous) => ({ ...previous, signatureParent2 }))
-              }
+              onSign1={(signatureParent1) => {
+                setFormData((previous) => ({ ...previous, signatureParent1 }));
+                setServerError(null);
+              }}
+              onSign2={(signatureParent2) => {
+                setFormData((previous) => ({ ...previous, signatureParent2 }));
+                setServerError(null);
+              }}
               readOnly={isEditing}
             />
           )}
@@ -299,7 +302,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
               <SecButton
                 variant="secondary"
                 size="lg"
-                onClick={() => setStep((current) => current - 1)}
+                onClick={handlePrevious}
               >
                 <ChevronLeft size={15} /> Anterior
               </SecButton>

@@ -1,11 +1,26 @@
 import type { ChangeEvent } from 'react';
 import type { ApplicantRecord, DirectCensusPayload } from '../../../services/api';
+import {
+  REGEX,
+  validateEnrollmentStep,
+  validateSolicitudForm,
+} from '../../../utils/scoutValidators';
 
 export type CensusChangeHandler = (
   event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
 ) => void;
 
 export type CensusFieldErrors = Record<string, string>;
+
+export const CENSUS_STEP_NUMBERS = [1, 2, 3, 4] as const;
+export type CensusStepNumber = (typeof CENSUS_STEP_NUMBERS)[number];
+
+export interface CensusStepValidationResult {
+  step: CensusStepNumber;
+  message: string | null;
+  fieldErrors: CensusFieldErrors;
+  isValid: boolean;
+}
 
 export const EMPTY_CENSUS_FORM: DirectCensusPayload = {
   childFirstName: '',
@@ -79,12 +94,144 @@ export const CENSUS_FIELD_LABELS: Record<string, string> = {
   parent1Dni: 'DNI del tutor 1',
   parent2Dni: 'DNI del tutor 2',
   childDni: 'DNI del educando',
+  authorizesEmergency: 'autorización médica de urgencia',
   accountHolderName: 'titular de la cuenta',
   accountHolderDni: 'DNI del titular',
   iban: 'IBAN',
+  authorizesSepa: 'autorización de domiciliación SEPA',
+  acceptsDataStorage: 'consentimiento de protección de datos',
+  acceptsDataTransfer: 'cesión federativa a MSC',
   signatureParent1: 'firma del tutor 1',
   signatureParent2: 'firma del tutor 2',
 };
+
+export function validateCensusStep(
+  step: CensusStepNumber,
+  formData: DirectCensusPayload,
+  showSecondParent?: boolean,
+): CensusStepValidationResult {
+  const hasSecondParent =
+    showSecondParent ??
+    Boolean(formData.parent2FirstName || formData.parent2Phone || formData.parent2Email);
+
+  if (step === 1) {
+    const solicitudErrors = validateSolicitudForm(formData, hasSecondParent) as CensusFieldErrors;
+    const fieldErrors: CensusFieldErrors = { ...solicitudErrors };
+
+    if (!formData.streetAddress?.trim() && !fieldErrors.streetAddress) {
+      fieldErrors.streetAddress = 'Introduce la calle o avenida.';
+    }
+    if (!formData.postalCode?.trim() && !fieldErrors.postalCode) {
+      fieldErrors.postalCode = 'CP inválido (5 dígitos).';
+    }
+    if (!REGEX.DNI.test(formData.parent1Dni.trim())) {
+      fieldErrors.parent1Dni = 'Introduce un DNI/NIE válido para el Tutor 1 (ej. 12345678A).';
+    }
+    if (
+      formData.custodyType === 'CUSTODIA_CONJUNTA' &&
+      !REGEX.DNI.test((formData.parent2Dni || '').trim())
+    ) {
+      fieldErrors.parent2Dni = 'Con custodia conjunta, el DNI del segundo tutor es obligatorio.';
+    }
+    if (formData.childDni?.trim() && !REGEX.DNI.test(formData.childDni.trim())) {
+      fieldErrors.childDni = 'El formato del DNI del menor no es válido.';
+    }
+
+    const enrollmentError = validateEnrollmentStep(1, formData);
+    const message =
+      Object.keys(solicitudErrors).length > 0
+        ? 'Revisa los datos personales y de contacto.'
+        : enrollmentError;
+
+    return {
+      step: 1,
+      message,
+      fieldErrors,
+      isValid: message === null && Object.keys(fieldErrors).length === 0,
+    };
+  }
+
+  if (step === 2) {
+    const fieldErrors: CensusFieldErrors = {};
+    const enrollmentError = validateEnrollmentStep(2, formData);
+    if (!formData.authorizesEmergency) {
+      fieldErrors.authorizesEmergency = 'Debes marcar la autorización médica de urgencia.';
+    }
+    return {
+      step: 2,
+      message: enrollmentError,
+      fieldErrors,
+      isValid: enrollmentError === null && Object.keys(fieldErrors).length === 0,
+    };
+  }
+
+  if (step === 3) {
+    const fieldErrors: CensusFieldErrors = {};
+    const enrollmentError = validateEnrollmentStep(3, formData);
+    if (!formData.accountHolderName.trim()) {
+      fieldErrors.accountHolderName = 'Indica el titular de la cuenta.';
+    }
+    if (!REGEX.DNI.test(formData.accountHolderDni.trim())) {
+      fieldErrors.accountHolderDni = 'DNI del titular inválido.';
+    }
+    if (!REGEX.IBAN.test(formData.iban.replace(/\s+/g, ''))) {
+      fieldErrors.iban = 'El IBAN debe tener 24 caracteres empezando por ES.';
+    }
+    if (!formData.authorizesSepa) {
+      fieldErrors.authorizesSepa = 'Debes aceptar la orden de domiciliación SEPA.';
+    }
+    return {
+      step: 3,
+      message: enrollmentError,
+      fieldErrors,
+      isValid: enrollmentError === null && Object.keys(fieldErrors).length === 0,
+    };
+  }
+
+  const fieldErrors: CensusFieldErrors = {};
+  const enrollmentError = validateEnrollmentStep(4, formData);
+  if (!formData.acceptsDataStorage) {
+    fieldErrors.acceptsDataStorage = 'Debes aceptar el tratamiento de datos personales.';
+  }
+  if (!formData.acceptsDataTransfer) {
+    fieldErrors.acceptsDataTransfer = 'Debes aceptar la cesión federativa a MSC.';
+  }
+  if (!formData.signatureParent1) {
+    fieldErrors.signatureParent1 = 'Falta la firma del Tutor 1.';
+  }
+  if (formData.custodyType === 'CUSTODIA_CONJUNTA' && !formData.signatureParent2) {
+    fieldErrors.signatureParent2 = 'Falta la segunda firma obligatoria por Custodia Conjunta.';
+  }
+  return {
+    step: 4,
+    message: enrollmentError,
+    fieldErrors,
+    isValid: enrollmentError === null && Object.keys(fieldErrors).length === 0,
+  };
+}
+
+export function validateAllCensusSteps(
+  formData: DirectCensusPayload,
+  showSecondParent?: boolean,
+): Record<CensusStepNumber, CensusStepValidationResult> {
+  return {
+    1: validateCensusStep(1, formData, showSecondParent),
+    2: validateCensusStep(2, formData, showSecondParent),
+    3: validateCensusStep(3, formData, showSecondParent),
+    4: validateCensusStep(4, formData, showSecondParent),
+  };
+}
+
+export function findFirstInvalidCensusStep(
+  validations: Record<CensusStepNumber, CensusStepValidationResult>,
+): CensusStepValidationResult | null {
+  for (const stepNumber of CENSUS_STEP_NUMBERS) {
+    if (!validations[stepNumber].isValid) {
+      return validations[stepNumber];
+    }
+  }
+  return null;
+}
 
 export function formFromRecord(record?: ApplicantRecord | null): DirectCensusPayload {
   if (!record) return { ...EMPTY_CENSUS_FORM };
