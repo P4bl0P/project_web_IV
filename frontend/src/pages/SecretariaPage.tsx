@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Upload, RefreshCw, Lock, Unlock, UserPlus } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Lock, Unlock, UserPlus } from 'lucide-react';
 import { applicationsApi, type ApplicantRecord, type ApplicationStatus } from '../services/api';
 import ApplicantCard from '../components/secretaria/ApplicantCard';
-import ExcelImportModal from '../components/secretaria/ExcelImportModal';
 import SecretariaCensoForm from '../components/secretaria/SecretariaCensoForm';
 
 type TabType = 'WAITLIST' | 'OFFERED' | 'CENSUS' | 'ARCHIVED';
@@ -16,7 +15,6 @@ export default function SecretariaPage() {
   const [selectedBranch, setSelectedBranch] = useState('Todas');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [safeModeWhatsApp, setSafeModeWhatsApp] = useState(true);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [censusFormRecord, setCensusFormRecord] = useState<ApplicantRecord | null | undefined>(undefined);
 
   const loadData = async () => {
@@ -129,11 +127,6 @@ export default function SecretariaPage() {
             {safeModeWhatsApp ? 'WhatsApp Bloqueado' : 'WhatsApp Activo'}
           </button>
           <button
-            onClick={() => setShowImportModal(true)}
-            className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-800 text-xs font-bold px-3 py-2 rounded-lg"
-          >
-            <Upload size={13} /> Importar Excel
-          </button>
           {activeTab === 'CENSUS' && (
             <button
               onClick={() => setCensusFormRecord(null)}
@@ -151,9 +144,6 @@ export default function SecretariaPage() {
         </div>
       </div>
 
-      {showImportModal && (
-        <ExcelImportModal onClose={() => setShowImportModal(false)} onSuccess={loadData} />
-      )}
       {censusFormRecord !== undefined && (
         <SecretariaCensoForm
           record={censusFormRecord}
