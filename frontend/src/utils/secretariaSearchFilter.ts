@@ -5,6 +5,7 @@ import type {
   SortField,
   SortOrder,
 } from '../services/api';
+import { formatIsoToDisplay } from './dateUtils';
 import { validateEnrollmentStep, validateSolicitudForm } from './scoutValidators';
 
 export type SecretariaTab =
@@ -545,14 +546,12 @@ export function filterAndSortSecretariaRecords(
         if (!Number.isNaN(max) && record.currentAge > max) return false;
       }
       if (filters.birthDateFrom) {
-        const fromTime = new Date(`${filters.birthDateFrom}T00:00:00`).getTime();
-        const recordTime = new Date(record.childBirthDate).getTime();
-        if (!Number.isNaN(fromTime) && recordTime < fromTime) return false;
+        const recordBirthIso = record.childBirthDate.slice(0, 10);
+        if (recordBirthIso < filters.birthDateFrom.slice(0, 10)) return false;
       }
       if (filters.birthDateTo) {
-        const toTime = new Date(`${filters.birthDateTo}T23:59:59.999`).getTime();
-        const recordTime = new Date(record.childBirthDate).getTime();
-        if (!Number.isNaN(toTime) && recordTime > toTime) return false;
+        const recordBirthIso = record.childBirthDate.slice(0, 10);
+        if (recordBirthIso > filters.birthDateTo.slice(0, 10)) return false;
       }
     }
 
@@ -610,15 +609,15 @@ export function filterAndSortSecretariaRecords(
     if (capabilities.admittedAt) {
       if (filters.admittedFrom) {
         if (!record.admittedAt) return false;
-        const fromTime = new Date(`${filters.admittedFrom}T00:00:00`).getTime();
-        if (!Number.isNaN(fromTime) && new Date(record.admittedAt).getTime() < fromTime) {
+        const recordAdmittedIso = record.admittedAt.slice(0, 10);
+        if (recordAdmittedIso < filters.admittedFrom.slice(0, 10)) {
           return false;
         }
       }
       if (filters.admittedTo) {
         if (!record.admittedAt) return false;
-        const toTime = new Date(`${filters.admittedTo}T23:59:59.999`).getTime();
-        if (!Number.isNaN(toTime) && new Date(record.admittedAt).getTime() > toTime) {
+        const recordAdmittedIso = record.admittedAt.slice(0, 10);
+        if (recordAdmittedIso > filters.admittedTo.slice(0, 10)) {
           return false;
         }
       }
@@ -780,14 +779,14 @@ export function getActiveFilterChips(
       chips.push({
         key: 'birthDateFrom',
         label: 'Nacido desde',
-        valueLabel: filters.birthDateFrom,
+        valueLabel: formatIsoToDisplay(filters.birthDateFrom) || filters.birthDateFrom,
       });
     }
     if (filters.birthDateTo) {
       chips.push({
         key: 'birthDateTo',
         label: 'Nacido hasta',
-        valueLabel: filters.birthDateTo,
+        valueLabel: formatIsoToDisplay(filters.birthDateTo) || filters.birthDateTo,
       });
     }
   }
@@ -821,14 +820,14 @@ export function getActiveFilterChips(
       chips.push({
         key: 'admittedFrom',
         label: 'Alta censo desde',
-        valueLabel: filters.admittedFrom,
+        valueLabel: formatIsoToDisplay(filters.admittedFrom) || filters.admittedFrom,
       });
     }
     if (filters.admittedTo) {
       chips.push({
         key: 'admittedTo',
         label: 'Alta censo hasta',
-        valueLabel: filters.admittedTo,
+        valueLabel: formatIsoToDisplay(filters.admittedTo) || filters.admittedTo,
       });
     }
   }

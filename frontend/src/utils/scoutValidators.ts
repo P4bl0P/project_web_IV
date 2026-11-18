@@ -1,4 +1,5 @@
 import type { CreateApplicationPayload, CompleteEnrollmentPayload } from '../services/api';
+import { getTodayIsoDate, parseIsoDate } from './dateUtils';
 
 export const REGEX = {
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -12,14 +13,15 @@ export type SolicitudFieldErrors = Partial<Record<keyof CreateApplicationPayload
 
 export function calculatePreviewBranch(birthDateStr: string): { branch: string; age: number } | null {
   if (!birthDateStr) return null;
-  const birthDate = new Date(birthDateStr);
-  if (isNaN(birthDate.getTime())) return null;
+  const parsed = parseIsoDate(birthDateStr);
+  const birthYear = parsed ? parsed.year : new Date(birthDateStr).getFullYear();
+  if (Number.isNaN(birthYear)) return null;
 
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const solarRoundStartYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-  const age = solarRoundStartYear - birthDate.getFullYear();
+  const age = solarRoundStartYear - birthYear;
 
   if (age < 6) return { branch: 'Pre-Castor (< 6 años)', age };
   if (age >= 6 && age <= 7) return { branch: 'Castores (Colonia)', age };
@@ -41,10 +43,16 @@ export function validateSolicitudForm(
   if (!formData.childBirthDate) {
     errors.childBirthDate = 'Selecciona la fecha de nacimiento.';
   } else {
-    const birth = new Date(formData.childBirthDate);
-    const now = new Date();
-    if (birth > now) errors.childBirthDate = 'No puede ser una fecha futura.';
-    else if (now.getFullYear() - birth.getFullYear() > 22) errors.childBirthDate = 'Supera la edad máxima.';
+    const parsed = parseIsoDate(formData.childBirthDate);
+    if (!parsed) {
+      errors.childBirthDate = 'Selecciona una fecha de nacimiento válida.';
+    } else {
+      const birthIso = formData.childBirthDate.slice(0, 10);
+      const todayIso = getTodayIsoDate();
+      const currentYear = new Date().getFullYear();
+      if (birthIso > todayIso) errors.childBirthDate = 'No puede ser una fecha futura.';
+      else if (currentYear - parsed.year > 22) errors.childBirthDate = 'Supera la edad máxima.';
+    }
   }
 
   if (formData.streetAddress.trim().length < 3) errors.streetAddress = 'Introduce la calle o avenida.';

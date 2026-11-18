@@ -20,6 +20,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { type ApplicantRecord, type ApplicationStatus } from '../../services/api';
+import { formatIsoToHumanShort } from '../../utils/dateUtils';
 import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
 import {
   evaluateRecordCompleteness,
@@ -73,15 +74,18 @@ export default function ApplicantCard({
 }: Props) {
   const branchConfig = getBranchVisualConfig(record.calculatedBranch);
 
-  const birthDate = new Date(record.childBirthDate).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  const birthDate =
+    formatIsoToHumanShort(record.childBirthDate) ||
+    new Date(record.childBirthDate).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
 
   const admittedDate =
     activeTab === 'CENSUS' && record.admittedAt
-      ? new Date(record.admittedAt).toLocaleDateString('es-ES', {
+      ? formatIsoToHumanShort(record.admittedAt) ||
+        new Date(record.admittedAt).toLocaleDateString('es-ES', {
           day: '2-digit',
           month: 'short',
           year: 'numeric',

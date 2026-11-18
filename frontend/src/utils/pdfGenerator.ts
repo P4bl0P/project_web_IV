@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { type ApplicantRecord } from '../services/api';
+import { formatIsoToDisplay } from './dateUtils';
 
 const TEMPLATE_URL = '/templates/HOJA_DE_INSCRIPCION_SCOUT.pdf';
 const TEXT_COLOR = rgb(0.08, 0.11, 0.18);
@@ -9,7 +10,12 @@ function value(value: unknown, fallback = ''): string {
 }
 
 function formatDate(date: string | Date | undefined): string {
-  return date ? new Date(date).toLocaleDateString('es-ES') : '';
+  if (!date) return '';
+  if (typeof date === 'string') {
+    const formatted = formatIsoToDisplay(date);
+    if (formatted) return formatted;
+  }
+  return new Date(date).toLocaleDateString('es-ES');
 }
 
 function cleanFileName(valueToClean: string): string {

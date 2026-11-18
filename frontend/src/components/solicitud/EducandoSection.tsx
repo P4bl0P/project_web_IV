@@ -1,7 +1,9 @@
 import type { ChangeEvent } from 'react';
 import { Compass, Sparkles } from 'lucide-react';
 import type { CreateApplicationPayload } from '../../services/api';
+import { getTodayIsoDate } from '../../utils/dateUtils';
 import { calculatePreviewBranch, type SolicitudFieldErrors } from '../../utils/scoutValidators';
+import DatePicker from '../ui/forms/DatePicker';
 import FormField from '../ui/forms/FormField';
 import FormSection from '../ui/forms/FormSection';
 import { formInputClass } from '../ui/forms/formStyles';
@@ -45,12 +47,16 @@ export default function EducandoSection({ formData, fieldErrors, onChange }: Pro
         </FormField>
 
         <FormField label="Fecha de nacimiento" required error={fieldErrors.childBirthDate}>
-          <input
-            type="date"
+          <DatePicker
             name="childBirthDate"
             value={formData.childBirthDate}
             onChange={onChange}
-            className={formInputClass(Boolean(fieldErrors.childBirthDate))}
+            required
+            hasError={Boolean(fieldErrors.childBirthDate)}
+            max={getTodayIsoDate()}
+            min={`${new Date().getFullYear() - 25}-01-01`}
+            defaultViewYear={new Date().getFullYear() - 10}
+            aria-label="Fecha de nacimiento"
           />
         </FormField>
 

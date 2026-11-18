@@ -1,4 +1,6 @@
 import type { DirectCensusPayload } from '../../../services/api';
+import { getTodayIsoDate } from '../../../utils/dateUtils';
+import DatePicker from '../../ui/forms/DatePicker';
 import FormField from '../../ui/forms/FormField';
 import FormSection from '../../ui/forms/FormSection';
 import { formInputClass } from '../../ui/forms/formStyles';
@@ -24,7 +26,18 @@ export default function CensusIdentitySection({ formData, fieldErrors, onChange 
           <input name="childLastName" autoComplete="family-name" value={formData.childLastName} onChange={onChange} aria-invalid={Boolean(fieldErrors.childLastName)} className={formInputClass(Boolean(fieldErrors.childLastName))} />
         </FormField>
         <FormField label="Fecha de nacimiento" required error={fieldErrors.childBirthDate}>
-          <input type="date" name="childBirthDate" value={formData.childBirthDate} onChange={onChange} aria-invalid={Boolean(fieldErrors.childBirthDate)} className={formInputClass(Boolean(fieldErrors.childBirthDate))} />
+          <DatePicker
+            name="childBirthDate"
+            value={formData.childBirthDate}
+            onChange={onChange}
+            required
+            hasError={Boolean(fieldErrors.childBirthDate)}
+            aria-invalid={Boolean(fieldErrors.childBirthDate)}
+            max={getTodayIsoDate()}
+            min={`${new Date().getFullYear() - 25}-01-01`}
+            defaultViewYear={new Date().getFullYear() - 10}
+            aria-label="Fecha de nacimiento"
+          />
         </FormField>
         <FormField label="Género">
           <select name="gender" value={formData.gender} onChange={onChange} className={formInputClass(false, 'bg-white cursor-pointer')}>

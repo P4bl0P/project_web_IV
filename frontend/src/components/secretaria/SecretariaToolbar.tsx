@@ -14,6 +14,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import type { Gender, SortField, SortOrder } from '../../services/api';
+import { getTodayIsoDate } from '../../utils/dateUtils';
 import {
   SECRETARIA_SECTIONS,
   SECRETARIA_SORT_OPTIONS,
@@ -21,6 +22,7 @@ import {
   type SecretariaFiltersState,
   type SecretariaTab,
 } from '../../utils/secretariaSearchFilter';
+import DatePicker from '../ui/forms/DatePicker';
 import { formCheckboxClass } from '../ui/forms/formStyles';
 import {
   SecButton,
@@ -459,19 +461,24 @@ export default function SecretariaToolbar({
                   hasta)
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
+                  <DatePicker
                     aria-label="Fecha de nacimiento desde"
+                    placeholder="Desde (dd/mm/aaaa)"
+                    size="sm"
                     value={filters.birthDateFrom}
-                    onChange={(e) => onChangeFilter('birthDateFrom', e.target.value)}
-                    className={secFilterControlClass()}
+                    max={filters.birthDateTo || getTodayIsoDate()}
+                    defaultViewYear={new Date().getFullYear() - 10}
+                    onValueChange={(iso) => onChangeFilter('birthDateFrom', iso)}
                   />
-                  <input
-                    type="date"
+                  <DatePicker
                     aria-label="Fecha de nacimiento hasta"
+                    placeholder="Hasta (dd/mm/aaaa)"
+                    size="sm"
                     value={filters.birthDateTo}
-                    onChange={(e) => onChangeFilter('birthDateTo', e.target.value)}
-                    className={secFilterControlClass()}
+                    min={filters.birthDateFrom || undefined}
+                    max={getTodayIsoDate()}
+                    defaultViewYear={new Date().getFullYear() - 10}
+                    onValueChange={(iso) => onChangeFilter('birthDateTo', iso)}
                   />
                 </div>
               </div>
@@ -485,19 +492,22 @@ export default function SecretariaToolbar({
                   (desde / hasta)
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
+                  <DatePicker
                     aria-label="Fecha de alta en el censo desde"
+                    placeholder="Desde (dd/mm/aaaa)"
+                    size="sm"
                     value={filters.admittedFrom}
-                    onChange={(e) => onChangeFilter('admittedFrom', e.target.value)}
-                    className={secFilterControlClass()}
+                    max={filters.admittedTo || getTodayIsoDate()}
+                    onValueChange={(iso) => onChangeFilter('admittedFrom', iso)}
                   />
-                  <input
-                    type="date"
+                  <DatePicker
                     aria-label="Fecha de alta en el censo hasta"
+                    placeholder="Hasta (dd/mm/aaaa)"
+                    size="sm"
                     value={filters.admittedTo}
-                    onChange={(e) => onChangeFilter('admittedTo', e.target.value)}
-                    className={secFilterControlClass()}
+                    min={filters.admittedFrom || undefined}
+                    max={getTodayIsoDate()}
+                    onValueChange={(iso) => onChangeFilter('admittedTo', iso)}
                   />
                 </div>
               </div>
