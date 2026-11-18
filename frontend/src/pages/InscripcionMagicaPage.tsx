@@ -71,7 +71,7 @@ export default function InscripcionMagicaPage() {
       .getByMagicToken(token)
       .then((data) => {
         setApplicant(data);
-        if (data.status === 'INSCRIPCION_COMPLETADA' || data.status === 'CENSADO') setCompleted(true);
+        if (data.status === 'INSCRIPCION_COMPLETADA') setCompleted(true);
         setFormData((prev) => ({
           ...prev,
           streetAddress: data.streetAddress || '',
@@ -83,6 +83,37 @@ export default function InscripcionMagicaPage() {
           parent1Phone: data.parent1Phone || '',
           parent1Email: data.parent1Email || '',
           accountHolderName: `${data.parent1FirstName} ${data.parent1LastName}`,
+          ...(data.enrollment
+            ? {
+                childDni: data.enrollment.childDni || '',
+                childPhone: data.enrollment.childPhone || '',
+                childEmail: data.enrollment.childEmail || '',
+                legalStatus: data.enrollment.legalStatus,
+                circularPreference: data.enrollment.circularPreference,
+                parent1Dni: data.enrollment.parent1Dni || '',
+                parent2Dni: data.enrollment.parent2Dni || '',
+                parentsMaritalStatus: data.enrollment.parentsMaritalStatus || '',
+                custodyType: data.enrollment.custodyType,
+                acceptsDataStorage: data.enrollment.acceptsDataStorage,
+                acceptsDataTransfer: data.enrollment.acceptsDataTransfer,
+                authorizesImages: data.enrollment.authorizesImages,
+                bloodType: data.enrollment.bloodType || '',
+                chronicDiseases: data.enrollment.chronicDiseases || 'Ninguna',
+                allergies: data.enrollment.allergies || 'Ninguna',
+                medHeadache: data.enrollment.medHeadache || '',
+                medFever: data.enrollment.medFever || '',
+                medStomach: data.enrollment.medStomach || '',
+                medThroat: data.enrollment.medThroat || '',
+                medicalObservations: data.enrollment.medicalObservations || '',
+                authorizesEmergency: data.enrollment.authorizesEmergency,
+                accountHolderName: data.enrollment.accountHolderName,
+                accountHolderDni: data.enrollment.accountHolderDni,
+                iban: data.enrollment.iban,
+                authorizesSepa: data.enrollment.authorizesSepa,
+                signatureParent1: data.enrollment.signatureParent1 || '',
+                signatureParent2: data.enrollment.signatureParent2 || '',
+              }
+            : {}),
         }));
       })
       .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Enlace inválido'))
