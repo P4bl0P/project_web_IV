@@ -49,6 +49,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     container_name: scouts_frontend
     restart: unless-stopped
     ports:

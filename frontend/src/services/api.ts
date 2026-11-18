@@ -76,6 +76,8 @@ export interface UpdateApplicationPayload {
   kraalInternalNotes?: string;
 }
 
+export type DirectCensusPayload = CreateApplicationPayload & CompleteEnrollmentPayload;
+
 export const applicationsApi = {
   // Fase 1: Enviar solicitud pública
   async submitApplication(data: CreateApplicationPayload): Promise<ApplicantRecord> {
@@ -101,6 +103,38 @@ export const applicationsApi = {
     const response = await authFetch(`${API_URL}/applications`);
     if (!response.ok) {
       throw new Error('No se pudieron cargar las solicitudes del servidor.');
+    }
+    return response.json();
+  },
+
+  async createDirectCensus(data: DirectCensusPayload): Promise<ApplicantRecord> {
+    const response = await authFetch(`${API_URL}/applications/census`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const msg = Array.isArray(errorData.message)
+        ? errorData.message.join(' · ')
+        : errorData.message;
+      throw new Error(msg || 'Error al crear el alta directa.');
+    }
+    return response.json();
+  },
+
+  async updateCensus(id: string, data: Partial<DirectCensusPayload>): Promise<ApplicantRecord> {
+    const response = await authFetch(`${API_URL}/applications/${id}/census`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const msg = Array.isArray(errorData.message)
+        ? errorData.message.join(' · ')
+        : errorData.message;
+      throw new Error(msg || 'Error al actualizar la inscripción.');
     }
     return response.json();
   },

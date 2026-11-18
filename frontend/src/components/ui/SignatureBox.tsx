@@ -4,9 +4,11 @@ import { Eraser } from 'lucide-react';
 interface Props {
   label: string;
   onChange: (dataUrl: string) => void;
+  readOnly?: boolean;
+  value?: string;
 }
 
-export default function SignatureBox({ label, onChange }: Props) {
+export default function SignatureBox({ label, onChange, readOnly = false, value = '' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSigned, setHasSigned] = useState(false);
@@ -53,6 +55,22 @@ export default function SignatureBox({ label, onChange }: Props) {
     setHasSigned(false);
     onChange('');
   };
+
+  if (readOnly) {
+    return (
+      <div className="space-y-1.5">
+        <label className="block text-sm font-semibold text-slate-800">{label}</label>
+        <div className="flex min-h-36 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-3">
+          {value ? (
+            <img src={value} alt="Firma registrada" className="h-32 max-w-full object-contain" />
+          ) : (
+            <span className="text-xs italic text-slate-500">Sin firma registrada</span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500">La firma original no se puede modificar desde Secretaría.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">

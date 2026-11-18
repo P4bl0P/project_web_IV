@@ -2,6 +2,9 @@ import type { ChangeEvent } from 'react';
 import { Compass, Sparkles } from 'lucide-react';
 import type { CreateApplicationPayload } from '../../services/api';
 import { calculatePreviewBranch, type SolicitudFieldErrors } from '../../utils/scoutValidators';
+import FormField from '../ui/forms/FormField';
+import FormSection from '../ui/forms/FormSection';
+import { formInputClass } from '../ui/forms/formStyles';
 
 interface Props {
   formData: CreateApplicationPayload;
@@ -12,80 +15,57 @@ interface Props {
 export default function EducandoSection({ formData, fieldErrors, onChange }: Props) {
   const branchPreview = calculatePreviewBranch(formData.childBirthDate);
 
-  const inputClass = (field: keyof CreateApplicationPayload) =>
-    `w-full rounded-xl border px-3.5 py-2.5 text-sm transition focus:outline-none ${
-      fieldErrors[field]
-        ? 'border-red-500 bg-red-50/40 focus:border-red-600'
-        : 'border-slate-300 bg-white focus:border-indigo-600'
-    }`;
-
   return (
-    <section className="bg-white rounded-2xl shadow-2xs border border-slate-200 p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <Compass className="text-indigo-600" size={20} />
-        1. Datos del Niño, Niña o Joven
+    <FormSection>
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-800">
+        <Compass className="text-indigo-600" size={20} /> 1. Datos del Niño, Niña o Joven
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre *</label>
+        <FormField label="Nombre" required error={fieldErrors.childFirstName}>
           <input
             type="text"
             name="childFirstName"
             value={formData.childFirstName}
             onChange={onChange}
             placeholder="Ej. Lucas"
-            className={inputClass('childFirstName')}
+            className={formInputClass(Boolean(fieldErrors.childFirstName))}
           />
-          {fieldErrors.childFirstName && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.childFirstName}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Apellidos *</label>
+        <FormField label="Apellidos" required error={fieldErrors.childLastName}>
           <input
             type="text"
             name="childLastName"
             value={formData.childLastName}
             onChange={onChange}
             placeholder="Ej. García Pérez"
-            className={inputClass('childLastName')}
+            className={formInputClass(Boolean(fieldErrors.childLastName))}
           />
-          {fieldErrors.childLastName && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.childLastName}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha de nacimiento *</label>
+        <FormField label="Fecha de nacimiento" required error={fieldErrors.childBirthDate}>
           <input
             type="date"
             name="childBirthDate"
             value={formData.childBirthDate}
             onChange={onChange}
-            className={inputClass('childBirthDate')}
+            className={formInputClass(Boolean(fieldErrors.childBirthDate))}
           />
-          {fieldErrors.childBirthDate && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.childBirthDate}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Sexo * <span className="text-xs text-slate-400 font-normal">(Ratio de rama)</span>
-          </label>
+        <FormField label="Sexo" required hint="Ratio de rama">
           <select
             name="gender"
             value={formData.gender}
             onChange={onChange}
-            className={inputClass('gender')}
+            className={formInputClass(Boolean(fieldErrors.gender))}
           >
             <option value="MASCULINO">Masculino</option>
             <option value="FEMENINO">Femenino</option>
             <option value="OTRO">Otro</option>
           </select>
-        </div>
+        </FormField>
       </div>
 
       {branchPreview && !fieldErrors.childBirthDate && (
@@ -97,6 +77,6 @@ export default function EducandoSection({ formData, fieldErrors, onChange }: Pro
           </p>
         </div>
       )}
-    </section>
+    </FormSection>
   );
 }

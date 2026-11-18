@@ -14,6 +14,7 @@ import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
+import { CreateDirectCensusDto, UpdateCensusDto } from './dto/direct-census.dto';
 import { ApplicationStatus } from '@prisma/client';
 import { AuthGuard, ensurePermission } from '../auth.guard';
 import type { AuthenticatedRequest } from '../auth.guard';
@@ -42,6 +43,16 @@ export class ApplicationsController {
   findCensus(@Req() req: AuthenticatedRequest) {
     ensurePermission(req, 'Secretaría', 'canRead');
     return this.applicationsService.findCensus();
+  }
+
+  @Post('census')
+  @UseGuards(AuthGuard)
+  createDirectCensus(
+    @Body() dto: CreateDirectCensusDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    ensurePermission(req, 'Secretaría', 'canCreate');
+    return this.applicationsService.createDirectCensus(dto);
   }
 
   // Fase 2 (Padres): Abrir enlace mágico por Token
@@ -86,6 +97,17 @@ export class ApplicationsController {
   ) {
     ensurePermission(req, 'Secretaría', 'canUpdate');
     return this.applicationsService.update(id, updateApplicationDto);
+  }
+
+  @Patch(':id/census')
+  @UseGuards(AuthGuard)
+  updateCensus(
+    @Param('id') id: string,
+    @Body() dto: UpdateCensusDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    ensurePermission(req, 'Secretaría', 'canUpdate');
+    return this.applicationsService.updateCensus(id, dto);
   }
 
   @Delete(':id')

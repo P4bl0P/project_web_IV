@@ -7,6 +7,7 @@ import Step1Legal from '../components/inscripcion/Step1Legal';
 import Step2Medical from '../components/inscripcion/Step2Medical';
 import Step3Bank from '../components/inscripcion/Step3Bank';
 import Step4Sign from '../components/inscripcion/Step4Sign';
+import FormAlert from '../components/ui/forms/FormAlert';
 
 export default function InscripcionMagicaPage() {
   const { token } = useParams<{ token: string }>();
@@ -153,13 +154,28 @@ export default function InscripcionMagicaPage() {
         <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full">Paso {step} de 4</span>
       </div>
 
-      {stepError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl text-xs font-semibold">
-          {stepError}
-        </div>
-      )}
+      {stepError && <FormAlert>{stepError}</FormAlert>}
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-4">
+          {[
+            ['1', 'Datos legales'],
+            ['2', 'Ficha médica'],
+            ['3', 'Domiciliación'],
+            ['4', 'Autorizaciones'],
+          ].map(([number, label]) => (
+            <div
+              key={number}
+              className={`rounded-xl px-3 py-2 text-xs font-bold ${
+                step === Number(number) ? 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200' : 'text-slate-500'
+              }`}
+            >
+              <span className="block text-[11px] uppercase tracking-wide">Paso {number}</span>
+              <span className="mt-0.5 block">{label}</span>
+            </div>
+          ))}
+        </div>
+
         {step === 1 && <Step1Legal applicant={applicant} formData={formData} onChange={handleChange} />}
         {step === 2 && <Step2Medical formData={formData} onChange={handleChange} />}
         {step === 3 && <Step3Bank formData={formData} onChange={handleChange} />}
@@ -173,7 +189,7 @@ export default function InscripcionMagicaPage() {
           />
         )}
 
-        <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between">
+        <div className="flex justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
           {step > 1 ? (
             <button
               type="button"
