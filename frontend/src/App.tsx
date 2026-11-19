@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import Home from './pages/Home';
 import SolicitudPage from './pages/SolicitudPage';
+import ContactPage from './pages/ContactPage';
 import GestionPage from './pages/GestionPage';
 import SecretariaPage from './pages/SecretariaPage';
 import JefaturaPage from './pages/JefaturaPage';
@@ -23,7 +24,7 @@ function App() {
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<Home />} />
             <Route path="/solicitud" element={<SolicitudPage />} />
-            <Route path="/contact" element={<SolicitudPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
             <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
