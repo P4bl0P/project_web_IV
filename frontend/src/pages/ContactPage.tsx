@@ -1,100 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode, type SVGProps } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Check, Copy, Heart, Mail, MapPin, Navigation, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import heroPhoto from '../assets/scout-04.jpg';
 import parishPhoto from '../assets/scout-02.jpg';
 import councilPhoto from '../assets/scout-01.jpg';
-
-type BrandIconProps = SVGProps<SVGSVGElement> & { size?: number };
-
-function BrandIcon({ size = 24, children, ...props }: BrandIconProps & { children: ReactNode }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-      {...props}
-    >
-      {children}
-    </svg>
-  );
-}
-
-function InstagramIcon(props: BrandIconProps) {
-  return (
-    <BrandIcon {...props}>
-      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-    </BrandIcon>
-  );
-}
-
-function FacebookIcon(props: BrandIconProps) {
-  return (
-    <BrandIcon {...props}>
-      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </BrandIcon>
-  );
-}
-
-const socialChannels = [
-  {
-    id: 'instagram',
-    platform: 'Instagram',
-    handle: '@scoutsmonte5',
-    description: 'Fotografías, historias, acampadas y el día a día de nuestras ramas y actividades.',
-    cta: 'Abrir perfil en Instagram',
-    href: 'https://www.instagram.com/scoutsmonte5?gwpx=ZDNlZDc0MzIxNw==',
-    Icon: InstagramIcon,
-  },
-  {
-    id: 'facebook',
-    platform: 'Facebook',
-    handle: 'Scouts Montequinto',
-    description: 'Noticias del grupo, comunicados importantes y recuerdos compartidos con toda la comunidad scout.',
-    cta: 'Visitar página en Facebook',
-    href: 'https://www.facebook.com/scoutsmontequinto',
-    Icon: FacebookIcon,
-  },
-] as const;
-
-const emailChannels = [
-  {
-    id: 'general',
-    badge: 'Consultas generales y vida de grupo',
-    title: 'Correo general del grupo',
-    description:
-      'Para dudas sobre el funcionamiento del grupo, actividades, ramas, colaboraciones o cualquier consulta general.',
-    address: 'scoutsmonte5@scoutsdesevilla.com',
-    actionLabel: 'Escribir correo',
-  },
-  {
-    id: 'secretaria',
-    badge: 'Trámites, documentación e inscripciones',
-    title: 'Correo de Secretaría',
-    description:
-      'Para gestiones administrativas, entrega de documentación, censo, solicitudes de ingreso y trámites oficiales.',
-    address: 'papelescoutiv@gmail.com',
-    actionLabel: 'Escribir a Secretaría',
-  },
-] as const;
-
-const MEETING_PLACE = {
-  name: 'Parroquia Ntra. Sra. de los Ángeles y San José de Calasanz',
-  address: 'Av. Madre Paula Montalt, 53 · 41089 Montequinto, Dos Hermanas (Sevilla)',
-  mapsShortUrl: 'https://maps.app.goo.gl/jE9tWnEtScSFkFj4A',
-  embedUrl:
-    'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3172.3396!2d-5.932874!3d37.3407642!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd126fc82ba7bc0b%3A0x19e47185798f9af7!2sParroquia%20Ntra.%20Sra.%20de%20los%20%C3%81ngeles%20y%20San%20Jos%C3%A9%20de%20Calasanz!5e0!3m2!1ses!2ses!4v1700000000000!5m2!1ses!2ses',
-} as const;
+import { EMAIL_CHANNELS, MEETING_PLACE, SOCIAL_CHANNELS } from '../components/publicContactData';
+import { SocialPlatformIcon } from '../components/ui/SocialIcons';
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
   if (navigator.clipboard?.writeText) {
@@ -149,56 +60,78 @@ export default function ContactPage() {
 
   return (
     <div className="contact-page">
-      {/* A. Hero principal */}
-      <section className="home-hero contact-hero page-width">
-        <div className="hero-copy reveal">
+      {/* A. Cabecera editorial propia de Contacto */}
+      <header className="contact-header page-width">
+        <div className="contact-header-top reveal">
           <span className="eyebrow">
-            <span className="eyebrow-dot" /> Grupo Scout San José de Calasanz · Contacto
+            <span className="eyebrow-dot" /> Contacto · Grupo IV Scout San José de Calasanz
           </span>
-          <h1>
-            Estamos aquí
-            <br />
-            <em>para ti</em>
-          </h1>
-          <p>
-            ¿Tienes alguna duda sobre el grupo, las etapas o cómo participar? Escríbenos, síguenos en redes o
-            acércate a conocernos en Montequinto. Estaremos encantados de escucharte.
-          </p>
-          <div className="hero-actions">
-            <a href="#canales-contacto" className="button button-primary">
-              Canales de contacto <ArrowRight size={17} />
-            </a>
-            <a href="#donde-estamos" className="text-link contact-hero-link">
-              Ver dónde estamos <MapPin size={16} />
-            </a>
-          </div>
-          <div className="hero-meta">
-            <span>Montequinto · Dos Hermanas</span>
-            <span className="meta-line" />
-            <span>Sábados de actividad scout</span>
+          <div className="contact-header-grid">
+            <h1>
+              Estamos aquí <em>para ti.</em>
+            </h1>
+            <p className="contact-header-lead">
+              ¿Tienes alguna duda sobre el grupo, las etapas educativas o cómo participar? Escríbenos por nuestros
+              canales oficiales, síguenos en redes o acércate a conocernos los sábados en Montequinto.
+            </p>
           </div>
         </div>
 
-        <div className="hero-visual reveal reveal-delay">
-          <div className="hero-glow" />
-          <div className="hero-card contact-hero-card">
+        <div className="contact-header-showcase reveal reveal-delay">
+          <div className="contact-showcase-media">
             <img
               src={heroPhoto}
               alt="Scouts del Grupo IV en ruta al aire libre"
-              className="hero-slide is-active contact-hero-image"
+              className="contact-showcase-image"
               loading="eager"
               decoding="async"
             />
-            <div className="hero-slide-shade" />
-            <div className="hero-slide-caption">
-              <strong>Cerca de ti en cada etapa</strong>
-            </div>
-            <div className="hero-badge">
-              <Heart size={16} fill="currentColor" /> Siempre listos
+            <div className="contact-showcase-overlay" aria-hidden="true" />
+            <div className="contact-showcase-badges">
+              <span className="contact-showcase-pill">
+                <MapPin size={14} aria-hidden="true" /> Montequinto · Dos Hermanas (Sevilla)
+              </span>
+              <span className="contact-showcase-pill contact-showcase-pill--accent">
+                <Heart size={14} fill="currentColor" aria-hidden="true" /> Sábados de actividad scout
+              </span>
             </div>
           </div>
+
+          <nav className="contact-quick-bar" aria-label="Accesos rápidos de contacto">
+            <a href="#canales-contacto" className="contact-quick-link">
+              <span className="contact-quick-copy">
+                <strong>Redes sociales</strong>
+                <span>@scoutsmonte5 y Facebook</span>
+              </span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </a>
+
+            <a href="#correos-contacto" className="contact-quick-link">
+              <span className="contact-quick-copy">
+                <strong>Correos electrónicos</strong>
+                <span>General y Secretaría</span>
+              </span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </a>
+
+            <a href="#donde-estamos" className="contact-quick-link">
+              <span className="contact-quick-copy">
+                <strong>Dónde estamos</strong>
+                <span>Parroquia en Montequinto</span>
+              </span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </a>
+
+            <Link to="/solicitud" className="contact-quick-link contact-quick-link--highlight">
+              <span className="contact-quick-copy">
+                <strong>Solicitud inicial</strong>
+                <span>Solicitar plaza en el grupo</span>
+              </span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </nav>
         </div>
-      </section>
+      </header>
 
       {/* B. Redes sociales */}
       <section id="canales-contacto" className="contact-section page-width">
@@ -216,7 +149,7 @@ export default function ContactPage() {
         </div>
 
         <div className="contact-social-grid">
-          {socialChannels.map(({ id, platform, handle, description, cta, href, Icon }) => (
+          {SOCIAL_CHANNELS.map(({ id, platform, handle, description, cta, href }) => (
             <a
               key={id}
               href={href}
@@ -226,7 +159,7 @@ export default function ContactPage() {
             >
               <div className="contact-social-top">
                 <span className="contact-social-icon">
-                  <Icon size={24} />
+                  <SocialPlatformIcon id={id} size={24} />
                 </span>
                 <span className="contact-social-arrow" aria-hidden="true">
                   <ArrowUpRight size={18} />
@@ -248,7 +181,7 @@ export default function ContactPage() {
       </section>
 
       {/* C. Correos electrónicos */}
-      <section className="contact-section contact-section-soft">
+      <section id="correos-contacto" className="contact-section contact-section-soft">
         <div className="page-width">
           <div className="section-kicker">Escríbenos directamente</div>
           <div className="intro-grid">
@@ -263,7 +196,7 @@ export default function ContactPage() {
           </div>
 
           <div className="contact-email-grid">
-            {emailChannels.map(({ id, badge, title, description, address, actionLabel }) => {
+            {EMAIL_CHANNELS.map(({ id, badge, title, description, address, actionLabel }) => {
               const isCopied = copiedEmail === address;
 
               return (
@@ -394,25 +327,11 @@ export default function ContactPage() {
               <Link to="/about" className="button button-primary">
                 Conoce a nuestro Consejo <ArrowRight size={17} />
               </Link>
+              <Link to="/solicitud" className="button button-ghost">
+                Ir a la solicitud inicial <ArrowRight size={16} />
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* F. Cierre de página */}
-      <section className="dark-band">
-        <div className="page-width dark-band-inner">
-          <div>
-            <span className="section-kicker light">Da el siguiente paso</span>
-            <h2>¿Quieres formar parte del Grupo IV?</h2>
-            <p className="dark-band-text">
-              Si quieres conocer nuestro proyecto educativo e iniciar el proceso de incorporación al grupo, completa
-              nuestra solicitud inicial.
-            </p>
-          </div>
-          <Link to="/solicitud" className="button button-light">
-            Ir a la solicitud inicial <ArrowRight size={17} />
-          </Link>
         </div>
       </section>
     </div>
