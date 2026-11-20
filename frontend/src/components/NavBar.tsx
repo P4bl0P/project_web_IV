@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, LogOut, Settings, UserRound, Shield } from 'lucide-react';
+import { ChevronDown, Globe, Menu, X, LogOut, Settings, UserRound, Shield } from 'lucide-react';
 import logo from '../assets/logoIV.jpeg';
 import flower from '../assets/flor_lis.png';
-import { useAuth } from '../auth';
+import { canAccessWebContent, useAuth } from '../auth';
 
 const links = [
   { label: 'Inicio', to: '/home' },
@@ -76,6 +76,7 @@ export default function NavBar() {
   };
   const privateDestination = user ? '/gestion' : '/login';
   const privateLabel = user ? `Abrir área privada de ${user.name}` : 'Acceder al área privada';
+  const showWebContent = canAccessWebContent(user);
 
   return (
     <header className="site-header">
@@ -101,6 +102,7 @@ export default function NavBar() {
             <div ref={managementMenuRef} className={`nav-popover ${managementOpen ? 'is-open' : ''}`} role="menu">
               <Link to="/gestion" role="menuitem"><Settings size={16} /> Panel de gestión</Link>
               <Link to="/perfil" role="menuitem"><UserRound size={16} /> Mi perfil</Link>
+              {showWebContent && <Link to="/gestion/contenido-web" role="menuitem"><Globe size={16} /> Contenido de la web</Link>}
               {user.isSuperAdmin && <Link to="/gestion/administracion" role="menuitem"><Shield size={16} /> Administración</Link>}
               <button type="button" role="menuitem" onClick={() => void handleLogout()}><LogOut size={16} /> Cerrar sesión</button>
             </div>
@@ -129,6 +131,7 @@ export default function NavBar() {
             <span className="mobile-section-label">Área privada</span>
             <Link to="/gestion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Panel de gestión <Settings size={17} /></Link>
             <Link to="/perfil" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Mi perfil <UserRound size={17} /></Link>
+            {showWebContent && <Link to="/gestion/contenido-web" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Contenido de la web <Globe size={17} /></Link>}
             {user.isSuperAdmin && <Link to="/gestion/administracion" tabIndex={open ? 0 : -1} className="mobile-link" onClick={closeMobileMenu}>Administración <Shield size={17} /></Link>}
             <button type="button" tabIndex={open ? 0 : -1} className="mobile-link" onClick={() => void handleLogout()}><LogOut size={16} /> Cerrar sesión</button>
           </div>}

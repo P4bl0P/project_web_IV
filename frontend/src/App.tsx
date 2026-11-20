@@ -3,14 +3,16 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'rea
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
+import AboutPage from './pages/AboutPage';
 import SolicitudPage from './pages/SolicitudPage';
 import ContactPage from './pages/ContactPage';
 import GestionPage from './pages/GestionPage';
 import SecretariaPage from './pages/SecretariaPage';
 import JefaturaPage from './pages/JefaturaPage';
 import TesoreriaPage from './pages/TesoreriaPage';
+import ContenidoWebPage from './pages/ContenidoWebPage';
 import InscripcionMagicaPage from './pages/InscripcionMagicaPage';
-import { AdminRoute, AuthProvider, LoginPage, PrivateRoute } from './auth';
+import { AdminRoute, AuthProvider, LoginPage, PrivateRoute, WebContentRoute } from './auth';
 import PerfilPage from './pages/PerfilPage';
 import AdminPage from './pages/AdminPage';
 
@@ -60,15 +62,13 @@ function App() {
             <Route element={<PublicLayout />}>
               <Route path="/home" element={<Home />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route
-                path="/about"
-                element={<div className="p-8 text-center text-gray-600">Página Conócenos (En construcción)</div>}
-              />
+              <Route path="/about" element={<AboutPage />} />
             </Route>
             <Route path="/solicitud" element={<SolicitudPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
             <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
+            <Route path="/gestion/contenido-web" element={<WebContentRoute><ContenidoWebPage /></WebContentRoute>} />
             <Route path="/gestion/administracion" element={<AdminRoute><AdminPage /></AdminRoute>} />
             <Route path="/gestion/secretaria" element={<PrivateRoute><SecretariaPage /></PrivateRoute>} />
             <Route path="/gestion/jefatura" element={<PrivateRoute><JefaturaPage /></PrivateRoute>} />
