@@ -149,12 +149,6 @@ export default function Home() {
         <div className="value-grid">{values.map(({ icon: Icon, title, text }) => <article className="value-card" key={title}><Icon size={22} /><h3>{title}</h3><p>{text}</p></article>)}</div>
       </section>
 
-      <section className="dark-band">
-        <div className="page-width dark-band-inner">
-          <div><span className="section-kicker light">Tu próxima aventura empieza aquí</span><h2>¿Te unes?</h2></div>
-          <Link to="/solicitud" className="button button-light">Conoce el proceso <ArrowRight size={17} /></Link>
-        </div>
-      </section>
     </div>
   );
 }
