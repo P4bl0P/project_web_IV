@@ -1,8 +1,8 @@
 import type { ChangeEvent } from 'react';
 import type { ApplicantRecord, CompleteEnrollmentPayload } from '../../services/api';
-import SignatureBox from '../ui/SignatureBox';
-import FormSection from '../ui/forms/FormSection';
-import { formCheckboxClass } from '../ui/forms/formStyles';
+import SignatureBox from '../shared/SignatureBox';
+import FormSection from '../shared/forms/FormSection';
+import { formCheckboxClass } from '../shared/forms/formStyles';
 
 interface Props {
   applicant: Pick<ApplicantRecord, 'parent1FirstName'>;

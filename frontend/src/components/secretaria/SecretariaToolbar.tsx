@@ -22,8 +22,8 @@ import {
   type SecretariaFiltersState,
   type SecretariaTab,
 } from '../../utils/secretariaSearchFilter';
-import DatePicker from '../ui/forms/DatePicker';
-import { formCheckboxClass } from '../ui/forms/formStyles';
+import DatePicker from '../shared/forms/DatePicker';
+import { formCheckboxClass } from '../shared/forms/formStyles';
 import {
   SecButton,
   SecFilterSelect,

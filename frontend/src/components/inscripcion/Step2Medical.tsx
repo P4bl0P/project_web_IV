@@ -1,8 +1,8 @@
 import type { ChangeEvent } from 'react';
 import type { CompleteEnrollmentPayload } from '../../services/api';
-import FormField from '../ui/forms/FormField';
-import FormSection from '../ui/forms/FormSection';
-import { formCheckboxClass, formInputClass } from '../ui/forms/formStyles';
+import FormField from '../shared/forms/FormField';
+import FormSection from '../shared/forms/FormSection';
+import { formCheckboxClass, formInputClass } from '../shared/forms/formStyles';
 
 interface Props {
   formData: CompleteEnrollmentPayload;

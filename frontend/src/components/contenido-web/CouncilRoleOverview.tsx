@@ -1,9 +1,9 @@
-import type { CouncilRole } from '../../../types/conocenos';
+import type { CouncilRole } from '../../types/conocenos';
 import {
   COUNCIL_ROLES,
   COUNCIL_ROLE_STYLES,
   DEFAULT_ROLE_DESCRIPTIONS,
-} from '../../../utils/councilValidators';
+} from '../../utils/councilValidators';
 
 interface Props {
   roleDescriptions: Record<CouncilRole, string>;

@@ -8,8 +8,6 @@ import {
   UserPlus,
   SearchX,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
   Inbox,
   Clock,
   FileText,
@@ -25,6 +23,7 @@ import {
 } from '../services/api';
 import ApplicantCard from '../components/secretaria/ApplicantCard';
 import SecretariaCensoForm from '../components/secretaria/SecretariaCensoForm';
+import SecretariaPagination from '../components/secretaria/SecretariaPagination';
 import SecretariaToolbar from '../components/secretaria/SecretariaToolbar';
 import { SecButton } from '../components/secretaria/secretariaTheme';
 import {
@@ -84,7 +83,6 @@ export default function SecretariaPage() {
     loadData();
   }, []);
 
-  // Contadores por apartado para las pestañas
   const sectionCounts = useMemo(() => {
     const counts: Record<SecretariaTab, number> = {
       INITIAL: 0,
@@ -104,7 +102,6 @@ export default function SecretariaPage() {
     return counts;
   }, [records]);
 
-  // Al cambiar de apartado: si el orden actual o filtros de fecha de alta no aplican al nuevo apartado, ajustarlos
   const handleSelectTab = (nextTab: SecretariaTab) => {
     setActiveTab(nextTab);
     setCurrentPage(1);
@@ -142,7 +139,6 @@ export default function SecretariaPage() {
     setCurrentPage(1);
   };
 
-  // Filtrado y ordenación completos sobre todos los registros del apartado antes de paginar
   const filteredRecords = useMemo(() => {
     return filterAndSortSecretariaRecords(records, activeTab, filters, sortBy, sortOrder);
   }, [records, activeTab, filters, sortBy, sortOrder]);
@@ -219,9 +215,8 @@ export default function SecretariaPage() {
   const activeSectionMeta = SECRETARIA_SECTIONS[activeTab];
 
   return (
-    <div className="secretaria-page w-full min-h-[calc(100vh-4.75rem)] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="w-full min-h-[calc(100vh-4.75rem)] bg-gradient-to-b from-[#f8fafd] to-[#f2f5fa] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="max-w-[1220px] mx-auto space-y-4">
-        {/* Cabecera principal de Secretaría */}
         <header className={`${secTokens.surface} px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4`}>
           <div className="flex items-center gap-3.5 min-w-0">
             <Link
@@ -292,7 +287,6 @@ export default function SecretariaPage() {
           />
         )}
 
-        {/* Barra de navegación segmentada (Segmented Control estilo Apple) */}
         <div className={`${secTokens.surface} p-2`}>
           <div
             className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-[#f2f4f8] p-1 rounded-xl overflow-x-auto"
@@ -336,7 +330,6 @@ export default function SecretariaPage() {
           </div>
         </div>
 
-        {/* Buscador inteligente, filtros avanzados adaptativos y ordenación */}
         <SecretariaToolbar
           activeTab={activeTab}
           filters={filters}
@@ -350,7 +343,6 @@ export default function SecretariaPage() {
           onChangeSort={handleChangeSort}
         />
 
-        {/* Listado de resultados */}
         <div className="space-y-2.5">
           {loading ? (
             <div className="grid gap-2.5" aria-label="Cargando registros" aria-busy="true">
@@ -425,64 +417,20 @@ export default function SecretariaPage() {
                 ))}
               </div>
 
-              {/* Controles de paginación (aplicada sobre el conjunto ya filtrado y ordenado) */}
               {filteredRecords.length > PAGE_SIZE_OPTIONS[0] && (
-                <div className={`${secTokens.surface} flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3.5`}>
-                  <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-600">
-                    <span>
-                      Mostrando{' '}
-                      <strong className="font-bold text-[#0c1933]">{pageOffset + 1}</strong> -{' '}
-                      <strong className="font-bold text-[#0c1933]">
-                        {Math.min(pageOffset + pageSize, filteredRecords.length)}
-                      </strong>{' '}
-                      de <strong className="font-bold text-[#0c1933]">{filteredRecords.length}</strong>
-                    </span>
-                    <span className="text-slate-300" aria-hidden="true">|</span>
-                    <label className="inline-flex items-center gap-1.5">
-                      <span>Por página:</span>
-                      <select
-                        aria-label="Registros por página"
-                        value={pageSize}
-                        onChange={(e) => {
-                          setPageSize(Number(e.target.value));
-                          setCurrentPage(1);
-                        }}
-                        className="h-8 px-2.5 rounded-lg border border-slate-200/95 bg-[#f8f9fc] hover:border-slate-300 text-xs font-semibold text-slate-700 focus:border-[#01317b] outline-none cursor-pointer transition-colors"
-                      >
-                        {PAGE_SIZE_OPTIONS.map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div className="flex items-center gap-1.5">
-                      <SecButton
-                        variant="secondary"
-                        size="sm"
-                        disabled={safeCurrentPage <= 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      >
-                        <ChevronLeft size={14} /> Anterior
-                      </SecButton>
-                      <span className="text-xs font-medium text-slate-600 px-2">
-                        Página <strong className="font-bold text-[#0c1933]">{safeCurrentPage}</strong> de{' '}
-                        <strong className="font-bold text-[#0c1933]">{totalPages}</strong>
-                      </span>
-                      <SecButton
-                        variant="secondary"
-                        size="sm"
-                        disabled={safeCurrentPage >= totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      >
-                        Siguiente <ChevronRight size={14} />
-                      </SecButton>
-                    </div>
-                  )}
-                </div>
+                <SecretariaPagination
+                  pageOffset={pageOffset}
+                  pageSize={pageSize}
+                  totalCount={filteredRecords.length}
+                  currentPage={safeCurrentPage}
+                  totalPages={totalPages}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  onPageSizeChange={(nextSize) => {
+                    setPageSize(nextSize);
+                    setCurrentPage(1);
+                  }}
+                  onPageChange={setCurrentPage}
+                />
               )}
             </>
           )}

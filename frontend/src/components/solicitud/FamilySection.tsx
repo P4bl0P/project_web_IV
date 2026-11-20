@@ -2,9 +2,9 @@ import type { ChangeEvent } from 'react';
 import { Users } from 'lucide-react';
 import type { CreateApplicationPayload } from '../../services/api';
 import type { SolicitudFieldErrors } from '../../utils/scoutValidators';
-import FormField from '../ui/forms/FormField';
-import FormSection from '../ui/forms/FormSection';
-import { formInputClass } from '../ui/forms/formStyles';
+import FormField from '../shared/forms/FormField';
+import FormSection from '../shared/forms/FormSection';
+import { formInputClass } from '../shared/forms/formStyles';
 
 interface Props {
   formData: CreateApplicationPayload;

@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
-import type { CouncilMember } from '../../../types/conocenos';
-import { SecButton } from '../../secretaria/secretariaTheme';
+import type { CouncilMember } from '../../types/conocenos';
+import { SecButton } from '../secretaria/secretariaTheme';
 
 interface Props {
   member: CouncilMember;
