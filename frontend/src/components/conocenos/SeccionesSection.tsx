@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Camera, CheckCircle2, Quote } from 'lucide-react';
+import type { ConocenosSeccionesImages } from '../../config/images/conocenosImages';
 import { SECTIONS_DATA } from '../../data/conocenosData';
 
-export default function SeccionesSection() {
+interface SeccionesSectionProps {
+  images: ConocenosSeccionesImages;
+}
+
+export default function SeccionesSection({ images }: SeccionesSectionProps) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   return (
@@ -54,8 +59,8 @@ export default function SeccionesSection() {
         <div className="mt-14 space-y-10 sm:space-y-12">
           {SECTIONS_DATA.map((section, index) => {
             const reverseMedia = index % 2 === 1;
-            const showRealPhoto =
-              Boolean(section.photoSrc) && !failedImages[section.id];
+            const photoSrc = images[section.id];
+            const showRealPhoto = Boolean(photoSrc) && !failedImages[section.id];
             const isPortrait = section.photoOrientation === 'portrait';
 
             return (
@@ -129,7 +134,7 @@ export default function SeccionesSection() {
                       reverseMedia ? 'lg:order-1' : 'lg:order-2'
                     }`}
                   >
-                    {showRealPhoto && section.photoSrc ? (
+                    {showRealPhoto && photoSrc ? (
                       <figure
                         className={`overflow-hidden rounded-[24px] border border-white bg-white p-2.5 shadow-[0_18px_40px_rgba(0,5,84,0.1)] ${
                           isPortrait ? 'mx-auto max-w-[360px]' : ''
@@ -141,7 +146,7 @@ export default function SeccionesSection() {
                           }`}
                         >
                           <img
-                            src={section.photoSrc}
+                            src={photoSrc}
                             alt={section.photoAlt}
                             className={`h-full w-full object-cover ${
                               isPortrait ? 'object-center' : 'object-[center_30%]'

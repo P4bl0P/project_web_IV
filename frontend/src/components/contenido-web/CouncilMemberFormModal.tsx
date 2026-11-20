@@ -5,18 +5,18 @@ import type {
   CouncilRole,
   CreateCouncilMemberPayload,
   UpdateCouncilMemberPayload,
-} from '../../../types/conocenos';
+} from '../../types/conocenos';
 import {
   COUNCIL_ROLES,
   DEFAULT_ROLE_DESCRIPTIONS,
   validateCouncilMemberForm,
   type CouncilFormErrors,
   type CouncilFormValues,
-} from '../../../utils/councilValidators';
-import { SecButton } from '../../secretaria/secretariaTheme';
-import FormAlert from '../../ui/forms/FormAlert';
-import FormField from '../../ui/forms/FormField';
-import { formInputClass } from '../../ui/forms/formStyles';
+} from '../../utils/councilValidators';
+import { SecButton } from '../secretaria/secretariaTheme';
+import FormAlert from '../shared/forms/FormAlert';
+import FormField from '../shared/forms/FormField';
+import { formInputClass } from '../shared/forms/formStyles';
 
 interface Props {
   member: CouncilMember | null;

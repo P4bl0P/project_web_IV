@@ -1,8 +1,12 @@
 import { ArrowDownRight, ArrowRight, Compass, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ABOUT_HERO } from '../../data/conocenosData';
+import { CONOCENOS_HERO } from '../../data/conocenosData';
 
-export default function AboutHero() {
+interface ConocenosHeroProps {
+  image: string;
+}
+
+export default function ConocenosHero({ image }: ConocenosHeroProps) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-[#f5f7fb] via-white to-white pt-10 pb-16 sm:pt-14 sm:pb-20">
       <div
@@ -14,18 +18,18 @@ export default function AboutHero() {
         <div className="mx-auto max-w-4xl text-center motion-safe:animate-[reveal_0.75s_cubic-bezier(0.2,0.8,0.2,1)_both]">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#e4e9f1] bg-white/90 px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#e22328] shadow-[0_2px_10px_rgba(0,5,84,0.04)]">
             <span className="h-2 w-2 rounded-full bg-[#e22328]" aria-hidden="true" />
-            {ABOUT_HERO.eyebrow}
+            {CONOCENOS_HERO.eyebrow}
           </span>
 
           <h1 className="mt-6 text-4xl font-extrabold tracking-[-0.045em] text-[#000254] leading-[1.03] sm:text-5xl lg:text-[64px]">
-            {ABOUT_HERO.titleStart}{' '}
+            {CONOCENOS_HERO.titleStart}{' '}
             <span className="block sm:inline text-[#01317b]">
-              {ABOUT_HERO.titleAccent}
+              {CONOCENOS_HERO.titleAccent}
             </span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#627089] sm:text-lg">
-            {ABOUT_HERO.lead}
+            {CONOCENOS_HERO.lead}
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
@@ -50,8 +54,8 @@ export default function AboutHero() {
           <div className="relative overflow-hidden rounded-[28px] sm:rounded-[34px] border border-[#e4e9f1] bg-[#e9eff8] shadow-[0_24px_60px_rgba(0,5,84,0.12)]">
             <div className="aspect-[16/10] sm:aspect-[16/9] lg:aspect-[21/10] w-full overflow-hidden">
               <img
-                src={ABOUT_HERO.photoSrc}
-                alt={ABOUT_HERO.photoAlt}
+                src={image}
+                alt={CONOCENOS_HERO.photoAlt}
                 className="h-full w-full object-cover object-[center_24%]"
                 loading="eager"
                 decoding="async"
@@ -65,7 +69,7 @@ export default function AboutHero() {
 
             <figcaption className="relative sm:absolute sm:inset-x-6 sm:bottom-6 bg-[#060e28] sm:bg-transparent px-5 py-4 sm:p-0">
               <div className="grid gap-2.5 sm:grid-cols-3 sm:gap-3">
-                {ABOUT_HERO.highlights.map((item, idx) => (
+                {CONOCENOS_HERO.highlights.map((item, idx) => (
                   <div
                     key={item.label}
                     className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white backdrop-blur-md"

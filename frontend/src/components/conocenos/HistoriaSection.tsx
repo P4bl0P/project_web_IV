@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Calendar, Camera, Sparkles } from 'lucide-react';
+import type { ConocenosHistoriaImages } from '../../config/images/conocenosImages';
 import { HISTORIA_INTRO, HISTORIA_MILESTONES } from '../../data/conocenosData';
 
-export default function HistoriaSection() {
+interface HistoriaSectionProps {
+  images: ConocenosHistoriaImages;
+}
+
+export default function HistoriaSection({ images }: HistoriaSectionProps) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   return (
@@ -32,7 +37,8 @@ export default function HistoriaSection() {
 
           {HISTORIA_MILESTONES.map((milestone, index) => {
             const isReversed = index % 2 === 1;
-            const hasPhoto = Boolean(milestone.photoSrc) && !failedImages[milestone.id];
+            const photoSrc = images[milestone.id];
+            const hasPhoto = Boolean(photoSrc) && !failedImages[milestone.id];
             const isPortrait = milestone.photoOrientation === 'portrait';
 
             return (
@@ -81,7 +87,7 @@ export default function HistoriaSection() {
                     isReversed ? 'lg:order-1 lg:pr-8' : 'lg:order-2 lg:pl-8'
                   }`}
                 >
-                  {hasPhoto && milestone.photoSrc ? (
+                  {hasPhoto && photoSrc ? (
                     <figure
                       className={`overflow-hidden rounded-[26px] border border-[#dce4f0] bg-white p-2.5 shadow-[0_14px_38px_rgba(0,5,84,0.08)] ${
                         isPortrait ? 'mx-auto max-w-[360px]' : ''
@@ -93,7 +99,7 @@ export default function HistoriaSection() {
                         }`}
                       >
                         <img
-                          src={milestone.photoSrc}
+                          src={photoSrc}
                           alt={milestone.photoAlt ?? 'Fotografía del Grupo IV Scout'}
                           className={`h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02] ${
                             milestone.photoEra === 'historica' ? 'sepia-[.12] contrast-[1.03]' : ''

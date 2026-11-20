@@ -7,7 +7,7 @@ import Step1Legal from '../components/inscripcion/Step1Legal';
 import Step2Medical from '../components/inscripcion/Step2Medical';
 import Step3Bank from '../components/inscripcion/Step3Bank';
 import Step4Sign from '../components/inscripcion/Step4Sign';
-import FormAlert from '../components/ui/forms/FormAlert';
+import FormAlert from '../components/shared/forms/FormAlert';
 import { SecButton } from '../components/secretaria/secretariaTheme';
 
 export default function InscripcionMagicaPage() {
@@ -147,11 +147,11 @@ export default function InscripcionMagicaPage() {
         break;
       }
     }
-      if (err) {
-        setStep(invalidStep);
-        return setStepError(err);
-      }
-      if (!token) return setStepError('Enlace inválido');
+    if (err) {
+      setStep(invalidStep);
+      return setStepError(err);
+    }
+    if (!token) return setStepError('Enlace inválido');
     setIsSubmitting(true);
     try {
       await applicationsApi.submitMagicEnrollment(token, {
@@ -182,7 +182,7 @@ export default function InscripcionMagicaPage() {
   }
   if (completed) {
     return (
-      <div className="state-card page-width success-state">
+      <div className="state-card page-width">
         <CheckCircle2 size={40} className="text-emerald-600 mx-auto mb-3" />
         <h2 className="text-xl font-bold text-slate-900">¡Inscripción Completada!</h2>
         <p className="text-xs text-slate-600 mt-2">
@@ -193,7 +193,7 @@ export default function InscripcionMagicaPage() {
   }
 
   return (
-    <div className="enrollment-page page-width space-y-5">
+    <div className="page-width space-y-5 pt-[35px] pb-[52px] min-[801px]:pt-16 min-[801px]:pb-20">
       <div className="bg-gradient-to-r from-[#000254] to-[#01317b] text-white rounded-2xl px-6 py-5 flex flex-wrap items-center justify-between gap-4 shadow-[0_14px_34px_-10px_rgba(0,2,84,0.22)]">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
@@ -212,7 +212,7 @@ export default function InscripcionMagicaPage() {
       {stepError && <FormAlert>{stepError}</FormAlert>}
 
       <div className="space-y-4">
-        <nav className="enrollment-step-nav" aria-label="Apartados de la inscripción">
+        <nav className="grid grid-cols-2 gap-2 min-[801px]:grid-cols-4" aria-label="Apartados de la inscripción">
           {stepItems.map((item) => {
             const isCurrent = step === item.number;
             const isComplete =
@@ -226,11 +226,23 @@ export default function InscripcionMagicaPage() {
                   setStepError(null);
                 }}
                 aria-current={isCurrent ? 'step' : undefined}
-                className={`enrollment-step-button ${
-                  isCurrent ? 'is-current' : isComplete ? 'is-complete' : 'is-pending'
+                className={`flex min-h-12 cursor-pointer items-center gap-[9px] rounded-[14px] border px-3 py-2 text-xs font-bold transition-all duration-200 active:translate-y-0 active:scale-[0.985] focus-visible:outline-3 focus-visible:outline-[#01317b]/[0.18] focus-visible:outline-offset-2 min-[801px]:min-h-[52px] ${
+                  isCurrent
+                    ? 'border-[#01317b] bg-[#eef4fc] text-[#000254] shadow-[0_7px_18px_rgba(1,49,123,0.08)]'
+                    : isComplete
+                      ? 'border-[#b9dfcb] bg-[#f3faf6] text-[#28704a] hover:-translate-y-px'
+                      : 'border-[#e4e9f1] bg-[#f8fafc] text-[#69778d] hover:-translate-y-px hover:border-[#bdc9dc] hover:bg-[#f8fafc]'
                 }`}
               >
-                <span className="enrollment-step-number">
+                <span
+                  className={`grid h-7 w-7 flex-none place-items-center rounded-full text-[11px] ${
+                    isCurrent
+                      ? 'bg-[#01317b] text-white'
+                      : isComplete
+                        ? 'bg-[#dff2e7] text-[#28704a]'
+                        : 'bg-[#edf1f6] text-[#718096]'
+                  }`}
+                >
                   {isComplete ? <CheckCircle2 size={16} /> : item.number}
                 </span>
                 <span>{item.label}</span>

@@ -1,9 +1,9 @@
 import type { DirectCensusPayload } from '../../../services/api';
 import { getTodayIsoDate } from '../../../utils/dateUtils';
-import DatePicker from '../../ui/forms/DatePicker';
-import FormField from '../../ui/forms/FormField';
-import FormSection from '../../ui/forms/FormSection';
-import { formInputClass } from '../../ui/forms/formStyles';
+import DatePicker from '../../shared/forms/DatePicker';
+import FormField from '../../shared/forms/FormField';
+import FormSection from '../../shared/forms/FormSection';
+import { formInputClass } from '../../shared/forms/formStyles';
 import type { CensusChangeHandler, CensusFieldErrors } from './censusForm';
 
 interface Props {

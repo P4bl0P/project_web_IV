@@ -1,20 +1,22 @@
 import { useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-import NavBar from './components/NavBar';
-import Footer from './components/Footer';
-import Home from './pages/Home';
-import AboutPage from './pages/AboutPage';
-import SolicitudPage from './pages/SolicitudPage';
-import ContactPage from './pages/ContactPage';
-import GestionPage from './pages/GestionPage';
-import SecretariaPage from './pages/SecretariaPage';
-import JefaturaPage from './pages/JefaturaPage';
-import TesoreriaPage from './pages/TesoreriaPage';
+import { AdminRoute, AuthProvider, PrivateRoute, WebContentRoute } from './auth';
+import Footer from './components/shared/Footer';
+import NavBar from './components/shared/NavBar';
+import { sharedImages } from './config/images/sharedImages';
+import AdministracionPage from './pages/AdministracionPage';
+import ConocenosPage from './pages/ConocenosPage';
+import ContactoPage from './pages/ContactoPage';
 import ContenidoWebPage from './pages/ContenidoWebPage';
+import GestionPage from './pages/GestionPage';
+import HomePage from './pages/HomePage';
 import InscripcionMagicaPage from './pages/InscripcionMagicaPage';
-import { AdminRoute, AuthProvider, LoginPage, PrivateRoute, WebContentRoute } from './auth';
+import JefaturaPage from './pages/JefaturaPage';
+import LoginPage from './pages/LoginPage';
 import PerfilPage from './pages/PerfilPage';
-import AdminPage from './pages/AdminPage';
+import SecretariaPage from './pages/SecretariaPage';
+import SolicitudPage from './pages/SolicitudPage';
+import TesoreriaPage from './pages/TesoreriaPage';
 
 function ScrollToTop() {
   const { pathname, hash, key } = useLocation();
@@ -39,11 +41,11 @@ function ScrollToTop() {
 
 function PublicLayout() {
   return (
-    <div className="public-layout">
-      <div className="public-layout-body">
+    <div className="flex min-h-[calc(100vh-68px)] flex-col min-[801px]:min-h-[calc(100vh-76px)]">
+      <div className="flex-[1_0_auto]">
         <Outlet />
       </div>
-      <Footer />
+      <Footer images={sharedImages} />
     </div>
   );
 }
@@ -53,31 +55,33 @@ function App() {
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
-      <div className="app-shell">
-        <NavBar />
+        <div className="min-h-screen bg-white">
+          <NavBar images={sharedImages} />
 
-        <main className="app-main">
-          <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
-            <Route element={<PublicLayout />}>
-              <Route path="/home" element={<Home />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/about" element={<AboutPage />} />
-            </Route>
-            <Route path="/solicitud" element={<SolicitudPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
-            <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
-            <Route path="/gestion/contenido-web" element={<WebContentRoute><ContenidoWebPage /></WebContentRoute>} />
-            <Route path="/gestion/administracion" element={<AdminRoute><AdminPage /></AdminRoute>} />
-            <Route path="/gestion/secretaria" element={<PrivateRoute><SecretariaPage /></PrivateRoute>} />
-            <Route path="/gestion/jefatura" element={<PrivateRoute><JefaturaPage /></PrivateRoute>} />
-            <Route path="/gestion/tesoreria" element={<PrivateRoute><TesoreriaPage /></PrivateRoute>} />
-            <Route path="/inscripcion/:token" element={<InscripcionMagicaPage />} />
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </Routes>
-        </main>
-      </div>
+          <main className="min-h-screen pt-[68px] min-[801px]:pt-[76px]">
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route element={<PublicLayout />}>
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/contact" element={<ContactoPage />} />
+                <Route path="/contacto" element={<ContactoPage />} />
+                <Route path="/about" element={<ConocenosPage />} />
+                <Route path="/conocenos" element={<ConocenosPage />} />
+              </Route>
+              <Route path="/solicitud" element={<SolicitudPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
+              <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
+              <Route path="/gestion/contenido-web" element={<WebContentRoute><ContenidoWebPage /></WebContentRoute>} />
+              <Route path="/gestion/administracion" element={<AdminRoute><AdministracionPage /></AdminRoute>} />
+              <Route path="/gestion/secretaria" element={<PrivateRoute><SecretariaPage /></PrivateRoute>} />
+              <Route path="/gestion/jefatura" element={<PrivateRoute><JefaturaPage /></PrivateRoute>} />
+              <Route path="/gestion/tesoreria" element={<PrivateRoute><TesoreriaPage /></PrivateRoute>} />
+              <Route path="/inscripcion/:token" element={<InscripcionMagicaPage />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
+          </main>
+        </div>
       </AuthProvider>
     </BrowserRouter>
   );

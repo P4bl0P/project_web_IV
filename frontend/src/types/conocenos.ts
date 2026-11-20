@@ -35,14 +35,19 @@ export interface ChapterNavItem {
   label: string;
 }
 
+export type HistoryMilestoneId =
+  | 'origen-1979'
+  | 'consolidacion-1997'
+  | 'asamblea-2013'
+  | 'aniversario-2024';
+
 export interface HistoryMilestone {
-  id: string;
+  id: HistoryMilestoneId;
   period: string;
   tag: string;
   title: string;
   summary: string;
   detail: string;
-  photoSrc?: string;
   photoAlt?: string;
   photoEra?: 'historica' | 'actual';
   photoOrientation?: 'landscape' | 'portrait';
@@ -67,15 +72,21 @@ export interface MethodologyStep {
   iconName: 'hammer' | 'users' | 'compass' | 'handshake' | 'heart' | 'trees' | 'sparkles';
 }
 
+export type ScoutSectionId =
+  | 'castores'
+  | 'lobatos'
+  | 'rangers'
+  | 'pioneros'
+  | 'rutas';
+
 export interface ScoutSectionItem {
-  id: 'castores' | 'lobatos' | 'rangers' | 'pioneros' | 'rutas';
+  id: ScoutSectionId;
   name: string;
   ages: string;
   stageLabel: string;
   shortDesc: string;
   whatTheyDo: string[];
   motto: string;
-  photoSrc: string | null;
   photoAlt: string;
   photoOrientation: 'landscape' | 'portrait';
   accentBg: string;

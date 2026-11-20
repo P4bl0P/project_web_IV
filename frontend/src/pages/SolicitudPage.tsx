@@ -2,13 +2,11 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import { applicationsApi, type CreateApplicationPayload } from '../services/api';
 import { validateSolicitudForm, type SolicitudFieldErrors } from '../utils/scoutValidators';
+import CriteriosSection from '../components/solicitud/CriteriosSection';
 import EducandoSection from '../components/solicitud/EducandoSection';
 import FamilySection from '../components/solicitud/FamilySection';
 import SolicitudSuccess from '../components/solicitud/SolicitudSuccess';
-import FormAlert from '../components/ui/forms/FormAlert';
-import FormField from '../components/ui/forms/FormField';
-import FormSection from '../components/ui/forms/FormSection';
-import { formCheckboxClass, formInputClass } from '../components/ui/forms/formStyles';
+import FormAlert from '../components/shared/forms/FormAlert';
 
 const STORAGE_KEY = 'grupo_iv_solicitud_draft';
 
@@ -143,32 +141,38 @@ export default function SolicitudPage() {
   }
 
   return (
-    <div className="solicitud-page form-page page-width">
-      <div className="form-hero">
+    <div className="page-width pt-[35px] pb-[52px] min-[801px]:pt-16 min-[801px]:pb-20">
+      <div className="mb-[27px] flex flex-col items-start justify-between gap-5 rounded-[25px] bg-[linear-gradient(120deg,#000254,#01317b)] px-[23px] py-[27px] text-white shadow-[0_18px_40px_rgba(0,5,84,0.15)] min-[801px]:flex-row min-[801px]:items-center min-[801px]:px-[38px] min-[801px]:py-[34px]">
         <div>
-          <span className="inline-block bg-white/20 text-xs font-semibold px-3 py-1 rounded-full mb-2">
+          <span className="mb-2 inline-block rounded-full bg-white/[0.14] px-3 py-1 text-xs font-semibold">
             Fase 1 · Lista de espera
           </span>
-          <h1 className="text-2xl md:text-3xl font-bold">Solicitud de Entrada al Grupo IV</h1>
-          <p className="text-blue-100 text-xs sm:text-sm mt-1">Grupo Scout San José de Calasanz · Montequinto</p>
+          <h1 className="mt-[11px] mb-[5px] text-[clamp(25px,4vw,38px)] font-bold tracking-[-0.04em]">
+            Solicitud de Entrada al Grupo IV
+          </h1>
+          <p className="m-0 text-xs text-[#bfd0ec] sm:text-sm">
+            Grupo Scout San José de Calasanz · Montequinto
+          </p>
         </div>
         <button
           type="button"
           onClick={handleClearDraft}
-          className="self-start md:self-auto flex items-center gap-1.5 text-xs bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition"
+          className="flex cursor-pointer items-center gap-1.5 self-start rounded-lg bg-white/10 px-3 py-2 text-xs transition hover:bg-white/20 md:self-auto"
         >
           <Trash2 size={14} /> Empezar de cero
         </button>
       </div>
 
       {(serverError || Object.keys(fieldErrors).length > 0) && (
-        <FormAlert>
-          <p className="font-semibold">Por favor, revisa los campos marcados en rojo.</p>
-          {serverError && <p className="mt-1">{serverError}</p>}
-        </FormAlert>
+        <div className="mb-6">
+          <FormAlert>
+            <p className="font-semibold">Por favor, revisa los campos marcados en rojo.</p>
+            {serverError && <p className="mt-1">{serverError}</p>}
+          </FormAlert>
+        </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-6 form-stack">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <EducandoSection formData={formData} fieldErrors={fieldErrors} onChange={handleChange} />
 
         <FamilySection
@@ -179,86 +183,18 @@ export default function SolicitudPage() {
           onChange={handleChange}
         />
 
-        {/* Bloque Criterios y Motivación */}
-        <FormSection title="4. Criterios de prioridad y motivación" description="Esta información ayuda al Kraal a gestionar la lista de espera.">
+        <CriteriosSection
+          formData={formData}
+          fieldErrors={fieldErrors}
+          onChange={handleChange}
+        />
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="hasFamilyInGroup"
-                checked={formData.hasFamilyInGroup}
-                onChange={handleChange}
-                className={formCheckboxClass}
-              />
-              <div>
-                <span className="block text-xs sm:text-sm font-semibold text-slate-800">
-                  ¿Tiene algún familiar directo en el Grupo IV actualmente?
-                </span>
-                <span className="text-xs text-slate-500">Hermano/a educando, scouter o viejo lobo.</span>
-              </div>
-            </label>
-            {formData.hasFamilyInGroup && (
-              <div className="mt-3 pl-7">
-                <input
-                  type="text"
-                  name="familyMemberDetails"
-                  value={formData.familyMemberDetails}
-                  onChange={handleChange}
-                  placeholder="Nombre completo y parentesco"
-                  className={formInputClass(Boolean(fieldErrors.familyMemberDetails))}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="comesFromOtherGroup"
-                checked={formData.comesFromOtherGroup}
-                onChange={handleChange}
-                className={formCheckboxClass}
-              />
-              <div>
-                <span className="block text-xs sm:text-sm font-semibold text-slate-800">
-                  ¿Proviene de otro Grupo Scout?
-                </span>
-              </div>
-            </label>
-            {formData.comesFromOtherGroup && (
-              <div className="mt-3 pl-7">
-                <input
-                  type="text"
-                  name="originGroupDetails"
-                  value={formData.originGroupDetails}
-                  onChange={handleChange}
-                  placeholder="Nombre del grupo scout y localidad"
-                  className={formInputClass(Boolean(fieldErrors.originGroupDetails))}
-                />
-              </div>
-            )}
-          </div>
-
-          <FormField label="Motivación y observaciones" error={fieldErrors.motivation}>
-            <textarea
-              name="motivation"
-              rows={3}
-              value={formData.motivation}
-              onChange={handleChange}
-              placeholder="Cuéntanos por qué os gustaría formar parte del Grupo IV..."
-              className={formInputClass(false, 'resize-y')}
-            />
-          </FormField>
-        </FormSection>
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-2xs border border-slate-200">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-[20px] shadow-[0_5px_18px_rgba(0,5,84,0.035)] border border-[#e4e9f1]">
           <p className="text-xs text-slate-500">Tus respuestas se guardan automáticamente mientras escribes.</p>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold px-8 py-3.5 rounded-xl shadow-sm transition"
+            className="w-full sm:w-auto cursor-pointer bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold px-8 py-3.5 rounded-xl shadow-sm transition"
           >
             {isSubmitting ? 'Validando y enviando...' : 'Enviar Solicitud de Entrada'}
           </button>

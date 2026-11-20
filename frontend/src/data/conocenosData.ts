@@ -6,7 +6,7 @@ import type {
   ValueItem,
 } from '../types/conocenos';
 
-export const ABOUT_CHAPTERS: ChapterNavItem[] = [
+export const CONOCENOS_CHAPTERS: ChapterNavItem[] = [
   { id: 'quienes-somos', label: 'Quiénes somos' },
   { id: 'nuestra-historia', label: 'Nuestra historia' },
   { id: 'nuestros-valores', label: 'Valores' },
@@ -15,12 +15,11 @@ export const ABOUT_CHAPTERS: ChapterNavItem[] = [
   { id: 'nuestro-consejo', label: 'Consejo' },
 ];
 
-export const ABOUT_HERO = {
+export const CONOCENOS_HERO = {
   eyebrow: 'Grupo IV Scout San José de Calasanz · Montequinto',
   titleStart: 'Mucho más que un grupo scout.',
   titleAccent: 'Un camino para crecer, compartir y dejar huella.',
   lead: 'Desde 1979 acompañamos a niños, niñas, jóvenes y familias de Montequinto educando en el tiempo libre, en la naturaleza y en los valores del escultismo católico.',
-  photoSrc: '/images/conocenos/hero/scout-01.jpg',
   photoAlt:
     'Educandos de distintas ramas y responsables del Grupo IV Scout San José de Calasanz reunidos con guitarra y pañoletas',
   highlights: [
@@ -80,7 +79,6 @@ export const HISTORIA_MILESTONES: HistoryMilestone[] = [
       'El Grupo IV desarrolla su actividad educativa en Montequinto desde 1979, cuando el barrio daba sus primeros pasos.',
     detail:
       'Los scouts estuvieron entre las primeras actividades pastorales surgidas en torno a la parroquia Nuestra Señora de los Ángeles, ofreciendo desde el inicio un espacio de encuentro, tiempo libre sano y vida comunitaria para la infancia y juventud de la zona.',
-    photoSrc: '/images/conocenos/historia/antiguas/scout-02.jpg',
     photoAlt:
       'Fotografía histórica de archivo con educandos y responsables del grupo cogidos de la mano frente a las puertas de la parroquia',
     photoEra: 'historica',
@@ -95,7 +93,6 @@ export const HISTORIA_MILESTONES: HistoryMilestone[] = [
       'A finales de los noventa el grupo alcanzó en torno a 120 educandos participando de forma regular.',
     detail:
       'Ese impulso consolidó al Grupo IV como una referencia educativa en Montequinto, multiplicando campamentos, convivencias y un relevo natural de antiguos educandos que asumían la responsabilidad de acompañar a los más pequeños.',
-    photoSrc: '/images/conocenos/historia/actuales/scout-04.jpg',
     photoAlt: 'Educandos del grupo caminando con mochilas durante una marcha por sendero natural',
     photoEra: 'actual',
     photoOrientation: 'portrait',
@@ -109,7 +106,6 @@ export const HISTORIA_MILESTONES: HistoryMilestone[] = [
       'En 2013 el grupo acogió en Montequinto la Asamblea Anual de Scouts de Sevilla MSC.',
     detail:
       'Ser grupo anfitrión supuso abrir nuestro barrio al conjunto del escultismo católico sevillano, compartiendo trabajo en equipo, acogida y diálogo sobre el proyecto educativo común.',
-    photoSrc: '/images/conocenos/historia/actuales/scout-03.jpg',
     photoAlt: 'Convivencia de grupo en comedor de campamento con pañoletas del Grupo IV',
     photoEra: 'actual',
     photoOrientation: 'landscape',
@@ -123,7 +119,6 @@ export const HISTORIA_MILESTONES: HistoryMilestone[] = [
       'En 2024 celebramos 45 años de historia educativa continuada en Montequinto.',
     detail:
       'Cuarenta y cinco años después de aquel comienzo en 1979, antiguas y nuevas generaciones volvieron a encontrarse para agradecer todo lo vivido y mirar con ilusión hacia las próximas rondas solares.',
-    photoSrc: '/images/conocenos/historia/actuales/scout-01.jpg',
     photoAlt: 'Fotografía grupal de miembros de varias ramas y responsables del Grupo IV Scout',
     photoEra: 'actual',
     photoOrientation: 'landscape',
@@ -273,7 +268,6 @@ export const SECTIONS_DATA: ScoutSectionItem[] = [
       'Hábitos cotidianos de amistad, orden y cuidado mutuo.',
     ],
     motto: 'Descubrir el mundo compartiendo con alegría.',
-    photoSrc: null,
     photoAlt: 'Espacio reservado para fotografía real de la sección de Castores',
     photoOrientation: 'landscape',
     accentBg: 'bg-orange-50/70',
@@ -295,7 +289,6 @@ export const SECTIONS_DATA: ScoutSectionItem[] = [
       'Pequeñas responsabilidades compartidas en reuniones y acampadas.',
     ],
     motto: 'Aprender haciendo lo mejor posible cada día.',
-    photoSrc: null,
     photoAlt: 'Espacio reservado para fotografía real de la sección de Lobatos',
     photoOrientation: 'landscape',
     accentBg: 'bg-amber-50/70',
@@ -317,7 +310,6 @@ export const SECTIONS_DATA: ScoutSectionItem[] = [
       'Espacios de diálogo sobre amistad, respeto y compromiso personal.',
     ],
     motto: 'Explorar juntos y crecer asumiendo nuevos retos.',
-    photoSrc: null,
     photoAlt: 'Espacio reservado para fotografía real de la sección de Rangers',
     photoOrientation: 'landscape',
     accentBg: 'bg-sky-50/75',
@@ -339,7 +331,6 @@ export const SECTIONS_DATA: ScoutSectionItem[] = [
       'Convivencias y campamentos donde consolidan su criterio propio.',
     ],
     motto: 'Construir juntos proyectos que dejan huella.',
-    photoSrc: '/images/conocenos/secciones/pioneros/scout-03.jpg',
     photoAlt: 'Jóvenes y responsables del Grupo IV compartiendo convivencia de campamento',
     photoOrientation: 'landscape',
     accentBg: 'bg-rose-50/65',
@@ -361,7 +352,6 @@ export const SECTIONS_DATA: ScoutSectionItem[] = [
       'Preparación para dar el paso, si lo desean, al compromiso como scouters.',
     ],
     motto: 'Caminar con sentido y ponerse al servicio de los demás.',
-    photoSrc: '/images/conocenos/secciones/rutas/scout-04.jpg',
     photoAlt: 'Jóvenes del Grupo IV realizando una marcha por un sendero natural con mochilas',
     photoOrientation: 'portrait',
     accentBg: 'bg-emerald-50/65',

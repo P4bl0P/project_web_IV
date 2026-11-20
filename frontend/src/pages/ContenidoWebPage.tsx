@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { ArrowLeft, ExternalLink, Globe, Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import CouncilDeleteConfirmModal from '../components/conocenos/admin/CouncilDeleteConfirmModal';
-import CouncilMemberFormModal from '../components/conocenos/admin/CouncilMemberFormModal';
-import CouncilMemberList from '../components/conocenos/admin/CouncilMemberList';
-import CouncilRoleOverview from '../components/conocenos/admin/CouncilRoleOverview';
+import CouncilDeleteConfirmModal from '../components/contenido-web/CouncilDeleteConfirmModal';
+import CouncilMemberFormModal from '../components/contenido-web/CouncilMemberFormModal';
+import CouncilMemberList from '../components/contenido-web/CouncilMemberList';
+import CouncilRoleOverview from '../components/contenido-web/CouncilRoleOverview';
 import { SecButton } from '../components/secretaria/secretariaTheme';
 import { secButtonClass, secTokens } from '../components/secretaria/secretariaTokens';
-import FormAlert from '../components/ui/forms/FormAlert';
+import FormAlert from '../components/shared/forms/FormAlert';
 import { useCouncilManagement } from '../hooks/useCouncilManagement';
 import type {
   CouncilMember,
@@ -64,7 +64,7 @@ export default function ContenidoWebPage() {
   };
 
   return (
-    <div className="secretaria-page w-full min-h-[calc(100vh-4.75rem)] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="w-full min-h-[calc(100vh-4.75rem)] bg-gradient-to-b from-[#f8fafd] to-[#f2f5fa] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="max-w-[1100px] mx-auto space-y-5">
         <header
           className={`${secTokens.surface} px-5 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-4`}

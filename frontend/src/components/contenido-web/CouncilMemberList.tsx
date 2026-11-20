@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, Users } from 'lucide-react';
-import type { CouncilMember } from '../../../types/conocenos';
-import { COUNCIL_ROLE_STYLES } from '../../../utils/councilValidators';
-import { SecButton } from '../../secretaria/secretariaTheme';
+import type { CouncilMember } from '../../types/conocenos';
+import { COUNCIL_ROLE_STYLES } from '../../utils/councilValidators';
+import { SecButton } from '../secretaria/secretariaTheme';
 
 interface Props {
   members: CouncilMember[];

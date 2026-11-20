@@ -1,16 +1,10 @@
-export const PUBLIC_NAV_LINKS = [
-  { label: 'Inicio', to: '/home' },
-  { label: 'Conócenos', to: '/about' },
-  { label: 'Contacto', to: '/contact' },
-  { label: 'Solicitud inicial', to: '/solicitud' },
-] as const;
-
 export const SOCIAL_CHANNELS = [
   {
     id: 'instagram',
     platform: 'Instagram',
     handle: '@scoutsmonte5',
-    description: 'Fotografías, historias, acampadas y el día a día de nuestras ramas y actividades.',
+    description:
+      'Fotografías, historias, acampadas y el día a día de nuestras ramas y actividades.',
     cta: 'Abrir perfil en Instagram',
     href: 'https://www.instagram.com/scoutsmonte5?gwpx=ZDNlZDc0MzIxNw==',
   },
@@ -18,7 +12,8 @@ export const SOCIAL_CHANNELS = [
     id: 'facebook',
     platform: 'Facebook',
     handle: 'Scouts Montequinto',
-    description: 'Noticias del grupo, comunicados importantes y recuerdos compartidos con toda la comunidad scout.',
+    description:
+      'Noticias del grupo, comunicados importantes y recuerdos compartidos con toda la comunidad scout.',
     cta: 'Visitar página en Facebook',
     href: 'https://www.facebook.com/scoutsmontequinto',
   },
