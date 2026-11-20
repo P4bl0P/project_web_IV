@@ -260,3 +260,19 @@ model AuditEvent {
 
   @@index([createdAt])
 }
+
+// ============================================================================
+// MODELO CONSEJO DE GRUPO: Gestión pública de Conócenos desde Secretaría
+// ============================================================================
+model CouncilMember {
+  id           String   @id @default(uuid())
+  fullName     String
+  role         String
+  personalBio  String?  @db.Text
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([displayOrder])
+  @@index([role])
+}

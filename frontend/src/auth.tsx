@@ -6,7 +6,45 @@ import FormField from './components/ui/forms/FormField';
 import { formInputClass } from './components/ui/forms/formStyles';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
-export type User = { id: string; email: string; name: string; isSuperAdmin: boolean; mustChangePassword?: boolean; role?: { name: string } };
+export type UserPermission = {
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  module?: { name: string };
+};
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  isSuperAdmin: boolean;
+  mustChangePassword?: boolean;
+  role?: { id?: string; name: string; permissions?: UserPermission[] } | null;
+};
+
+function normalizeRoleLabel(value?: string | null): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+export function canAccessWebContent(user: User | null | undefined): boolean {
+  if (!user) return false;
+  if (user.isSuperAdmin) return true;
+  if (normalizeRoleLabel(user.role?.name) === 'secretaria') return true;
+  return Boolean(
+    user.role?.permissions?.some(
+      (permission) =>
+        normalizeRoleLabel(permission.module?.name) === 'secretaria' &&
+        (permission.canRead ||
+          permission.canCreate ||
+          permission.canUpdate ||
+          permission.canDelete),
+    ),
+  );
+}
 type LoginResponse = { status: 'MFA_REQUIRED' | 'MFA_SETUP_REQUIRED'; challenge: string; setup?: { secret: string; otpauthUrl: string } };
 type AuthContextValue = { user: User | null; loading: boolean; login: (email: string, password: string) => Promise<LoginResponse>; completeMfa: (challenge: string, code: string, setup: boolean) => Promise<string[]>; refreshUser: () => Promise<void>; logout: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,6 +107,14 @@ export function AdminRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="state-card">Comprobando permisos…</div>;
   return user?.isSuperAdmin ? children : <Navigate to="/gestion" replace />;
+}
+export function WebContentRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <div className="state-card">Comprobando permisos…</div>;
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (user.mustChangePassword) return <Navigate to="/perfil" replace />;
+  return canAccessWebContent(user) ? children : <Navigate to="/gestion" replace />;
 }
 export function LoginPage() {
   const { user, login, completeMfa } = useAuth(); const navigate = useNavigate();

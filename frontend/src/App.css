@@ -38,7 +38,7 @@ a { color: inherit; }
 .nav-menu { position: relative; }
 .nav-menu-trigger svg { transition: transform .2s ease; }
 .rotate-180 { transform: rotate(180deg); }
-.nav-popover { position: absolute; top: calc(100% + 12px); right: 0; width: 190px; padding: 7px; border: 1px solid var(--line); border-radius: 15px; background: #fff; box-shadow: var(--shadow); opacity: 0; visibility: hidden; transform: translateY(-5px); transition: .2s ease; }
+.nav-popover { position: absolute; top: calc(100% + 12px); right: 0; min-width: 215px; width: max-content; padding: 7px; border: 1px solid var(--line); border-radius: 15px; background: #fff; box-shadow: var(--shadow); opacity: 0; visibility: hidden; transform: translateY(-5px); transition: .2s ease; }
 .nav-popover.is-open { opacity: 1; visibility: visible; transform: translateY(0); }
 .nav-popover a, .nav-popover button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 11px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); text-align: left; text-decoration: none; font-size: 12px; cursor: pointer; }
 .nav-popover a:hover, .nav-popover button:hover { background: var(--soft); color: var(--blue); }

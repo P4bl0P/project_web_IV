@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Compass, FolderKanban, Shield, Wallet } from 'lucide-react';
-import { useAuth } from '../auth';
+import { ArrowUpRight, Compass, FolderKanban, Globe, Shield, Wallet } from 'lucide-react';
+import { canAccessWebContent, useAuth } from '../auth';
 
 const MODULES = [
   { title: 'Jefatura', path: '/gestion/jefatura', icon: Compass },
@@ -10,7 +10,15 @@ const MODULES = [
 
 export default function GestionPage() {
   const { user } = useAuth();
-  const modules = user?.isSuperAdmin ? [...MODULES, { title: 'Administración', path: '/gestion/administracion', icon: Shield }] : MODULES;
+  const modules = [
+    ...MODULES,
+    ...(canAccessWebContent(user)
+      ? [{ title: 'Contenido de la web', path: '/gestion/contenido-web', icon: Globe }]
+      : []),
+    ...(user?.isSuperAdmin
+      ? [{ title: 'Administración', path: '/gestion/administracion', icon: Shield }]
+      : []),
+  ];
   return (
     <div className="management-page page-width">
       <div className="page-heading"><div><span className="section-kicker">Área privada</span><h1>Gestión del grupo</h1><p>Todo lo que necesitas para cuidar la vida del Grupo IV.</p></div></div>
