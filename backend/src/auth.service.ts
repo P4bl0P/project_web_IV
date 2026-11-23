@@ -197,10 +197,7 @@ export class AuthService {
       throw new UnauthorizedException('Sesión de autenticación no válida');
     }
 
-    const valid = verifySync({
-      token: code.trim(),
-      secret: this.decrypt(encryptedSecret),
-    }).valid;
+    const valid = this.verifyTotpSafe(code, encryptedSecret);
 
     if (!valid) {
       const nextAttempts = pending.attempts + 1;
@@ -304,10 +301,7 @@ export class AuthService {
     }
 
     const trimmedCode = code.trim();
-    let valid = verifySync({
-      token: trimmedCode,
-      secret: this.decrypt(pending.user.mfaSecret),
-    }).valid;
+    let valid = this.verifyTotpSafe(trimmedCode, pending.user.mfaSecret);
     let matchedRecoveryCodeId: string | null = null;
 
     if (!valid) {
@@ -728,7 +722,7 @@ export class AuthService {
       throw new BadRequestException('No hay ninguna configuración MFA pendiente');
     }
 
-    if (!verifySync({ token: code.trim(), secret: this.decrypt(user.mfaPendingSecret) }).valid) {
+    if (!this.verifyTotpSafe(code, user.mfaPendingSecret)) {
       throw new BadRequestException('Código MFA no válido');
     }
 
@@ -791,6 +785,16 @@ export class AuthService {
       result: result === 'DENIED' ? 'DENIED' : 'ALLOWED',
       ipAddress,
     });
+  }
+
+  private verifyTotpSafe(token: string, encryptedSecret: string): boolean {
+    const trimmed = token.trim();
+    if (!/^\d{6}$/.test(trimmed)) return false;
+    try {
+      return verifySync({ token: trimmed, secret: this.decrypt(encryptedSecret) }).valid;
+    } catch {
+      return false;
+    }
   }
 
   private key() {
