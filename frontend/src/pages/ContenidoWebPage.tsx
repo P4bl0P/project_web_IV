@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ExternalLink, Globe, Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { canAccessWebContent, useAuth } from '../auth';
@@ -42,6 +42,18 @@ export default function ContenidoWebPage() {
   );
   const [deletingMember, setDeletingMember] = useState<CouncilMember | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const timer = window.setTimeout(() => setStatusMessage(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [statusMessage]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => clearError(), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error, clearError]);
 
   const handleSaveMember = async (
     payload: CreateCouncilMemberPayload | UpdateCouncilMemberPayload,

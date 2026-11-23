@@ -115,6 +115,18 @@ export default function AdministracionPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
+
   const createUser = async (event: FormEvent) => {
     event.preventDefault();
     setError('');

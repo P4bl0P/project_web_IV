@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
 import { isSuperAdmin, useAuth } from '../auth';
@@ -15,6 +15,18 @@ export default function PerfilPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   if (!user) return null;
 
