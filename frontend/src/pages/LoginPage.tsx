@@ -1,9 +1,17 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth, type LoginResponse } from '../auth';
 import FormAlert from '../components/shared/forms/FormAlert';
 import FormField from '../components/shared/forms/FormField';
 import { formInputClass } from '../components/shared/forms/formStyles';
+
+type LoginFieldErrors = {
+  email?: string;
+  password?: string;
+  code?: string;
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const { user, login, completeMfa } = useAuth();
@@ -14,14 +22,40 @@ export default function LoginPage() {
   const [challenge, setChallenge] = useState('');
   const [setup, setSetup] = useState<LoginResponse['setup']>();
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   if (user && !recoveryCodes.length) return <Navigate to="/gestion" replace />;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+
+    const nextErrors: LoginFieldErrors = {};
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      nextErrors.email = 'Introduce tu correo electrónico.';
+    } else if (!EMAIL_REGEX.test(trimmedEmail)) {
+      nextErrors.email = 'Introduce un correo electrónico válido.';
+    }
+
+    if (!password) {
+      nextErrors.password = 'Introduce tu contraseña.';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
+    setFieldErrors({});
     setSubmitting(true);
     try {
       const result = await login(email, password);
@@ -37,6 +71,23 @@ export default function LoginPage() {
   async function verify(event: FormEvent) {
     event.preventDefault();
     setError('');
+
+    const nextErrors: LoginFieldErrors = {};
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      nextErrors.code = 'Introduce el código temporal o de recuperación.';
+    } else if (trimmedCode.length < 6) {
+      nextErrors.code = 'El código debe tener al menos 6 caracteres.';
+    } else if (trimmedCode.length > 20) {
+      nextErrors.code = 'El código no puede superar los 20 caracteres.';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
+    setFieldErrors({});
     setSubmitting(true);
     try {
       const codes = await completeMfa(challenge, code, Boolean(setup));
@@ -89,25 +140,33 @@ export default function LoginPage() {
           </div>
         )}
         {!challenge ? (
-          <form onSubmit={submit} className="grid gap-[18px]">
-            <FormField label="Correo electrónico" required>
+          <form onSubmit={submit} noValidate className="grid gap-[18px]">
+            <FormField label="Correo electrónico" required error={fieldErrors.email}>
               <input
                 type="email"
                 autoComplete="username"
-                required
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={formInputClass()}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (fieldErrors.email) {
+                    setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                  }
+                }}
+                className={formInputClass(Boolean(fieldErrors.email))}
               />
             </FormField>
-            <FormField label="Contraseña" required>
+            <FormField label="Contraseña" required error={fieldErrors.password}>
               <input
                 type="password"
                 autoComplete="current-password"
-                required
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={formInputClass()}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  if (fieldErrors.password) {
+                    setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                  }
+                }}
+                className={formInputClass(Boolean(fieldErrors.password))}
               />
             </FormField>
             <button className="button button-primary cursor-pointer" type="submit" disabled={submitting}>
@@ -115,7 +174,7 @@ export default function LoginPage() {
             </button>
           </form>
         ) : (
-          <form onSubmit={verify} className="grid gap-[18px]">
+          <form onSubmit={verify} noValidate className="grid gap-[18px]">
             {setup && (
               <div className="rounded-[12px] bg-[#f5f7fb] p-[14px] text-[12px] leading-[1.5] text-[#627089]">
                 <strong className="text-[#000254]">Configura tu aplicación autenticadora</strong>
@@ -125,20 +184,24 @@ export default function LoginPage() {
                 </code>
               </div>
             )}
-            <FormField label="Código temporal o de recuperación" required>
+            <FormField
+              label="Código temporal o de recuperación"
+              required
+              hint="Introduce los 6 dígitos de tu app autenticadora o uno de tus códigos de recuperación."
+              error={fieldErrors.code}
+            >
               <input
                 inputMode="text"
                 autoComplete="one-time-code"
-                minLength={6}
-                maxLength={20}
-                required
                 value={code}
-                onChange={(event) => setCode(event.target.value)}
-                className={formInputClass()}
+                onChange={(event) => {
+                  setCode(event.target.value);
+                  if (fieldErrors.code) {
+                    setFieldErrors((prev) => ({ ...prev, code: undefined }));
+                  }
+                }}
+                className={formInputClass(Boolean(fieldErrors.code))}
               />
-              <small className="mt-1 block text-[11px] text-[#627089]">
-                Introduce los 6 dígitos de tu app autenticadora o uno de tus códigos de recuperación.
-              </small>
             </FormField>
             <button className="button button-primary cursor-pointer" type="submit" disabled={submitting}>
               {submitting ? 'Verificando…' : 'Entrar'}

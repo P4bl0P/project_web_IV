@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Check, KeyRound, Pencil, Plus, Shield, Trash2, UserRound, X } from 'lucide-react';
 import type { AdminRole, AdminUser } from '../../services/api';
+import FormField from '../shared/forms/FormField';
+import { formInputClass } from '../shared/forms/formStyles';
 
 interface AdminUsersSectionProps {
   users: AdminUser[];
@@ -16,9 +18,34 @@ interface AdminUsersSectionProps {
   onRequestDeleteUser: (user: AdminUser) => void;
 }
 
-const fieldLabelClass = 'grid gap-[7px] text-[13px] font-bold text-[#0c1933]';
-const fieldControlClass =
-  'w-full rounded-[11px] border border-[#e4e9f1] bg-white px-[13px] py-3 outline-none focus:border-[#01317b] focus:shadow-[0_0_0_4px_rgba(1,49,123,0.09)]';
+type UserFieldErrors = {
+  name?: string;
+  email?: string;
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateUserFields(name: string, email: string): UserFieldErrors {
+  const errors: UserFieldErrors = {};
+  const trimmedName = name.trim();
+  const trimmedEmail = email.trim();
+
+  if (!trimmedName) {
+    errors.name = 'El nombre es obligatorio.';
+  } else if (trimmedName.length > 120) {
+    errors.name = 'El nombre no puede superar los 120 caracteres.';
+  }
+
+  if (!trimmedEmail) {
+    errors.email = 'El correo electrónico es obligatorio.';
+  } else if (!EMAIL_REGEX.test(trimmedEmail)) {
+    errors.email = 'Introduce un correo electrónico válido.';
+  } else if (trimmedEmail.length > 180) {
+    errors.email = 'El correo no puede superar los 180 caracteres.';
+  }
+
+  return errors;
+}
 
 const STATUS_BADGES: Record<AdminUser['status'], { label: string; className: string }> = {
   ACTIVE: { label: 'Activo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -40,19 +67,38 @@ export default function AdminUsersSection({
   onResetPassword,
   onRequestDeleteUser,
 }: AdminUsersSectionProps) {
+  const [createErrors, setCreateErrors] = useState<UserFieldErrors>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{ name: string; email: string }>({
     name: '',
     email: '',
   });
+  const [editErrors, setEditErrors] = useState<UserFieldErrors>({});
 
   const startEdit = (user: AdminUser) => {
     setEditingId(user.id);
     setEditDraft({ name: user.name, email: user.email });
+    setEditErrors({});
+  };
+
+  const handleCreateSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const nextErrors = validateUserFields(form.name, form.email);
+    if (Object.keys(nextErrors).length > 0) {
+      setCreateErrors(nextErrors);
+      return;
+    }
+    setCreateErrors({});
+    await onCreateUser(event);
   };
 
   const saveEdit = async (userId: string) => {
-    if (!editDraft.name.trim() || !editDraft.email.trim()) return;
+    const nextErrors = validateUserFields(editDraft.name, editDraft.email);
+    if (Object.keys(nextErrors).length > 0) {
+      setEditErrors(nextErrors);
+      return;
+    }
+    setEditErrors({});
     await onUpdateUserProfile(userId, {
       name: editDraft.name.trim(),
       email: editDraft.email.trim(),
@@ -68,32 +114,37 @@ export default function AdminUsersSection({
           <h2 className="m-0 text-[20px] text-[#000254]">Nuevo usuario</h2>
         </div>
 
-        <form className="grid gap-4" onSubmit={onCreateUser}>
-          <label className={fieldLabelClass}>
-            Nombre
+        <form className="grid gap-4" noValidate onSubmit={(e) => void handleCreateSubmit(e)}>
+          <FormField label="Nombre" required error={createErrors.name}>
             <input
-              required
               value={form.name}
-              onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-              className={fieldControlClass}
+              onChange={(e) => {
+                onFormChange({ ...form, name: e.target.value });
+                if (createErrors.name) {
+                  setCreateErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
+              className={formInputClass(Boolean(createErrors.name))}
             />
-          </label>
-          <label className={fieldLabelClass}>
-            Correo electrónico
+          </FormField>
+          <FormField label="Correo electrónico" required error={createErrors.email}>
             <input
               type="email"
-              required
               value={form.email}
-              onChange={(e) => onFormChange({ ...form, email: e.target.value })}
-              className={fieldControlClass}
+              onChange={(e) => {
+                onFormChange({ ...form, email: e.target.value });
+                if (createErrors.email) {
+                  setCreateErrors((prev) => ({ ...prev, email: undefined }));
+                }
+              }}
+              className={formInputClass(Boolean(createErrors.email))}
             />
-          </label>
-          <label className={fieldLabelClass}>
-            Cargo
+          </FormField>
+          <FormField label="Cargo">
             <select
               value={form.roleId}
               onChange={(e) => onFormChange({ ...form, roleId: e.target.value })}
-              className={fieldControlClass}
+              className={formInputClass()}
             >
               <option value="">Sin cargo</option>
               {roles.map((role) => (
@@ -102,7 +153,7 @@ export default function AdminUsersSection({
                 </option>
               ))}
             </select>
-          </label>
+          </FormField>
           <button type="submit" className="button button-primary cursor-pointer">
             <Plus size={16} /> Crear usuario
           </button>
@@ -126,21 +177,39 @@ export default function AdminUsersSection({
                 <div className="min-w-0 flex-1 space-y-1">
                   {isEditing ? (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <input
-                        aria-label={`Editar nombre de ${user.name}`}
-                        value={editDraft.name}
-                        onChange={(e) => setEditDraft((prev) => ({ ...prev, name: e.target.value }))}
-                        className="rounded-lg border border-[#c9d9ef] bg-white px-2.5 py-1.5 text-xs"
-                      />
-                      <input
-                        type="email"
-                        aria-label={`Editar correo de ${user.name}`}
-                        value={editDraft.email}
-                        onChange={(e) =>
-                          setEditDraft((prev) => ({ ...prev, email: e.target.value }))
-                        }
-                        className="rounded-lg border border-[#c9d9ef] bg-white px-2.5 py-1.5 text-xs"
-                      />
+                      <div>
+                        <input
+                          aria-label={`Editar nombre de ${user.name}`}
+                          value={editDraft.name}
+                          onChange={(e) => {
+                            setEditDraft((prev) => ({ ...prev, name: e.target.value }));
+                            if (editErrors.name) {
+                              setEditErrors((prev) => ({ ...prev, name: undefined }));
+                            }
+                          }}
+                          className={formInputClass(Boolean(editErrors.name), 'min-h-[34px] py-1.5 text-xs')}
+                        />
+                        {editErrors.name && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600">{editErrors.name}</p>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="email"
+                          aria-label={`Editar correo de ${user.name}`}
+                          value={editDraft.email}
+                          onChange={(e) => {
+                            setEditDraft((prev) => ({ ...prev, email: e.target.value }));
+                            if (editErrors.email) {
+                              setEditErrors((prev) => ({ ...prev, email: undefined }));
+                            }
+                          }}
+                          className={formInputClass(Boolean(editErrors.email), 'min-h-[34px] py-1.5 text-xs')}
+                        />
+                        {editErrors.email && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600">{editErrors.email}</p>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <>

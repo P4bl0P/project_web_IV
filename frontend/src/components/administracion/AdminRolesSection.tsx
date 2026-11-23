@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Check, Pencil, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 import type { AdminRole } from '../../services/api';
+import FormField from '../shared/forms/FormField';
+import { formInputClass } from '../shared/forms/formStyles';
 
 interface AdminRolesSectionProps {
   roles: AdminRole[];
@@ -11,6 +13,29 @@ interface AdminRolesSectionProps {
   onRequestDeleteRole: (role: AdminRole) => void;
 }
 
+type RoleFieldErrors = {
+  name?: string;
+  description?: string;
+};
+
+function validateRoleFields(name: string, description: string): RoleFieldErrors {
+  const errors: RoleFieldErrors = {};
+  const trimmedName = name.trim();
+  const trimmedDescription = description.trim();
+
+  if (!trimmedName) {
+    errors.name = 'El nombre del cargo es obligatorio.';
+  } else if (trimmedName.length > 80) {
+    errors.name = 'El nombre del cargo no puede superar los 80 caracteres.';
+  }
+
+  if (trimmedDescription.length > 300) {
+    errors.description = 'La descripción no puede superar los 300 caracteres.';
+  }
+
+  return errors;
+}
+
 export default function AdminRolesSection({
   roles,
   roleForm,
@@ -19,19 +44,38 @@ export default function AdminRolesSection({
   onUpdateRole,
   onRequestDeleteRole,
 }: AdminRolesSectionProps) {
+  const [createErrors, setCreateErrors] = useState<RoleFieldErrors>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{ name: string; description: string }>({
     name: '',
     description: '',
   });
+  const [editErrors, setEditErrors] = useState<RoleFieldErrors>({});
 
   const startEdit = (role: AdminRole) => {
     setEditingId(role.id);
     setEditDraft({ name: role.name, description: role.description ?? '' });
+    setEditErrors({});
+  };
+
+  const handleCreateSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const nextErrors = validateRoleFields(roleForm.name, roleForm.description);
+    if (Object.keys(nextErrors).length > 0) {
+      setCreateErrors(nextErrors);
+      return;
+    }
+    setCreateErrors({});
+    await onCreateRole(event);
   };
 
   const saveEdit = async (roleId: string) => {
-    if (!editDraft.name.trim()) return;
+    const nextErrors = validateRoleFields(editDraft.name, editDraft.description);
+    if (Object.keys(nextErrors).length > 0) {
+      setEditErrors(nextErrors);
+      return;
+    }
+    setEditErrors({});
     await onUpdateRole(roleId, {
       name: editDraft.name.trim(),
       description: editDraft.description.trim() || null,
@@ -47,27 +91,34 @@ export default function AdminRolesSection({
           <h2 className="m-0 text-[20px] text-[#000254]">Nuevo cargo</h2>
         </div>
 
-        <form className="grid gap-4" onSubmit={onCreateRole}>
-          <label className="grid gap-[7px] text-[13px] font-bold text-[#0c1933]">
-            Nombre
+        <form className="grid gap-4" noValidate onSubmit={(e) => void handleCreateSubmit(e)}>
+          <FormField label="Nombre" required error={createErrors.name}>
             <input
-              required
               value={roleForm.name}
-              onChange={(e) => onRoleFormChange({ ...roleForm, name: e.target.value })}
+              onChange={(e) => {
+                onRoleFormChange({ ...roleForm, name: e.target.value });
+                if (createErrors.name) {
+                  setCreateErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
               placeholder="Ej. Coordinación de Rama"
-              className="w-full rounded-[11px] border border-[#e4e9f1] bg-white px-[13px] py-3 outline-none focus:border-[#01317b] focus:shadow-[0_0_0_4px_rgba(1,49,123,0.09)]"
+              className={formInputClass(Boolean(createErrors.name))}
             />
-          </label>
-          <label className="grid gap-[7px] text-[13px] font-bold text-[#0c1933]">
-            Descripción
+          </FormField>
+          <FormField label="Descripción" error={createErrors.description}>
             <textarea
               rows={3}
               value={roleForm.description}
-              onChange={(e) => onRoleFormChange({ ...roleForm, description: e.target.value })}
+              onChange={(e) => {
+                onRoleFormChange({ ...roleForm, description: e.target.value });
+                if (createErrors.description) {
+                  setCreateErrors((prev) => ({ ...prev, description: undefined }));
+                }
+              }}
               placeholder="Responsabilidades principales del cargo..."
-              className="w-full rounded-[11px] border border-[#e4e9f1] bg-white px-[13px] py-2.5 text-sm outline-none focus:border-[#01317b] focus:shadow-[0_0_0_4px_rgba(1,49,123,0.09)]"
+              className={formInputClass(Boolean(createErrors.description), 'resize-y')}
             />
-          </label>
+          </FormField>
           <button type="submit" className="button button-primary cursor-pointer">
             <Plus size={16} /> Crear cargo
           </button>
@@ -97,21 +148,49 @@ export default function AdminRolesSection({
                 <div className="min-w-0 flex-1 space-y-1">
                   {isEditing ? (
                     <div className="grid gap-2">
-                      <input
-                        aria-label={`Editar nombre del cargo ${role.name}`}
-                        value={editDraft.name}
-                        onChange={(e) => setEditDraft((prev) => ({ ...prev, name: e.target.value }))}
-                        className="rounded-lg border border-[#c9d9ef] bg-white px-2.5 py-1.5 text-sm font-bold text-[#000254]"
-                      />
-                      <input
-                        aria-label={`Editar descripción del cargo ${role.name}`}
-                        value={editDraft.description}
-                        onChange={(e) =>
-                          setEditDraft((prev) => ({ ...prev, description: e.target.value }))
-                        }
-                        placeholder="Descripción del cargo"
-                        className="rounded-lg border border-[#c9d9ef] bg-white px-2.5 py-1.5 text-xs"
-                      />
+                      <div>
+                        <input
+                          aria-label={`Editar nombre del cargo ${role.name}`}
+                          value={editDraft.name}
+                          onChange={(e) => {
+                            setEditDraft((prev) => ({ ...prev, name: e.target.value }));
+                            if (editErrors.name) {
+                              setEditErrors((prev) => ({ ...prev, name: undefined }));
+                            }
+                          }}
+                          className={formInputClass(
+                            Boolean(editErrors.name),
+                            'min-h-[34px] py-1.5 text-sm font-bold text-[#000254]',
+                          )}
+                        />
+                        {editErrors.name && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600">
+                            {editErrors.name}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          aria-label={`Editar descripción del cargo ${role.name}`}
+                          value={editDraft.description}
+                          onChange={(e) => {
+                            setEditDraft((prev) => ({ ...prev, description: e.target.value }));
+                            if (editErrors.description) {
+                              setEditErrors((prev) => ({ ...prev, description: undefined }));
+                            }
+                          }}
+                          placeholder="Descripción del cargo"
+                          className={formInputClass(
+                            Boolean(editErrors.description),
+                            'min-h-[34px] py-1.5 text-xs',
+                          )}
+                        />
+                        {editErrors.description && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600">
+                            {editErrors.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <>
