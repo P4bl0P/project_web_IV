@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CheckCircle2,
   ChevronLeft,
@@ -19,9 +19,9 @@ import CensusCriteriaSection from './censo/CensusCriteriaSection';
 import CensusErrorSummary from './censo/CensusErrorSummary';
 import CensusIdentitySection from './censo/CensusIdentitySection';
 import {
+  EMPTY_CENSUS_FORM,
   buildCensusPayload,
   findFirstInvalidCensusStep,
-  formFromRecord,
   validateAllCensusSteps,
   type CensusChangeHandler,
   type CensusFieldErrors,
@@ -31,7 +31,6 @@ import { SecButton } from './secretariaTheme';
 import { secTokens } from './secretariaTokens';
 
 interface Props {
-  record?: ApplicantRecord | null;
   onClose: () => void;
   onSaved: (record: ApplicantRecord) => void;
 }
@@ -47,43 +46,17 @@ const STEPS: {
   { number: 4, title: 'Autorizaciones', description: 'Consentimientos y firmas' },
 ];
 
-export default function SecretariaCensoForm({ record, onClose, onSaved }: Props) {
-  const isEditing = Boolean(record);
-  const [formData, setFormData] = useState<DirectCensusPayload>(() => formFromRecord(record));
+export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
+  const [formData, setFormData] = useState<DirectCensusPayload>(() => ({ ...EMPTY_CENSUS_FORM }));
   const [step, setStep] = useState<CensusStepNumber>(1);
-  const [visitedSteps, setVisitedSteps] = useState<Partial<Record<CensusStepNumber, boolean>>>(() =>
-    isEditing ? { 1: true, 2: true, 3: true, 4: true } : { 1: true },
-  );
+  const [visitedSteps, setVisitedSteps] = useState<Partial<Record<CensusStepNumber, boolean>>>({
+    1: true,
+  });
   const [validatedSteps, setValidatedSteps] = useState<Partial<Record<CensusStepNumber, boolean>>>(
     {},
   );
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const [loadingDetail, setLoadingDetail] = useState(() => Boolean(record?.id));
-
-  useEffect(() => {
-    if (!record?.id) return;
-    let cancelled = false;
-    applicationsApi
-      .getById(record.id)
-      .then((detailed) => {
-        if (!cancelled) setFormData(formFromRecord(detailed));
-      })
-      .catch((reason: unknown) => {
-        if (!cancelled) {
-          setServerError(
-            reason instanceof Error ? reason.message : 'No se pudo cargar la ficha completa.',
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingDetail(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [record?.id]);
 
   const showSecondParent = useMemo(
     () => Boolean(formData.parent2FirstName || formData.parent2Phone || formData.parent2Email),
@@ -101,17 +74,6 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     ? currentStepValidation.fieldErrors
     : {};
   const error = serverError ?? (isCurrentStepValidated ? currentStepValidation.message : null);
-
-  // Cerrar con tecla Escape
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !saving) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, saving]);
 
   const handleChange: CensusChangeHandler = (event) => {
     const { name, value, type } = event.target;
@@ -148,6 +110,29 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     }
   };
 
+  const handleFillEmergencyFromTutor1 = () => {
+    setFormData((prev) => ({
+      ...prev,
+      emergencyContactName: `${prev.parent1FirstName || ''} ${prev.parent1LastName || ''}`.trim(),
+      emergencyContactPhone: prev.parent1Phone || '',
+      emergencyContactRelationship: prev.parent1Relationship || 'Tutor principal',
+    }));
+  };
+
+  const handleFillHolderFromTutor1 = () => {
+    const fullAddress = [formData.streetAddress, formData.streetNumber, formData.apartmentDoor]
+      .filter(Boolean)
+      .join(', ');
+    setFormData((prev) => ({
+      ...prev,
+      accountHolderName: `${prev.parent1FirstName || ''} ${prev.parent1LastName || ''}`.trim(),
+      accountHolderDni: (prev.parent1Dni || '').trim().toUpperCase(),
+      accountHolderAddress: fullAddress,
+      accountHolderMunicipality: prev.municipality,
+      accountHolderPostalCode: prev.postalCode,
+    }));
+  };
+
   const handleSubmit = async () => {
     setServerError(null);
     setVisitedSteps({ 1: true, 2: true, 3: true, 4: true });
@@ -162,15 +147,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
     setSaving(true);
     try {
       const completePayload = buildCensusPayload(formData);
-      let saved: ApplicantRecord;
-      if (isEditing) {
-        const editablePayload: Partial<DirectCensusPayload> = { ...completePayload };
-        delete editablePayload.signatureParent1;
-        delete editablePayload.signatureParent2;
-        saved = await applicationsApi.updateCensus(record!.id, editablePayload);
-      } else {
-        saved = await applicationsApi.createDirectCensus(completePayload);
-      }
+      const saved = await applicationsApi.createDirectCensus(completePayload);
       onSaved(saved);
     } catch (reason) {
       setServerError(reason instanceof Error ? reason.message : 'No se pudo guardar el censo.');
@@ -187,19 +164,15 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
       role="dialog"
       aria-modal="true"
       aria-labelledby="census-form-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !saving) onClose();
-      }}
     >
       <div className={secTokens.modalPanel}>
-        {/* Cabecera de la ventana modal */}
         <header className="flex items-start justify-between gap-4 bg-gradient-to-r from-[#000254] to-[#01317b] px-5 sm:px-7 py-5 text-white">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
               Secretaría · Censo Oficial
             </p>
             <h2 id="census-form-title" className="mt-1 text-lg sm:text-xl font-bold tracking-tight">
-              {isEditing ? 'Editar inscripción censada' : 'Alta directa en el censo'}
+              Alta directa en el censo
             </h2>
             <p className="mt-1 text-xs text-blue-100/85">
               Los campos marcados con * son obligatorios para completar la ficha oficial.
@@ -208,14 +181,14 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
           <button
             type="button"
             onClick={onClose}
-            className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+            disabled={saving}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 active:scale-95 disabled:opacity-40 transition-all cursor-pointer"
             aria-label="Cerrar formulario"
           >
             <X size={18} />
           </button>
         </header>
 
-        {/* Navegación por pasos (homogénea con la inscripción mágica) */}
         <nav
           className="grid grid-cols-2 gap-2 border-b border-slate-200/85 bg-white px-4 sm:px-6 py-3 md:grid-cols-4"
           aria-label="Pasos del formulario"
@@ -229,7 +202,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
               !isCurrent &&
               !hasStepError &&
               stepValidation.isValid &&
-              (isEditing || Boolean(visitedSteps[item.number]));
+              Boolean(visitedSteps[item.number]);
 
             return (
               <button
@@ -274,14 +247,8 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
           })}
         </nav>
 
-        {/* Contenido del paso activo */}
         <main className="space-y-4 p-4 sm:p-6 max-h-[calc(85vh-9rem)] overflow-y-auto">
           {error && <CensusErrorSummary message={error} fieldErrors={fieldErrors} />}
-          {loadingDetail && (
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
-              Cargando ficha confidencial del censado…
-            </div>
-          )}
 
           {step === 1 && (
             <div className="space-y-4">
@@ -305,10 +272,20 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
             </div>
           )}
           {step === 2 && (
-            <Step2Medical formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />
+            <Step2Medical
+              formData={formData}
+              onChange={handleChange}
+              onFillEmergencyFromTutor1={handleFillEmergencyFromTutor1}
+              fieldErrors={fieldErrors}
+            />
           )}
           {step === 3 && (
-            <Step3Bank formData={formData} onChange={handleChange} fieldErrors={fieldErrors} />
+            <Step3Bank
+              formData={formData}
+              onChange={handleChange}
+              onFillHolderFromTutor1={handleFillHolderFromTutor1}
+              fieldErrors={fieldErrors}
+            />
           )}
           {step === 4 && (
             <Step4Sign
@@ -323,24 +300,16 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
                 setFormData((previous) => ({ ...previous, signatureParent2 }));
                 setServerError(null);
               }}
-              readOnly={isEditing}
             />
           )}
 
-          {/* Barra inferior de acciones del formulario */}
           <footer className="flex items-center justify-between gap-3 border-t border-slate-200/85 pt-4 mt-2">
             {step > 1 ? (
-              <SecButton
-                variant="secondary"
-                size="lg"
-                onClick={handlePrevious}
-              >
+              <SecButton variant="secondary" size="lg" onClick={handlePrevious}>
                 <ChevronLeft size={15} /> Anterior
               </SecButton>
             ) : (
-              <SecButton variant="tertiary" size="lg" onClick={onClose}>
-                Cancelar
-              </SecButton>
+              <div />
             )}
 
             {step < 4 ? (
@@ -354,8 +323,8 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
                 disabled={saving}
                 onClick={handleSubmit}
               >
-                {isEditing ? <CheckCircle2 size={16} /> : <ShieldCheck size={16} />}
-                {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear y censar'}
+                <ShieldCheck size={16} />
+                {saving ? 'Guardando…' : 'Crear y censar'}
               </SecButton>
             )}
           </footer>

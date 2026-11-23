@@ -1055,6 +1055,20 @@ describe('ApplicationsService - Reglas de negocio, ciclo de vida, seguridad, cif
       );
       expect(reactivated.status).toBe(ApplicationStatus.CENSADO);
       expect(reactivated.closureReason).toBeNull();
+
+      // Edición unificada en CENSADO actualiza identidad, prioridad de inclusión y notas del Kraal
+      const updatedCensus = await service.updateCensus(
+        appId,
+        {
+          childFirstName: 'Sofía Modificada',
+          socialInclusionPriority: true,
+          kraalInternalNotes: 'Actualización desde expediente de detalle',
+        },
+        { actorId: 'sec-1' },
+      );
+      expect(updatedCensus.childFirstName).toBe('Sofía Modificada');
+      expect(updatedCensus.socialInclusionPriority).toBe(true);
+      expect(updatedCensus.kraalInternalNotes).toBe('Actualización desde expediente de detalle');
     });
   });
 

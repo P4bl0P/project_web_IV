@@ -7,11 +7,9 @@ import {
   Sparkles,
   Copy,
   Check,
-  Trash2,
   FileCheck2,
   UserCheck,
   FileDown,
-  Pencil,
   AlertTriangle,
   Calendar,
   Mail,
@@ -19,9 +17,6 @@ import {
   MapPin,
   Clock,
   RefreshCw,
-  Undo2,
-  ShieldCheck,
-  UserMinus,
   RotateCcw,
   Eye,
 } from 'lucide-react';
@@ -38,22 +33,15 @@ interface Props {
   safeModeWhatsApp: boolean;
   copiedId: string | null;
   canUpdate: boolean;
-  canDelete: boolean;
-  onToggleInclusion: (record: ApplicantRecord) => void;
   onValidate: (record: ApplicantRecord) => void;
   onOfferSpot: (record: ApplicantRecord) => void;
   onRenewToken: (record: ApplicantRecord) => void;
-  onReturnWaitlist: (record: ApplicantRecord) => void;
-  onMarkReviewed: (record: ApplicantRecord) => void;
   onAdmitCensus: (record: ApplicantRecord) => void;
-  onDeactivate: (record: ApplicantRecord) => void;
   onReactivate: (record: ApplicantRecord) => void;
   onOpenWhatsApp: (record: ApplicantRecord) => void;
   onCopyLink: (record: ApplicantRecord) => void;
   onDownloadPdf: (record: ApplicantRecord) => void;
-  onDelete: (record: ApplicantRecord) => void;
-  onEditCensus?: (record: ApplicantRecord) => void;
-  onEdit: (record: ApplicantRecord) => void;
+  onViewDetail: (record: ApplicantRecord) => void;
 }
 
 const GENDER_SHORT_LABELS: Record<string, string> = {
@@ -69,28 +57,29 @@ export default function ApplicantCard({
   safeModeWhatsApp,
   copiedId,
   canUpdate,
-  canDelete,
-  onToggleInclusion,
   onValidate,
   onOfferSpot,
   onRenewToken,
-  onReturnWaitlist,
-  onMarkReviewed,
   onAdmitCensus,
-  onDeactivate,
   onReactivate,
   onOpenWhatsApp,
   onCopyLink,
   onDownloadPdf,
-  onDelete,
-  onEditCensus,
-  onEdit,
+  onViewDetail,
 }: Props) {
   const branchConfig = getBranchVisualConfig(record.calculatedBranch);
 
   const birthDate =
     formatIsoToHumanShort(record.childBirthDate) ||
     new Date(record.childBirthDate).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+  const requestedDate =
+    formatIsoToHumanShort(record.createdAt) ||
+    new Date(record.createdAt).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -130,9 +119,13 @@ export default function ApplicantCard({
               #{index + 1}
             </span>
           )}
-          <h3 className="text-[15px] sm:text-base font-bold tracking-tight text-[#0c1933]">
+          <button
+            type="button"
+            onClick={() => onViewDetail(record)}
+            className="text-left text-[15px] sm:text-base font-bold tracking-tight text-[#0c1933] hover:text-[#01317b] hover:underline cursor-pointer"
+          >
             {record.childFirstName} {record.childLastName}
-          </h3>
+          </button>
           <SecBadge tone={branchConfig.tone} dotColor={branchConfig.dotColor}>
             {branchConfig.name}
           </SecBadge>
@@ -177,7 +170,7 @@ export default function ApplicantCard({
               <SecBadge tone="emerald">
                 <FileCheck2 size={11} className="shrink-0" />
                 <span>
-                  {record.reviewedAt ? 'Inscripción revisada · Lista' : 'Inscripción rellenada'}
+                  {record.reviewedAt ? 'Inscripción revisada · Lista para censar' : 'Inscripción rellenada'}
                 </span>
               </SecBadge>
             )}
@@ -236,6 +229,13 @@ export default function ApplicantCard({
             </span>
           )}
 
+          {activeTab !== 'CENSUS' && (
+            <span className="inline-flex items-center gap-1 text-slate-500">
+              <Calendar size={11} className="text-slate-400 shrink-0" />
+              <span>Solicitado: {requestedDate}</span>
+            </span>
+          )}
+
           {admittedDate && (
             <span className="inline-flex items-center gap-1 text-[#01317b] font-semibold">
               <Calendar size={11} className="shrink-0" />
@@ -252,186 +252,80 @@ export default function ApplicantCard({
         </div>
       </div>
 
-      {/* Bloque derecho: Barra de acciones controlada por estado y permisos */}
+      {/* Bloque derecho: Acción principal del flujo + acceso unificado al expediente */}
       <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2.5 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-        {canUpdate && (activeTab === 'INITIAL' || activeTab === 'WAITLIST') && (
-          <>
-            <SecButton
-              variant={record.socialInclusionPriority ? 'destructive' : 'secondary'}
-              size="sm"
-              onClick={() => onToggleInclusion(record)}
-              aria-pressed={record.socialInclusionPriority}
-            >
-              <HeartHandshake size={13} />
-              <span>Inclusión</span>
-            </SecButton>
-
-            {record.status === 'PENDIENTE_REVISION' && (
-              <SecButton
-                variant="warning"
-                size="sm"
-                onClick={() => onValidate(record)}
-              >
-                <CheckCircle2 size={13} />
-                <span>Validar</span>
-              </SecButton>
-            )}
-
-            <SecButton
-              variant="primary"
-              size="sm"
-              onClick={() => onOfferSpot(record)}
-            >
-              <Send size={13} />
-              <span>Ofertar Plaza</span>
-            </SecButton>
-          </>
+        {canUpdate && activeTab === 'INITIAL' && record.status === 'PENDIENTE_REVISION' && (
+          <SecButton variant="warning" size="sm" onClick={() => onValidate(record)}>
+            <CheckCircle2 size={13} />
+            <span>Validar</span>
+          </SecButton>
         )}
 
-        {activeTab === 'OFFERED' && (
+        {canUpdate && activeTab === 'WAITLIST' && record.status === 'LISTA_ESPERA' && (
+          <SecButton variant="primary" size="sm" onClick={() => onOfferSpot(record)}>
+            <Send size={13} />
+            <span>Ofertar Plaza</span>
+          </SecButton>
+        )}
+
+        {activeTab === 'OFFERED' && record.status === 'PLAZA_OFERTADA' && (
           <>
-            {record.status === 'PLAZA_OFERTADA' && record.enrollmentToken && !record.tokenExpired && (
+            {record.enrollmentToken && !record.tokenExpired ? (
               <>
-                <SecButton
-                  variant="whatsapp"
-                  size="sm"
-                  onClick={() => onOpenWhatsApp(record)}
-                >
+                <SecButton variant="whatsapp" size="sm" onClick={() => onOpenWhatsApp(record)}>
                   <MessageCircle size={13} />
                   <span>{safeModeWhatsApp ? 'Simular WhatsApp' : 'WhatsApp'}</span>
                 </SecButton>
-
-                <SecButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => onCopyLink(record)}
-                >
+                <SecButton variant="secondary" size="sm" onClick={() => onCopyLink(record)}>
                   {copiedId === record.id ? (
                     <Check size={13} className="text-emerald-600" />
                   ) : (
                     <Copy size={13} />
                   )}
-                  <span>{copiedId === record.id ? 'Copiado' : 'Link'}</span>
+                  <span>{copiedId === record.id ? 'Copiado' : 'Copiar link'}</span>
                 </SecButton>
               </>
-            )}
-
-            {canUpdate && (record.tokenExpired || record.status === 'PLAZA_OFERTADA') && (
-              <SecButton
-                variant={record.tokenExpired ? 'warning' : 'secondary'}
-                size="sm"
-                onClick={() => onRenewToken(record)}
-              >
-                <RefreshCw size={13} />
-                <span>Renovar</span>
-              </SecButton>
-            )}
-
-            {canUpdate && record.status === 'PLAZA_OFERTADA' && (
-              <SecButton
-                variant="secondary"
-                size="sm"
-                onClick={() => onReturnWaitlist(record)}
-                title="Devolver a lista de espera"
-              >
-                <Undo2 size={13} />
-                <span>Lista espera</span>
-              </SecButton>
-            )}
-
-            {canUpdate && record.status === 'INSCRIPCION_COMPLETADA' && (
-              <>
-                {!record.reviewedAt && (
-                  <SecButton
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onMarkReviewed(record)}
-                  >
-                    <ShieldCheck size={13} />
-                    <span>Revisada</span>
-                  </SecButton>
-                )}
-                <SecButton
-                  variant="success"
-                  size="sm"
-                  onClick={() => onAdmitCensus(record)}
-                >
-                  <UserCheck size={13} />
-                  <span>Censar</span>
+            ) : (
+              canUpdate && (
+                <SecButton variant="warning" size="sm" onClick={() => onRenewToken(record)}>
+                  <RefreshCw size={13} />
+                  <span>Renovar enlace</span>
                 </SecButton>
-              </>
+              )
             )}
           </>
         )}
 
+        {canUpdate && activeTab === 'OFFERED' && record.status === 'INSCRIPCION_COMPLETADA' && (
+          <SecButton variant="success" size="sm" onClick={() => onAdmitCensus(record)}>
+            <UserCheck size={13} />
+            <span>Censar</span>
+          </SecButton>
+        )}
+
         {record.enrollment && (
-          <SecButton
-            variant="secondary"
-            size="sm"
-            onClick={() => onDownloadPdf(record)}
-          >
+          <SecButton variant="secondary" size="sm" onClick={() => onDownloadPdf(record)}>
             <FileDown size={13} className="text-[#01317b]" />
             <span>PDF</span>
           </SecButton>
         )}
 
-        {activeTab === 'CENSUS' && canUpdate && (
-          <SecButton
-            variant="secondary"
-            size="sm"
-            onClick={() => onEditCensus?.(record)}
-          >
-            <Pencil size={13} />
-            <span>Editar</span>
+        {canUpdate && activeTab === 'ARCHIVED' && record.status === 'BAJA' && (
+          <SecButton variant="primary" size="sm" onClick={() => onReactivate(record)}>
+            <RotateCcw size={13} />
+            <span>Reactivar</span>
           </SecButton>
         )}
 
         <SecButton
           variant="secondary"
           size="sm"
-          onClick={() => onEdit(record)}
-          aria-label={`Ver o editar el expediente completo de ${record.childFirstName} ${record.childLastName}`}
+          onClick={() => onViewDetail(record)}
+          aria-label={`Abrir expediente de ${record.childFirstName} ${record.childLastName}`}
         >
           <Eye size={13} />
-          <span>{canUpdate && activeTab !== 'CENSUS' && activeTab !== 'ARCHIVED' ? 'Detalle / Editar' : 'Detalle'}</span>
+          <span>Ver expediente</span>
         </SecButton>
-
-        {canUpdate && record.status !== 'BAJA' && (
-          <SecButton
-            variant="tertiary"
-            size="icon"
-            onClick={() => onDeactivate(record)}
-            className="h-8 w-8 text-slate-400 hover:text-amber-700 hover:bg-amber-50"
-            aria-label={`Dar de baja a ${record.childFirstName} ${record.childLastName}`}
-            title="Dar de baja"
-          >
-            <UserMinus size={14} />
-          </SecButton>
-        )}
-
-        {canUpdate && record.status === 'BAJA' && (
-          <SecButton
-            variant="primary"
-            size="sm"
-            onClick={() => onReactivate(record)}
-          >
-            <RotateCcw size={13} />
-            <span>Reactivar</span>
-          </SecButton>
-        )}
-
-        {canDelete && (
-          <SecButton
-            variant="tertiary"
-            size="icon"
-            onClick={() => onDelete(record)}
-            className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-            aria-label={`Eliminar a ${record.childFirstName} ${record.childLastName}`}
-            title="Eliminar permanentemente"
-          >
-            <Trash2 size={14} />
-          </SecButton>
-        )}
       </div>
     </article>
   );

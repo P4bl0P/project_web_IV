@@ -88,4 +88,12 @@ export class CreateDirectCensusDto extends DirectCensusBaseDto {
 
 export class UpdateCensusDto extends PartialType(
   OmitType(DirectCensusBaseDto, ['signatureParent1', 'signatureParent2'] as const),
-) {}
+) {
+  @IsBoolean()
+  @IsOptional()
+  socialInclusionPriority?: boolean;
+
+  @IsString()
+  @IsOptional()
+  kraalInternalNotes?: string;
+}

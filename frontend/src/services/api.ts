@@ -386,6 +386,11 @@ export interface UpdateApplicationPayload {
 
 export type DirectCensusPayload = CreateApplicationPayload & CompleteEnrollmentPayload;
 
+export type UpdateCensusPayload = Partial<DirectCensusPayload> & {
+  socialInclusionPriority?: boolean;
+  kraalInternalNotes?: string;
+};
+
 function buildQueryString(params?: ApplicationsQueryParams): string {
   if (!params) return '';
   const searchParams = new URLSearchParams();
@@ -455,7 +460,7 @@ export const applicationsApi = {
     });
   },
 
-  async updateCensus(id: string, data: Partial<DirectCensusPayload>): Promise<ApplicantRecord> {
+  async updateCensus(id: string, data: UpdateCensusPayload): Promise<ApplicantRecord> {
     return apiJson<ApplicantRecord>(`/applications/${id}/census`, {
       method: 'PATCH',
       body: JSON.stringify(data),

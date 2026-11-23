@@ -89,9 +89,7 @@ export default function SecretariaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [safeModeWhatsApp, setSafeModeWhatsApp] = useState(true);
-  const [censusFormRecord, setCensusFormRecord] = useState<ApplicantRecord | null | undefined>(
-    undefined,
-  );
+  const [showNewCensusModal, setShowNewCensusModal] = useState(false);
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<SecretariaConfirmAction | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -210,30 +208,6 @@ export default function SecretariaPage() {
     [filters, activeTab],
   );
 
-  const handleToggleInclusion = async (record: ApplicantRecord) => {
-    try {
-      const updated = await applicationsApi.update(record.id, {
-        socialInclusionPriority: !record.socialInclusionPriority,
-      });
-      setPageData((prev) => ({
-        ...prev,
-        items: prev.items.map((item) => (item.id === record.id ? updated : item)),
-      }));
-      notify(
-        'success',
-        updated.socialInclusionPriority
-          ? `Prioridad de inclusión activada para ${record.childFirstName}.`
-          : `Prioridad de inclusión retirada de ${record.childFirstName}.`,
-      );
-      triggerReload();
-    } catch (reason) {
-      notify(
-        'error',
-        reason instanceof Error ? reason.message : 'No se pudo actualizar la prioridad.',
-      );
-    }
-  };
-
   const handleExecuteConfirmedAction = async (payload?: {
     closureReason?: ClosureReason;
     closureNotes?: string;
@@ -288,7 +262,7 @@ export default function SecretariaPage() {
       }
 
       setConfirmAction(null);
-      if (detailRecordId === record.id && confirmAction.type === 'DELETE') {
+      if (detailRecordId === record.id) {
         setDetailRecordId(null);
       }
       triggerReload();
@@ -302,11 +276,11 @@ export default function SecretariaPage() {
     }
   };
 
-  const handleCensusSaved = () => {
-    setCensusFormRecord(undefined);
+  const handleDirectCensusCreated = () => {
+    setShowNewCensusModal(false);
     setActiveTab('CENSUS');
     setCurrentPage(1);
-    notify('success', 'Ficha del censo guardada correctamente.');
+    notify('success', 'Nuevo educando dado de alta en el Censo Oficial.');
     triggerReload();
   };
 
@@ -401,7 +375,7 @@ export default function SecretariaPage() {
               <SecButton
                 variant="primary"
                 size="md"
-                onClick={() => setCensusFormRecord(null)}
+                onClick={() => setShowNewCensusModal(true)}
               >
                 <UserPlus size={14} />
                 <span>Nuevo educando</span>
@@ -448,11 +422,10 @@ export default function SecretariaPage() {
           </div>
         )}
 
-        {censusFormRecord !== undefined && (
+        {showNewCensusModal && (
           <SecretariaCensoForm
-            record={censusFormRecord}
-            onClose={() => setCensusFormRecord(undefined)}
-            onSaved={handleCensusSaved}
+            onClose={() => setShowNewCensusModal(false)}
+            onSaved={handleDirectCensusCreated}
           />
         )}
 
@@ -461,13 +434,10 @@ export default function SecretariaPage() {
             key={detailRecordId}
             recordId={detailRecordId}
             canUpdate={canUpdate}
+            canDelete={canDelete}
             onClose={() => setDetailRecordId(null)}
             onSelectRecord={(nextId) => setDetailRecordId(nextId)}
             onUpdated={() => triggerReload()}
-            onRequestEditCensus={(rec) => {
-              setDetailRecordId(null);
-              setCensusFormRecord(rec);
-            }}
             onTriggerLifecycleAction={(type, rec) => {
               setConfirmAction({ type, record: rec } as SecretariaConfirmAction);
             }}
@@ -598,26 +568,15 @@ export default function SecretariaPage() {
                     safeModeWhatsApp={safeModeWhatsApp}
                     copiedId={copiedId}
                     canUpdate={canUpdate}
-                    canDelete={canDelete}
-                    onToggleInclusion={handleToggleInclusion}
                     onValidate={(rec) => setConfirmAction({ type: 'VALIDATE', record: rec })}
                     onOfferSpot={(rec) => setConfirmAction({ type: 'OFFER_SPOT', record: rec })}
                     onRenewToken={(rec) => setConfirmAction({ type: 'RENEW_TOKEN', record: rec })}
-                    onReturnWaitlist={(rec) =>
-                      setConfirmAction({ type: 'RETURN_WAITLIST', record: rec })
-                    }
-                    onMarkReviewed={(rec) =>
-                      setConfirmAction({ type: 'MARK_REVIEWED', record: rec })
-                    }
                     onAdmitCensus={(rec) => setConfirmAction({ type: 'ADMIT_CENSUS', record: rec })}
-                    onDeactivate={(rec) => setConfirmAction({ type: 'DEACTIVATE', record: rec })}
                     onReactivate={(rec) => setConfirmAction({ type: 'REACTIVATE', record: rec })}
                     onOpenWhatsApp={handleOpenWhatsApp}
                     onCopyLink={handleCopyLink}
                     onDownloadPdf={handleDownloadPdf}
-                    onDelete={(rec) => setConfirmAction({ type: 'DELETE', record: rec })}
-                    onEditCensus={(rec) => setCensusFormRecord(rec)}
-                    onEdit={(rec) => setDetailRecordId(rec.id)}
+                    onViewDetail={(rec) => setDetailRecordId(rec.id)}
                   />
                 ))}
               </div>

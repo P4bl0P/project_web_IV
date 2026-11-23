@@ -70,9 +70,6 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
         role="dialog"
         aria-modal="true"
         aria-labelledby="sec-confirm-title"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onCancel();
-        }}
       >
         <div className="w-full max-w-lg my-auto rounded-[22px] border border-white/80 bg-white p-6 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal space-y-4">
           <div className="flex items-start justify-between gap-3">
@@ -93,7 +90,7 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
             <button
               type="button"
               onClick={onCancel}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               aria-label="Cerrar vista previa"
             >
               <X size={16} />
@@ -104,10 +101,7 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
             {action.message}
           </pre>
 
-          <div className="flex items-center justify-end gap-2">
-            <SecButton variant="secondary" size="md" onClick={onCancel}>
-              Cerrar
-            </SecButton>
+          <div className="flex items-center justify-end">
             <SecButton variant="whatsapp" size="md" onClick={handleCopyMsg}>
               {copiedMsg ? <Check size={14} /> : <Copy size={14} />}
               <span>{copiedMsg ? 'Mensaje copiado' : 'Copiar mensaje'}</span>
@@ -234,25 +228,33 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
       role="dialog"
       aria-modal="true"
       aria-labelledby="sec-confirm-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onCancel();
-      }}
     >
       <div className="w-full max-w-md my-auto rounded-[22px] border border-white/80 bg-white p-6 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal space-y-4">
-        <div className="flex items-start gap-3.5">
-          <span
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${meta.iconClass}`}
-          >
-            {meta.icon}
-          </span>
-          <div className="min-w-0">
-            <h2 id="sec-confirm-title" className="text-base font-bold text-[#000254]">
-              {meta.title}
-            </h2>
-            <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-slate-600">
-              {meta.description}
-            </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <span
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${meta.iconClass}`}
+            >
+              {meta.icon}
+            </span>
+            <div className="min-w-0">
+              <h2 id="sec-confirm-title" className="text-base font-bold text-[#000254]">
+                {meta.title}
+              </h2>
+              <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-slate-600">
+                {meta.description}
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+            aria-label="Cerrar diálogo"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {blockedCensus && (

@@ -1695,6 +1695,8 @@ export class ApplicationsService {
       familyMemberDetails,
       comesFromOtherGroup,
       originGroupDetails,
+      socialInclusionPriority,
+      kraalInternalNotes,
       familyUnitId: _omitFam,
       idempotencyKey: _omitIdemp,
       ...enrollmentData
@@ -1793,6 +1795,10 @@ export class ApplicationsService {
           ...(comesFromOtherGroup !== undefined ? { comesFromOtherGroup } : {}),
           ...(originGroupDetails !== undefined
             ? { originGroupDetails: normalizeOptionalString(originGroupDetails) }
+            : {}),
+          ...(socialInclusionPriority !== undefined ? { socialInclusionPriority } : {}),
+          ...(kraalInternalNotes !== undefined
+            ? { kraalInternalNotes: normalizeOptionalString(kraalInternalNotes) }
             : {}),
         },
       });
