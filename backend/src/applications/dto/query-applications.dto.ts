@@ -61,6 +61,11 @@ export class QueryApplicationsDto {
   @Transform(trimOptional)
   @IsString()
   @IsOptional()
+  enrollmentSubStatus?: 'ALL' | 'PLAZA_OFERTADA' | 'INSCRIPCION_COMPLETADA';
+
+  @Transform(trimOptional)
+  @IsString()
+  @IsOptional()
   search?: string;
 
   @Transform(trimOptional)

@@ -12,12 +12,25 @@ enum ApplicationStatus {
   PENDIENTE_REVISION // Acaba de enviar el formulario inicial (Fase 1)
   LISTA_ESPERA // Revisado por el Kraal, esperando hueco en su rama
   PLAZA_OFERTADA // Enlace mágico activo enviado a los padres (Fase 2)
-  INSCRIPCION_COMPLETADA // Padres rellenaron y firmaron Fase 2; falta OK final de secretaría
+  INSCRIPCION_COMPLETADA // Padres rellenaron y firmaron Fase 2; falta revisión/alta en censo
   CENSADO // Miembro oficial activo del Grupo IV
-  BAJA // Rechazado, archivado o baja del grupo
+  BAJA // Cierre estructurado (retirada, rechazada, baja voluntaria, etc.)
 }
 
-// 2. Sexo/Género (Para el criterio de ratio en las ramas)
+// Motivos estructurados de cierre o baja para eliminar la ambigüedad de BAJA
+enum ClosureReason {
+  SOLICITUD_RETIRADA
+  SOLICITUD_RECHAZADA
+  OFERTA_RECHAZADA
+  OFERTA_CADUCADA
+  BAJA_VOLUNTARIA
+  BAJA_DISCIPLINARIA
+  BAJA_POR_EDAD
+  DUPLICADO
+  OTRO
+}
+
+// 2. Sexo/Género (Recogido en Inscripción/Censo; Aurora admite MALE / FEMALE)
 enum Gender {
   MASCULINO
   FEMENINO
@@ -46,59 +59,87 @@ enum CircularPreference {
 }
 
 // ============================================================================
-// MODELO PRINCIPAL: Datos de Fase 1 + Criterios + Control del Enlace Mágico
+// MODELO PRINCIPAL: Solicitud, Lista de Espera, Oferta, Ciclo de Vida y Censo
 // ============================================================================
 model Applicant {
   id        String            @id @default(uuid())
-  createdAt DateTime          @default(now()) // Fecha oficial de solicitud (Criterio orden)
+  createdAt DateTime          @default(now()) // Fecha oficial de solicitud (criterio de orden)
   updatedAt DateTime          @updatedAt
   status    ApplicationStatus @default(PENDIENTE_REVISION)
 
-  // --- DATOS DEL EDUCANDO (Fase 1) ---
-  childFirstName String // Nombre
-  childLastName  String // Apellidos separado para el PDF oficial
-  childBirthDate DateTime // Calcula edad y rama dinámicamente
-  gender         Gender   @default(MASCULINO)
+  // --- DATOS DEL EDUCANDO (Fase 1 -> reutilizados y ampliados en Fase 2) ---
+  childFirstName                String
+  childLastName1                String
+  childLastName2                String?
+  hasNoSecondLastName           Boolean  @default(false)
+  noSecondLastNameJustification String?
+  childLastName                 String // Nombre completo de apellidos sincronizado
+  childBirthDate                DateTime
+  gender                        Gender? // Se recoge en Inscripción (Fase 2), nulo en Solicitud (Fase 1)
 
-  // --- DIRECCIÓN POSTAL DESGLOSADA (Fase 1 -> se reutiliza en Fase 2 y SEPA) ---
-  streetAddress String // Calle / Avda / Plaza
-  streetNumber  String? // Nº
-  ApartmentDoor String? // Piso / Puerta (PTA)
-  postalCode    String  @default("41089")
-  municipality  String  @default("Dos Hermanas")
-  province      String  @default("Sevilla")
+  // --- DIRECCIÓN POSTAL DESGLOSADA (Exclusiva de Fase 2 / Censo, nula en Fase 1) ---
+  streetAddress String?
+  streetNumber  String?
+  apartmentDoor String? @map("apartmentDoor") // Piso / Puerta (normalizado desde ApartmentDoor)
+  postalCode    String?
+  municipality  String?
+  province      String?
 
-  // --- DATOS PADRE / TUTOR 1 (Fase 1) ---
-  parent1FirstName String
-  parent1LastName  String
-  parent1Phone     String
-  parent1Email     String
+  // --- UNIDAD FAMILIAR Y TUTORES (Fase 1 -> ampliados en Fase 2) ---
+  familyUnitId        String?
+  parent1FirstName    String
+  parent1LastName     String
+  parent1Phone        String
+  parent1Email        String
+  parent1Relationship String?
 
-  // --- DATOS MADRE / TUTOR 2 (Fase 1 - Opcional por familias monoparentales) ---
-  parent2FirstName String?
-  parent2LastName  String?
-  parent2Phone     String?
-  parent2Email     String?
+  // --- SEGUNDO TUTOR OPCIONAL ---
+  parent2FirstName    String?
+  parent2LastName     String?
+  parent2Phone        String?
+  parent2Email        String?
+  parent2Relationship String?
 
-  // --- MOTIVACIÓN Y CRITERIOS DE ADMISIÓN (Fase 1 + Uso interno del Kraal) ---
+  // --- MOTIVACIÓN Y CRITERIOS DE ADMISIÓN ---
   motivation              String? @db.Text
-  hasFamilyInGroup        Boolean @default(false) // Prioridad 1: Familiar en el grupo
-  familyMemberDetails     String? // Nombre del hermano/responsable/viejo lobo
-  comesFromOtherGroup     Boolean @default(false) // Prioridad 4: Viene de otro grupo scout
-  originGroupDetails      String? // Nombre del grupo scout de procedencia
-  socialInclusionPriority Boolean @default(false) // Prioridad 3: Marcado por el Kraal
-  kraalInternalNotes      String? @db.Text // Notas privadas de estudio del Kraal
+  hasFamilyInGroup        Boolean @default(false) // Prioridad: Familiar en el grupo (+100)
+  familyMemberDetails     String?
+  comesFromOtherGroup     Boolean @default(false) // Prioridad: Viene de otro grupo scout (+25)
+  originGroupDetails      String?
+  socialInclusionPriority Boolean @default(false) // Prioridad: Inclusión (+50)
+  kraalInternalNotes      String? @db.Text // Notas privadas del Kraal
 
-  // --- CONTROL DEL ENLACE MÁGICO (Para pasar a Fase 2) ---
-  enrollmentToken String?   @unique // Token único sin contraseña
-  tokenExpiresAt  DateTime? // Fecha de caducidad del enlace (Semáforo)
-  admittedAt      DateTime? // Fecha en que pasa a CENSADO
+  // --- CONTROL DEL ENLACE MÁGICO (Un solo uso y expiración verificada) ---
+  enrollmentToken     String?   @unique // Token cifrado en reposo mientras está activo
+  enrollmentTokenHash String?   @unique // Hash SHA-256 para búsqueda segura
+  tokenExpiresAt      DateTime?
+  tokenUsedAt         DateTime?
 
-  // --- RELACIÓN 1:1 CON LA FASE 2 ---
+  // --- REVISIÓN, ALTA EN CENSO Y BAJA TRAZABLE ---
+  reviewedAt       DateTime?
+  reviewedById     String?
+  admittedAt       DateTime? // Exclusivamente fecha efectiva de alta en el censo oficial (Aurora startAt)
+  admittedById     String?
+  censusSolarRound String? // Ronda solar asignada al censar (ej. "2026/2027")
+  censusBranch     String? // Rama asignada al censar (conserva el historial)
+
+  closedAt       DateTime?
+  closedById     String?
+  closureReason  ClosureReason?
+  closureNotes   String?            @db.Text
+  previousStatus ApplicationStatus?
+
+  idempotencyKey String? @unique // Control de idempotencia en reintentos
+
+  // --- RELACIÓN 1:1 CON DATOS DE INSCRIPCIÓN OFICIAL ---
   enrollment EnrollmentDetails?
 
   @@index([status])
+  @@index([status, createdAt])
   @@index([childBirthDate])
+  @@index([familyUnitId])
+  @@index([parent1Email])
+  @@index([parent1Phone])
 }
 
 // ============================================================================
@@ -113,43 +154,57 @@ model EnrollmentDetails {
   applicant   Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
 
   // --- AMPLIACIÓN HOJA 1: DATOS LEGALES Y DNI ---
-  childDni           String? // DNI del menor (si tiene)
-  childPhone         String? // Solo si es mayor/Pionero/Ruta
+  childDni           String? // DNI cifrado del educando (opcional)
+  childDniHash       String?            @unique // Hash determinista para unicidad (NULL permitido múltiples veces)
+  childPhone         String?
   childEmail         String?
   legalStatus        LegalStatus        @default(MENOR)
   circularPreference CircularPreference @default(EMAIL)
 
-  parent1Dni           String // Obligatorio en Fase 2
-  parent2Dni           String? // Obligatorio si hay custodia conjunta
-  parentsMaritalStatus String? // Casados, pareja de hecho, divorciados, monoparental...
+  parent1Dni           String // Cifrado en reposo
+  parent2Dni           String? // Cifrado en reposo (obligatorio si custodia conjunta)
+  parentsMaritalStatus String?
   custodyType          CustodyType @default(SIN_ESPECIFICAR)
 
-  // --- CONSENTIMIENTOS LOPD E IMÁGENES (Hoja 1) ---
-  acceptsDataStorage  Boolean @default(true) // Casilla 1 LOPD
-  acceptsDataTransfer Boolean @default(true) // Casilla 2 Cesión MSC
-  authorizesImages    Boolean @default(true) // Autoriza fotos/vídeos (Si es false = marca "No autorizo")
+  // --- CONSENTIMIENTOS TRAZABLES (Hoja 1) ---
+  acceptsDataStorage  Boolean @default(true)
+  acceptsDataTransfer Boolean @default(true)
+  authorizesImages    Boolean @default(true)
+  consentTextVersion  String  @default("2026.1")
 
-  // --- HOJA 2: FICHA MÉDICA ---
-  bloodType           String? // Grupo sanguíneo
-  chronicDiseases     String? @db.Text // Enfermedades crónicas
-  allergies           String? @db.Text // Alergias
-  medHeadache         String? // Qué darle para: Cabeza
-  medFever            String? // Fiebre
-  medStomach          String? // Estómago
-  medThroat           String? // Garganta
-  medicalObservations String? @db.Text // Observaciones médicas
-  authorizesEmergency Boolean @default(true) // Autorización intervención quirúrgica/médica urgente
+  // --- HOJA 2: FICHA MÉDICA ESTRUCTURADA (Acceso restringido + Cifrado en reposo) ---
+  bloodType                    String?
+  chronicDiseases              String? @db.Text
+  allergies                    String? @db.Text
+  medHeadache                  String?
+  medFever                     String?
+  medStomach                   String?
+  medThroat                    String?
+  medicalObservations          String? @db.Text
+  emergencyContactName         String?
+  emergencyContactPhone        String?
+  emergencyContactRelationship String?
+  authorizesEmergency          Boolean @default(true)
 
   // --- HOJA 3: DOMICILIACIÓN BANCARIA (SEPA) ---
-  accountHolderName String // Titular de la cuenta
-  accountHolderDni  String // DNI del titular
-  iban              String // ES + 22 dígitos
-  authorizesSepa    Boolean @default(true)
+  accountHolderName         String
+  accountHolderDni          String
+  accountHolderAddress      String?
+  accountHolderMunicipality String?
+  accountHolderPostalCode   String?
+  iban                      String // IBAN cifrado en reposo
+  ibanLast4                 String? // Últimos 4 dígitos para mostrar enmascarado en listados
+  authorizesSepa            Boolean   @default(true)
+  sepaSignedAt              DateTime?
 
-  // --- FIRMAS DIGITALES (Guardadas en Base64 desde el dedo en el móvil) ---
-  signatureParent1 String    @db.Text // Firma del Tutor 1 (y titular médico/SEPA)
+  // --- FIRMAS DIGITALES E IDENTIDAD DEL FIRMANTE ---
+  signer1FullName  String?
+  signer1Dni       String?
+  signatureParent1 String    @db.Text // Cifrado en reposo
   signedAtParent1  DateTime  @default(now())
-  signatureParent2 String?   @db.Text // Segunda firma (Requerida en Custodia Conjunta)
+  signer2FullName  String?
+  signer2Dni       String?
+  signatureParent2 String?   @db.Text // Cifrado en reposo
   signedAtParent2  DateTime?
 }
 
@@ -161,23 +216,23 @@ enum UserStatus {
 }
 
 model User {
-  id              String         @id @default(uuid())
-  email           String         @unique
-  name            String
-  passwordHash    String
-  status          UserStatus     @default(INVITED)
-  isSuperAdmin    Boolean        @default(false)
-  mustChangePassword Boolean      @default(false)
-  mfaSecret       String?
-  mfaConfiguredAt DateTime?
-  roleId          String?
-  role            Role?          @relation(fields: [roleId], references: [id])
-  sessions        Session[]
-  invitations     Invitation[]
-  recoveryCodes   RecoveryCode[]
-  auditEvents     AuditEvent[]   @relation("Actor")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id                 String         @id @default(uuid())
+  email              String         @unique
+  name               String
+  passwordHash       String
+  status             UserStatus     @default(INVITED)
+  isSuperAdmin       Boolean        @default(false)
+  mustChangePassword Boolean        @default(false)
+  mfaSecret          String?
+  mfaConfiguredAt    DateTime?
+  roleId             String?
+  role               Role?          @relation(fields: [roleId], references: [id])
+  sessions           Session[]
+  invitations        Invitation[]
+  recoveryCodes      RecoveryCode[]
+  auditEvents        AuditEvent[]   @relation("Actor")
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@index([status])
 }
@@ -259,6 +314,7 @@ model AuditEvent {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([resource])
 }
 
 // ============================================================================

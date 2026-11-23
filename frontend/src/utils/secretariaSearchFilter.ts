@@ -6,7 +6,7 @@ import type {
   SortOrder,
 } from '../services/api';
 import { formatIsoToDisplay } from './dateUtils';
-import { validateEnrollmentStep, validateSolicitudForm } from './scoutValidators';
+import { validateSolicitudForm } from './scoutValidators';
 
 export type SecretariaTab =
   | 'INITIAL'
@@ -283,13 +283,13 @@ export const SECRETARIA_SORT_OPTIONS: SortOptionConfig[] = [
 ];
 
 const BRANCH_ORDER: Record<string, number> = {
-  'Pre-Castor (< 6 años)': 0,
+  'Menor de 6 años': 0,
   Castores: 1,
   Lobatos: 2,
   Rangers: 3,
   Pioneros: 4,
   Rutas: 5,
-  'Fuera de rango': 6,
+  Responsables: 6,
 };
 
 /**
@@ -312,13 +312,10 @@ export function normalizePhoneDigits(value: string | null | undefined): string {
 
 const SOLICITUD_FIELD_LABELS: Record<string, string> = {
   childFirstName: 'Nombre del educando',
-  childLastName: 'Apellidos del educando',
+  childLastName1: 'Primer apellido del educando',
+  childLastName2: 'Segundo apellido del educando',
+  noSecondLastNameJustification: 'Justificación de ausencia de segundo apellido',
   childBirthDate: 'Fecha de nacimiento',
-  gender: 'Sexo',
-  streetAddress: 'Dirección',
-  postalCode: 'Código postal',
-  municipality: 'Municipio',
-  province: 'Provincia',
   parent1FirstName: 'Nombre del tutor 1',
   parent1LastName: 'Apellidos del tutor 1',
   parent1Phone: 'Teléfono del tutor 1',
@@ -330,17 +327,19 @@ const SOLICITUD_FIELD_LABELS: Record<string, string> = {
 };
 
 /**
- * Evalúa si un registro tiene datos incompletos reutilizando las validaciones del proyecto
- * (`validateSolicitudForm` y `validateEnrollmentStep`) y respetando estrictamente la fase del registro:
- * - Solicitudes iniciales (`PENDIENTE_REVISION`): SOLO comprueba los campos obligatorios de Fase 1.
- *   Nunca marca como incompleta una solicitud inicial por carecer de datos de inscripción (Fase 2).
- * - Lista de espera (`LISTA_ESPERA`), Inscripciones pendientes (`PLAZA_OFERTADA`, `INSCRIPCION_COMPLETADA`)
- *   y Censo (`CENSADO`): comprueba los criterios obligatorios de la inscripción completa (y en Censo, fecha de alta).
+ * Evalúa la completitud usando el resultado autoritativo del backend cuando está presente,
+ * con respaldo en `validateSolicitudForm` si se invoca sobre un objeto parcial en UI.
  */
 export function evaluateRecordCompleteness(
   record: ApplicantRecord,
-  activeTab?: SecretariaTab,
 ): { isIncomplete: boolean; missingFields: string[] } {
+  if (typeof record.isIncomplete === 'boolean' && Array.isArray(record.missingFields)) {
+    return {
+      isIncomplete: record.isIncomplete,
+      missingFields: record.missingFields,
+    };
+  }
+
   const showSecondParent = Boolean(
     record.parent2FirstName?.trim() ||
       record.parent2LastName?.trim() ||
@@ -348,84 +347,34 @@ export function evaluateRecordCompleteness(
       record.parent2Email?.trim(),
   );
 
-  const solicitudErrors = validateSolicitudForm(record, showSecondParent);
+  const solicitudErrors = validateSolicitudForm(
+    {
+      childFirstName: record.childFirstName,
+      childLastName1: record.childLastName1,
+      childLastName2: record.childLastName2 ?? undefined,
+      hasNoSecondLastName: record.hasNoSecondLastName,
+      noSecondLastNameJustification: record.noSecondLastNameJustification ?? undefined,
+      childBirthDate: record.childBirthDate,
+      parent1FirstName: record.parent1FirstName,
+      parent1LastName: record.parent1LastName,
+      parent1Phone: record.parent1Phone,
+      parent1Email: record.parent1Email,
+      parent2FirstName: record.parent2FirstName ?? undefined,
+      parent2LastName: record.parent2LastName ?? undefined,
+      parent2Phone: record.parent2Phone ?? undefined,
+      parent2Email: record.parent2Email ?? undefined,
+      motivation: record.motivation ?? undefined,
+      hasFamilyInGroup: record.hasFamilyInGroup,
+      familyMemberDetails: record.familyMemberDetails ?? undefined,
+      comesFromOtherGroup: record.comesFromOtherGroup,
+      originGroupDetails: record.originGroupDetails ?? undefined,
+    },
+    showSecondParent,
+    { allowAdultResponsables: true },
+  );
   const missingFields: string[] = Object.keys(solicitudErrors).map(
     (key) => SOLICITUD_FIELD_LABELS[key] || key,
   );
-
-  if (!record.gender) {
-    missingFields.push('Sexo');
-  }
-
-  // En Solicitudes Iniciales (PENDIENTE_REVISION) jamás exigimos campos de inscripción posterior
-  const isInitialRequest =
-    activeTab === 'INITIAL' || record.status === 'PENDIENTE_REVISION';
-
-  if (isInitialRequest) {
-    return {
-      isIncomplete: missingFields.length > 0,
-      missingFields,
-    };
-  }
-
-  // Para Lista de Espera, Inscripciones Pendientes, Censo (o Bajas con inscripción),
-  // comprobamos las reglas de obligatoriedad de la inscripción completa reutilizando validateEnrollmentStep
-  const requiresFullEnrollment =
-    activeTab === 'WAITLIST' ||
-    activeTab === 'OFFERED' ||
-    activeTab === 'CENSUS' ||
-    record.status === 'LISTA_ESPERA' ||
-    record.status === 'PLAZA_OFERTADA' ||
-    record.status === 'INSCRIPCION_COMPLETADA' ||
-    record.status === 'CENSADO' ||
-    Boolean(record.enrollment);
-
-  if (!requiresFullEnrollment) {
-    return {
-      isIncomplete: missingFields.length > 0,
-      missingFields,
-    };
-  }
-
-  if (!record.enrollment) {
-    missingFields.push('Ficha de inscripción completa (DNI, ficha médica, SEPA y firmas)');
-    return {
-      isIncomplete: true,
-      missingFields,
-    };
-  }
-
-  const enrollmentPayload = {
-    ...record.enrollment,
-    streetAddress: record.streetAddress,
-    streetNumber: record.streetNumber,
-    ApartmentDoor: record.ApartmentDoor,
-    postalCode: record.postalCode,
-    municipality: record.municipality,
-    province: record.province,
-    parent1Phone: record.parent1Phone,
-    parent1Email: record.parent1Email,
-    parent2Phone: record.parent2Phone,
-    parent2Email: record.parent2Email,
-  };
-
-  const stepLabels: Record<number, string> = {
-    1: 'Datos legales y DNI',
-    2: 'Ficha médica y autorización de urgencia',
-    3: 'Domiciliación bancaria (SEPA / IBAN)',
-    4: 'Consentimientos y firmas',
-  };
-
-  for (const step of [1, 2, 3, 4]) {
-    const stepError = validateEnrollmentStep(step, enrollmentPayload);
-    if (stepError) {
-      missingFields.push(`${stepLabels[step]}: ${stepError}`);
-    }
-  }
-
-  if ((activeTab === 'CENSUS' || record.status === 'CENSADO') && !record.admittedAt) {
-    missingFields.push('Fecha de alta en el censo');
-  }
 
   return {
     isIncomplete: missingFields.length > 0,
@@ -625,7 +574,7 @@ export function filterAndSortSecretariaRecords(
 
     // 10. Datos incompletos (según las reglas propias del apartado/tipo de registro)
     if (capabilities.incompleteCheck && filters.incompleteOnly) {
-      const { isIncomplete } = evaluateRecordCompleteness(record, activeTab);
+      const { isIncomplete } = evaluateRecordCompleteness(record);
       if (!isIncomplete) return false;
     }
 

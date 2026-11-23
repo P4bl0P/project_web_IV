@@ -29,6 +29,31 @@ function normalizeRoleLabel(value?: string | null): string {
     .toLowerCase();
 }
 
+export function hasModulePermission(
+  user: User | null | undefined,
+  moduleName: string,
+  action: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete' = 'canRead',
+): boolean {
+  if (!user) return false;
+  if (user.isSuperAdmin) return true;
+  const target = normalizeRoleLabel(moduleName);
+  return Boolean(
+    user.role?.permissions?.some(
+      (permission) =>
+        normalizeRoleLabel(permission.module?.name) === target && Boolean(permission[action]),
+    ),
+  );
+}
+
+export function getModuleCapabilities(user: User | null | undefined, moduleName: string) {
+  return {
+    canRead: hasModulePermission(user, moduleName, 'canRead'),
+    canCreate: hasModulePermission(user, moduleName, 'canCreate'),
+    canUpdate: hasModulePermission(user, moduleName, 'canUpdate'),
+    canDelete: hasModulePermission(user, moduleName, 'canDelete'),
+  };
+}
+
 export function canAccessWebContent(user: User | null | undefined): boolean {
   if (!user) return false;
   if (user.isSuperAdmin) return true;
@@ -167,4 +192,25 @@ export function WebContentRoute({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user.mustChangePassword) return <Navigate to="/perfil" replace />;
   return canAccessWebContent(user) ? children : <Navigate to="/gestion" replace />;
+}
+
+export function ModuleRoute({
+  moduleName,
+  action = 'canRead',
+  children,
+}: {
+  moduleName: string;
+  action?: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete';
+  children: ReactNode;
+}) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <div className="state-card">Comprobando permisos…</div>;
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (user.mustChangePassword) return <Navigate to="/perfil" replace />;
+  return hasModulePermission(user, moduleName, action) ? (
+    children
+  ) : (
+    <Navigate to="/gestion" replace />
+  );
 }

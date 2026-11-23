@@ -34,7 +34,7 @@ import {
   secTokens,
 } from './secretariaTokens';
 
-const BRANCHES = ['Todas', 'Castores', 'Lobatos', 'Rangers', 'Pioneros', 'Rutas'];
+const BRANCHES = ['Todas', 'Castores', 'Lobatos', 'Rangers', 'Pioneros', 'Rutas', 'Responsables'];
 
 interface Props {
   activeTab: SecretariaTab;

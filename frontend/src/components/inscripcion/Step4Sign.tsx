@@ -1,11 +1,14 @@
 import type { ChangeEvent } from 'react';
-import type { ApplicantRecord, CompleteEnrollmentPayload } from '../../services/api';
+import type { CompleteEnrollmentPayload } from '../../services/api';
 import SignatureBox from '../shared/SignatureBox';
 import FormSection from '../shared/forms/FormSection';
 import { formCheckboxClass } from '../shared/forms/formStyles';
 
 interface Props {
-  applicant: Pick<ApplicantRecord, 'parent1FirstName'>;
+  applicant: {
+    parent1FirstName?: string;
+    parent2FirstName?: string | null;
+  };
   formData: CompleteEnrollmentPayload;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSign1: (sig: string) => void;
@@ -21,9 +24,14 @@ export default function Step4Sign({
   onSign2,
   readOnly = false,
 }: Props) {
-  return (
-    <FormSection title="4. Autorizaciones y firma" description="Revisa los consentimientos y completa las firmas necesarias.">
+  const tutor1Label = formData.parent1FirstName || applicant.parent1FirstName || 'Tutor 1';
+  const version = formData.consentTextVersion || '2026.1';
 
+  return (
+    <FormSection
+      title="4. Autorizaciones y firma"
+      description={`Revisa cada autorización de forma independiente (documento v${version}) y completa las firmas necesarias.`}
+    >
       <div className="space-y-3 bg-[#f8f9fc] p-4 rounded-xl border border-slate-200/80 text-xs text-slate-700">
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
@@ -34,7 +42,7 @@ export default function Step4Sign({
             className={formCheckboxClass}
           />
           <span>
-            <strong>Protección de Datos (Obligatorio):</strong> Autorizo el tratamiento de datos personales y la participación en las actividades del Grupo Scout.
+            <strong>Tratamiento de Datos Personales (Obligatorio):</strong> Autorizo el tratamiento de datos personales y la participación en las actividades del Grupo Scout IV.
           </span>
         </label>
 
@@ -47,7 +55,7 @@ export default function Step4Sign({
             className={formCheckboxClass}
           />
           <span>
-            <strong>Cesión MSC (Obligatorio):</strong> Autorizo la cesión federativa al Movimiento Scout Católico para seguros y censo.
+            <strong>Cesión Federativa MSC (Obligatorio):</strong> Autorizo la cesión de datos necesaria al Movimiento Scout Católico para seguros y censo oficial.
           </span>
         </label>
 
@@ -60,13 +68,13 @@ export default function Step4Sign({
             className={formCheckboxClass}
           />
           <span>
-            <strong>Derechos de Imagen:</strong> Autorizo el uso no comercial de fotos y vídeos en actividades scouts (desmarcar si NO se autoriza).
+            <strong>Derechos de Imagen y Vídeos:</strong> Autorizo el uso no comercial de fotografías y vídeos en actividades scouts (desmarcar si NO se autoriza).
           </span>
         </label>
       </div>
 
       <SignatureBox
-        label={`Firma Tutor 1 (${applicant.parent1FirstName} - DNI ${formData.parent1Dni}) *`}
+        label={`Firma Tutor 1 (${tutor1Label} · DNI ${formData.parent1Dni || 'pendiente'}) *`}
         onChange={onSign1}
         readOnly={readOnly}
         value={formData.signatureParent1}
@@ -74,7 +82,7 @@ export default function Step4Sign({
 
       {formData.custodyType === 'CUSTODIA_CONJUNTA' && (
         <SignatureBox
-          label={`Segunda Firma por Custodia Conjunta (DNI ${formData.parent2Dni}) *`}
+          label={`Segunda Firma por Custodia Conjunta (DNI ${formData.parent2Dni || 'pendiente'}) *`}
           onChange={onSign2}
           readOnly={readOnly}
           value={formData.signatureParent2}

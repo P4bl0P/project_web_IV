@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { AdminRoute, AuthProvider, PrivateRoute, WebContentRoute } from './auth';
+import { AdminRoute, AuthProvider, ModuleRoute, PrivateRoute, WebContentRoute } from './auth';
 import FloatingJoinButton from './components/shared/FloatingJoinButton';
 import Footer from './components/shared/Footer';
 import NavBar from './components/shared/NavBar';
@@ -76,9 +76,9 @@ function App() {
               <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
               <Route path="/gestion/contenido-web" element={<WebContentRoute><ContenidoWebPage /></WebContentRoute>} />
               <Route path="/gestion/administracion" element={<AdminRoute><AdministracionPage /></AdminRoute>} />
-              <Route path="/gestion/secretaria" element={<PrivateRoute><SecretariaPage /></PrivateRoute>} />
-              <Route path="/gestion/jefatura" element={<PrivateRoute><JefaturaPage /></PrivateRoute>} />
-              <Route path="/gestion/tesoreria" element={<PrivateRoute><TesoreriaPage /></PrivateRoute>} />
+              <Route path="/gestion/secretaria" element={<ModuleRoute moduleName="Secretaría"><SecretariaPage /></ModuleRoute>} />
+              <Route path="/gestion/jefatura" element={<ModuleRoute moduleName="Jefatura"><JefaturaPage /></ModuleRoute>} />
+              <Route path="/gestion/tesoreria" element={<ModuleRoute moduleName="Tesorería"><TesoreriaPage /></ModuleRoute>} />
               <Route path="/inscripcion/:token" element={<InscripcionMagicaPage />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
