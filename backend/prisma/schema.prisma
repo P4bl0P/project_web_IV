@@ -216,52 +216,89 @@ enum UserStatus {
 }
 
 model User {
-  id                 String         @id @default(uuid())
-  email              String         @unique
-  name               String
-  passwordHash       String
-  status             UserStatus     @default(INVITED)
-  isSuperAdmin       Boolean        @default(false)
-  mustChangePassword Boolean        @default(false)
-  mfaSecret          String?
-  mfaConfiguredAt    DateTime?
-  roleId             String?
-  role               Role?          @relation(fields: [roleId], references: [id])
-  sessions           Session[]
-  invitations        Invitation[]
-  recoveryCodes      RecoveryCode[]
-  auditEvents        AuditEvent[]   @relation("Actor")
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  id                  String         @id @default(uuid())
+  email               String         @unique
+  name                String
+  passwordHash        String
+  status              UserStatus     @default(INVITED)
+  isSuperAdmin        Boolean        @default(false)
+  mustChangePassword  Boolean        @default(false)
+  mfaSecret           String?
+  mfaPendingSecret    String?
+  mfaConfiguredAt     DateTime?
+  failedLoginAttempts Int            @default(0)
+  lockedUntil         DateTime?
+  roleId              String?
+  role                Role?          @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions            Session[]
+  mfaChallenges       MfaChallenge[]
+  invitations         Invitation[]
+  recoveryCodes       RecoveryCode[]
+  auditEvents         AuditEvent[]   @relation("Actor")
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   @@index([status])
+  @@index([roleId])
+}
+
+model MfaChallenge {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose    String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model Role {
   id          String       @id @default(uuid())
   name        String       @unique
+  description String?
   users       User[]
   permissions Permission[]
   createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Module {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  permissions Permission[]
-  createdAt   DateTime     @default(now())
+  id             String       @id @default(uuid())
+  key            String       @unique
+  name           String       @unique
+  description    String?
+  route          String?
+  icon           String?
+  isImplemented  Boolean      @default(false)
+  isSystem       Boolean      @default(false)
+  displayOrder   Int          @default(0)
+  supportsRead   Boolean      @default(true)
+  supportsCreate Boolean      @default(true)
+  supportsUpdate Boolean      @default(true)
+  supportsDelete Boolean      @default(true)
+  specialActions Json         @default("[]")
+  permissions    Permission[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Permission {
-  id        String  @id @default(uuid())
-  roleId    String
-  moduleId  String
-  canRead   Boolean @default(false)
-  canCreate Boolean @default(false)
-  canUpdate Boolean @default(false)
-  canDelete Boolean @default(false)
-  role      Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  module    Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(uuid())
+  roleId             String
+  moduleId           String
+  canAccess          Boolean  @default(false)
+  canRead            Boolean  @default(false)
+  canCreate          Boolean  @default(false)
+  canUpdate          Boolean  @default(false)
+  canDelete          Boolean  @default(false)
+  specialPermissions Json     @default("[]")
+  role               Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module             Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  updatedAt          DateTime @updatedAt
 
   @@unique([roleId, moduleId])
 }
@@ -304,17 +341,24 @@ model RecoveryCode {
 }
 
 model AuditEvent {
-  id        String   @id @default(uuid())
-  actorId   String?
-  actor     User?    @relation("Actor", fields: [actorId], references: [id], onDelete: SetNull)
-  action    String
-  resource  String?
-  result    String
-  ipAddress String?
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  actorId        String?
+  actor          User?    @relation("Actor", fields: [actorId], references: [id], onDelete: SetNull)
+  action         String
+  targetType     String?
+  targetId       String?
+  resource       String?
+  result         String
+  previousValues Json?
+  newValues      Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
 
   @@index([createdAt])
   @@index([resource])
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
 }
 
 // ============================================================================

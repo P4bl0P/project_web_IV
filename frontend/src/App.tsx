@@ -9,6 +9,7 @@ import AdministracionPage from './pages/AdministracionPage';
 import ConocenosPage from './pages/ConocenosPage';
 import ContactoPage from './pages/ContactoPage';
 import ContenidoWebPage from './pages/ContenidoWebPage';
+import DynamicModulePage from './pages/DynamicModulePage';
 import GestionPage from './pages/GestionPage';
 import HomePage from './pages/HomePage';
 import InscripcionMagicaPage from './pages/InscripcionMagicaPage';
@@ -76,9 +77,10 @@ function App() {
               <Route path="/gestion" element={<PrivateRoute><GestionPage /></PrivateRoute>} />
               <Route path="/gestion/contenido-web" element={<WebContentRoute><ContenidoWebPage /></WebContentRoute>} />
               <Route path="/gestion/administracion" element={<AdminRoute><AdministracionPage /></AdminRoute>} />
-              <Route path="/gestion/secretaria" element={<ModuleRoute moduleName="Secretaría"><SecretariaPage /></ModuleRoute>} />
-              <Route path="/gestion/jefatura" element={<ModuleRoute moduleName="Jefatura"><JefaturaPage /></ModuleRoute>} />
-              <Route path="/gestion/tesoreria" element={<ModuleRoute moduleName="Tesorería"><TesoreriaPage /></ModuleRoute>} />
+              <Route path="/gestion/secretaria" element={<ModuleRoute moduleKey="secretaria" moduleLabel="Secretaría"><SecretariaPage /></ModuleRoute>} />
+              <Route path="/gestion/jefatura" element={<ModuleRoute moduleKey="jefatura" moduleLabel="Jefatura"><JefaturaPage /></ModuleRoute>} />
+              <Route path="/gestion/tesoreria" element={<ModuleRoute moduleKey="tesoreria" moduleLabel="Tesorería"><TesoreriaPage /></ModuleRoute>} />
+              <Route path="/gestion/modulo/:moduleKey" element={<PrivateRoute><DynamicModulePage /></PrivateRoute>} />
               <Route path="/inscripcion/:token" element={<InscripcionMagicaPage />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>

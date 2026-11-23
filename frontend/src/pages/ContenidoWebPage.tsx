@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ExternalLink, Globe, Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { canAccessWebContent, useAuth } from '../auth';
 import CouncilDeleteConfirmModal from '../components/contenido-web/CouncilDeleteConfirmModal';
 import CouncilMemberFormModal from '../components/contenido-web/CouncilMemberFormModal';
 import CouncilMemberList from '../components/contenido-web/CouncilMemberList';
@@ -16,6 +17,11 @@ import type {
 } from '../types/conocenos';
 
 export default function ContenidoWebPage() {
+  const { user } = useAuth();
+  const canCreate = canAccessWebContent(user, 'canCreate');
+  const canUpdate = canAccessWebContent(user, 'canUpdate');
+  const canDelete = canAccessWebContent(user, 'canDelete');
+
   const {
     members,
     roleDescriptions,
@@ -36,6 +42,18 @@ export default function ContenidoWebPage() {
   );
   const [deletingMember, setDeletingMember] = useState<CouncilMember | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const timer = window.setTimeout(() => setStatusMessage(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [statusMessage]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => clearError(), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error, clearError]);
 
   const handleSaveMember = async (
     payload: CreateCouncilMemberPayload | UpdateCouncilMemberPayload,
@@ -103,15 +121,17 @@ export default function ContenidoWebPage() {
               <span>Ver en Conócenos</span>
             </Link>
 
-            <SecButton
-              variant="primary"
-              size="md"
-              onClick={() => setEditingMember(null)}
-              disabled={saving}
-            >
-              <Plus size={14} />
-              <span>Añadir integrante</span>
-            </SecButton>
+            {canCreate && (
+              <SecButton
+                variant="primary"
+                size="md"
+                onClick={() => setEditingMember(null)}
+                disabled={saving}
+              >
+                <Plus size={14} />
+                <span>Añadir integrante</span>
+              </SecButton>
+            )}
 
             <SecButton
               variant="secondary"
@@ -175,6 +195,9 @@ export default function ContenidoWebPage() {
             members={members}
             loading={loading}
             saving={saving}
+            canCreate={canCreate}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
             onAdd={() => setEditingMember(null)}
             onEdit={(member) => setEditingMember(member)}
             onDelete={(member) => setDeletingMember(member)}

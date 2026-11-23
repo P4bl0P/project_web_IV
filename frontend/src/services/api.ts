@@ -554,22 +554,194 @@ export const applicationsApi = {
   },
 };
 
-export type AdminUser = { id: string; email: string; name: string; status: 'ACTIVE' | 'BLOCKED' | 'DISABLED'; createdAt: string; role?: { id: string; name: string } | null };
-export type AdminRole = { id: string; name: string; _count: { users: number }; permissions: PermissionRecord[] };
-export type PermissionRecord = { id: string; roleId: string; moduleId: string; canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean; role: { name: string }; module: { name: string } };
+export type SpecialActionDefinition = {
+  key: string;
+  label: string;
+  description?: string;
+};
+
+export type RegisteredModule = {
+  id?: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  route?: string | null;
+  icon?: string | null;
+  isImplemented?: boolean;
+  isSystem?: boolean;
+  displayOrder?: number;
+  supportsRead: boolean;
+  supportsCreate: boolean;
+  supportsUpdate: boolean;
+  supportsDelete: boolean;
+  specialActions: SpecialActionDefinition[];
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string;
+  status: 'INVITED' | 'ACTIVE' | 'BLOCKED' | 'DISABLED';
+  isSuperAdmin: boolean;
+  mustChangePassword: boolean;
+  mfaConfiguredAt?: string | null;
+  roleId?: string | null;
+  role?: { id: string; name: string; description?: string | null } | null;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type PermissionRecord = {
+  id: string;
+  roleId: string;
+  moduleId: string;
+  canAccess: boolean;
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  specialPermissions: string[];
+  role?: { id?: string; name: string };
+  module: RegisteredModule;
+};
+
+export type AdminRole = {
+  id: string;
+  name: string;
+  description?: string | null;
+  _count: { users: number };
+  permissions: PermissionRecord[];
+};
+
+export type AdminAuditEvent = {
+  id: string;
+  actorId?: string | null;
+  actor?: { id: string; name: string; email: string } | null;
+  action: string;
+  targetType?: string | null;
+  targetId?: string | null;
+  resource?: string | null;
+  result: string;
+  previousValues?: unknown;
+  newValues?: unknown;
+  ipAddress?: string | null;
+  createdAt: string;
+};
+
+export type RolePermissionUpdateItem = {
+  moduleId: string;
+  canAccess: boolean;
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  specialPermissions: string[];
+};
 
 export const adminApi = {
   users: () => apiJson<AdminUser[]>('/admin/users'),
   roles: () => apiJson<AdminRole[]>('/admin/roles'),
-  modules: () => apiJson<{ id: string; name: string }[]>('/admin/modules'),
+  modules: () => apiJson<RegisteredModule[]>('/admin/modules'),
   permissions: () => apiJson<PermissionRecord[]>('/admin/permissions'),
-  createUser: (data: { name: string; email: string; roleId: string }) => apiJson<{ user: AdminUser; temporaryPassword: string }>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: string, data: Partial<Pick<AdminUser, 'name' | 'email' | 'status'>> & { roleId?: string }) => apiJson<AdminUser>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  resetPassword: (id: string) => apiJson<{ temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { method: 'POST' }),
-  disableUser: (id: string) => apiJson<{ ok: true }>(`/admin/users/${id}`, { method: 'DELETE' }),
-  createRole: (name: string) => apiJson<AdminRole>('/admin/roles', { method: 'POST', body: JSON.stringify({ name }) }),
-  updateRole: (id: string, name: string) => apiJson<AdminRole>(`/admin/roles/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
-  updatePermission: (id: string, data: Partial<Pick<PermissionRecord, 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete'>>) => apiJson<PermissionRecord>(`/admin/permissions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createUser: (data: { name: string; email: string; roleId?: string | null }) =>
+    apiJson<{ user: AdminUser; temporaryPassword: string }>('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateUser: (
+    id: string,
+    data: {
+      name?: string;
+      email?: string;
+      status?: 'ACTIVE' | 'BLOCKED' | 'DISABLED';
+      roleId?: string | null;
+    },
+  ) =>
+    apiJson<AdminUser>(`/admin/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  resetPassword: (id: string) =>
+    apiJson<{ temporaryPassword: string }>(`/admin/users/${id}/reset-password`, {
+      method: 'POST',
+    }),
+  resetMfa: (id: string) =>
+    apiJson<{ ok: true }>(`/admin/users/${id}/reset-mfa`, { method: 'POST' }),
+  deactivateUser: (id: string) =>
+    apiJson<{ ok: true }>(`/admin/users/${id}/deactivate`, { method: 'POST' }),
+  deleteUser: (id: string) =>
+    apiJson<{ ok: true }>(`/admin/users/${id}`, { method: 'DELETE' }),
+  createRole: (data: { name: string; description?: string | null }) =>
+    apiJson<AdminRole>('/admin/roles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateRole: (id: string, data: { name?: string; description?: string | null }) =>
+    apiJson<AdminRole>(`/admin/roles/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteRole: (id: string) =>
+    apiJson<{ ok: true }>(`/admin/roles/${id}`, { method: 'DELETE' }),
+  updateRolePermissions: (roleId: string, permissions: RolePermissionUpdateItem[]) =>
+    apiJson<AdminRole>(`/admin/roles/${roleId}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions }),
+    }),
+  createModule: (data: {
+    key?: string;
+    name: string;
+    description?: string | null;
+    isImplemented?: boolean;
+    supportsRead?: boolean;
+    supportsCreate?: boolean;
+    supportsUpdate?: boolean;
+    supportsDelete?: boolean;
+    specialActions?: SpecialActionDefinition[];
+  }) =>
+    apiJson<RegisteredModule>('/admin/modules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateModule: (
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string | null;
+      isImplemented: boolean;
+      displayOrder: number;
+      supportsRead: boolean;
+      supportsCreate: boolean;
+      supportsUpdate: boolean;
+      supportsDelete: boolean;
+      specialActions: SpecialActionDefinition[];
+    }>,
+  ) =>
+    apiJson<RegisteredModule>(`/admin/modules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  updatePermission: (
+    id: string,
+    data: Partial<
+      Pick<
+        PermissionRecord,
+        'canAccess' | 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete' | 'specialPermissions'
+      >
+    >,
+  ) =>
+    apiJson<PermissionRecord>(`/admin/permissions/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  audit: (params?: { action?: string; result?: 'ALLOWED' | 'DENIED'; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.action) qs.set('action', params.action);
+    if (params?.result) qs.set('result', params.result);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return apiJson<AdminAuditEvent[]>(`/admin/audit${suffix}`);
+  },
 };
 
 export const profileApi = {

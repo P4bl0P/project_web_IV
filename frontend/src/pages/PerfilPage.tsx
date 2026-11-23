@@ -1,27 +1,84 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../auth';
+import { isSuperAdmin, useAuth } from '../auth';
 import FormAlert from '../components/shared/forms/FormAlert';
+import FormField from '../components/shared/forms/FormField';
+import { formInputClass } from '../components/shared/forms/formStyles';
 import { profileApi } from '../services/api';
 
-const labelClass = 'grid gap-[7px] text-[13px] font-bold text-[#0c1933]';
-const inputClass =
-  'w-full rounded-[11px] border border-[#e4e9f1] bg-white px-[13px] py-3 outline-none focus:border-[#01317b] focus:shadow-[0_0_0_4px_rgba(1,49,123,0.09)]';
+type PasswordFieldErrors = {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+};
 
 export default function PerfilPage() {
   const { user, refreshUser } = useAuth();
   const [values, setValues] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [fieldErrors, setFieldErrors] = useState<PasswordFieldErrors>({});
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
+
   if (!user) return null;
+
+  const validate = (): PasswordFieldErrors => {
+    const nextErrors: PasswordFieldErrors = {};
+
+    if (!user.mustChangePassword && !values.currentPassword) {
+      nextErrors.currentPassword = 'Introduce tu contraseña actual.';
+    }
+
+    if (!values.newPassword) {
+      nextErrors.newPassword = 'Introduce la nueva contraseña.';
+    } else if (values.newPassword.length < 15) {
+      nextErrors.newPassword = 'La contraseña debe tener al menos 15 caracteres.';
+    } else if (values.newPassword.length > 128) {
+      nextErrors.newPassword = 'La contraseña no puede superar los 128 caracteres.';
+    } else if (values.newPassword.trim().length < 12) {
+      nextErrors.newPassword = 'La contraseña no puede estar compuesta solo por espacios.';
+    } else if (
+      !user.mustChangePassword &&
+      values.currentPassword &&
+      values.newPassword === values.currentPassword
+    ) {
+      nextErrors.newPassword = 'La nueva contraseña debe ser diferente de la actual.';
+    }
+
+    if (!values.confirmPassword) {
+      nextErrors.confirmPassword = 'Debes repetir la nueva contraseña.';
+    } else if (values.newPassword && values.confirmPassword !== values.newPassword) {
+      nextErrors.confirmPassword = 'Las contraseñas no coinciden.';
+    }
+
+    return nextErrors;
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setMessage('');
     setError('');
+
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      return;
+    }
+
+    setFieldErrors({});
     setSaving(true);
     try {
       if (user.mustChangePassword) {
@@ -34,7 +91,8 @@ export default function PerfilPage() {
       }
       await refreshUser();
       setValues({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setMessage('Contraseña actualizada. Las sesiones anteriores han quedado invalidadas.');
+      setFieldErrors({});
+      setMessage('Contraseña actualizada correctamente.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo cambiar la contraseña');
     } finally {
@@ -73,7 +131,12 @@ export default function PerfilPage() {
           </span>
           <h2 className="m-0 text-[20px] text-[#000254]">{user.name}</h2>
           <p className="m-0 break-all text-[13px] text-[#627089]">{user.email}</p>
-          <span className="role-pill">{user.isSuperAdmin ? 'SUPER_ADMIN' : user.role?.name ?? 'Sin cargo'}</span>
+          <span className="role-pill">
+            {isSuperAdmin(user) ? 'Superadministrador' : user.role?.name ?? 'Sin cargo asignado'}
+          </span>
+          {user.role?.description && (
+            <p className="m-0 text-xs leading-relaxed text-[#627089]">{user.role.description}</p>
+          )}
           <Link
             className="mt-[15px] text-[12px] font-bold text-[#01317b] no-underline"
             to="/gestion"
@@ -99,42 +162,57 @@ export default function PerfilPage() {
             </div>
           )}
 
-          <form onSubmit={submit} className="grid gap-4">
+          <form onSubmit={submit} noValidate className="grid gap-4">
             {!user.mustChangePassword && (
-              <label className={labelClass}>
-                Contraseña actual
+              <FormField label="Contraseña actual" required error={fieldErrors.currentPassword}>
                 <input
                   type="password"
-                  required
                   value={values.currentPassword}
-                  onChange={(e) => setValues({ ...values, currentPassword: e.target.value })}
-                  className={inputClass}
+                  onChange={(e) => {
+                    setValues({ ...values, currentPassword: e.target.value });
+                    if (fieldErrors.currentPassword) {
+                      setFieldErrors((prev) => ({ ...prev, currentPassword: undefined }));
+                    }
+                  }}
+                  className={formInputClass(Boolean(fieldErrors.currentPassword))}
                 />
-              </label>
+              </FormField>
             )}
-            <label className={labelClass}>
-              Nueva contraseña
+            <FormField
+              label="Nueva contraseña"
+              required
+              hint="Mínimo 15 caracteres."
+              error={fieldErrors.newPassword}
+            >
               <input
                 type="password"
-                minLength={15}
-                required
                 value={values.newPassword}
-                onChange={(e) => setValues({ ...values, newPassword: e.target.value })}
-                className={inputClass}
+                onChange={(e) => {
+                  setValues({ ...values, newPassword: e.target.value });
+                  if (fieldErrors.newPassword) {
+                    setFieldErrors((prev) => ({ ...prev, newPassword: undefined }));
+                  }
+                }}
+                className={formInputClass(Boolean(fieldErrors.newPassword))}
               />
-              <small className="text-[11px] font-medium text-[#627089]">Mínimo 15 caracteres.</small>
-            </label>
-            <label className={labelClass}>
-              Repetir nueva contraseña
+            </FormField>
+            <FormField
+              label="Repetir nueva contraseña"
+              required
+              error={fieldErrors.confirmPassword}
+            >
               <input
                 type="password"
-                minLength={15}
-                required
                 value={values.confirmPassword}
-                onChange={(e) => setValues({ ...values, confirmPassword: e.target.value })}
-                className={inputClass}
+                onChange={(e) => {
+                  setValues({ ...values, confirmPassword: e.target.value });
+                  if (fieldErrors.confirmPassword) {
+                    setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                  }
+                }}
+                className={formInputClass(Boolean(fieldErrors.confirmPassword))}
               />
-            </label>
+            </FormField>
             <button className="button button-primary cursor-pointer" disabled={saving}>
               {saving
                 ? 'Guardando…'

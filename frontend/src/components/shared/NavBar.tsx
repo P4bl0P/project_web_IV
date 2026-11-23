@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Globe, Menu, X, LogOut, Settings, UserRound, Shield } from 'lucide-react';
-import { canAccessWebContent, useAuth } from '../../auth';
+import {
+  ChevronDown,
+  LogOut,
+  Menu,
+  Settings,
+  Shield,
+  UserRound,
+  X,
+} from 'lucide-react';
+import { isSuperAdmin, useAuth } from '../../auth';
 import type { SharedImagesCatalog } from '../../config/images/sharedImages';
 
 const links = [
@@ -19,7 +27,7 @@ const navFocusRing =
 
 const desktopLinkBase = `relative inline-flex cursor-pointer items-center gap-[5px] border-0 bg-transparent px-[14px] py-[11px] text-[13px] font-[650] no-underline transition-colors duration-200 ${navFocusRing} after:content-[''] after:absolute after:left-[14px] after:right-[14px] after:bottom-[3px] after:h-[2px] after:rounded-[2px] after:bg-[#e22328] after:transition-transform after:duration-200`;
 
-const popoverItemClass = `flex w-full cursor-pointer items-center gap-[9px] rounded-[9px] border-0 bg-transparent px-[11px] py-[10px] text-left text-[12px] text-[#0c1933] no-underline hover:bg-[#f5f7fb] hover:text-[#01317b] ${navFocusRing}`;
+const popoverItemClass = `flex w-full cursor-pointer items-center justify-between gap-[9px] rounded-[9px] border-0 bg-transparent px-[11px] py-[10px] text-left text-[12px] text-[#0c1933] no-underline hover:bg-[#f5f7fb] hover:text-[#01317b] ${navFocusRing}`;
 
 const mobileLinkBase = `flex w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-[#eef1f6] bg-transparent px-[11px] py-4 text-left text-[15px] font-bold no-underline ${navFocusRing}`;
 
@@ -99,7 +107,6 @@ export default function NavBar({ images }: NavBarProps) {
 
   const privateDestination = user ? '/gestion' : '/login';
   const privateLabel = user ? `Abrir área privada de ${user.name}` : 'Acceder al área privada';
-  const showWebContent = canAccessWebContent(user);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e4e9f1]/85 bg-white/95 min-[801px]:bg-white/[0.82] backdrop-blur-[18px]">
@@ -166,23 +173,26 @@ export default function NavBar({ images }: NavBarProps) {
                 role="menu"
               >
                 <Link to="/gestion" role="menuitem" className={popoverItemClass}>
-                  <Settings size={16} /> Panel de gestión
+                  <span className="inline-flex items-center gap-[9px]">
+                    <Settings size={16} /> Panel de gestión
+                  </span>
                 </Link>
                 <Link to="/perfil" role="menuitem" className={popoverItemClass}>
-                  <UserRound size={16} /> Mi perfil
+                  <span className="inline-flex items-center gap-[9px]">
+                    <UserRound size={16} /> Mi perfil
+                  </span>
                 </Link>
-                {showWebContent && (
-                  <Link to="/gestion/contenido-web" role="menuitem" className={popoverItemClass}>
-                    <Globe size={16} /> Contenido de la web
-                  </Link>
-                )}
-                {user.isSuperAdmin && (
+                {isSuperAdmin(user) && (
                   <Link to="/gestion/administracion" role="menuitem" className={popoverItemClass}>
-                    <Shield size={16} /> Administración
+                    <span className="inline-flex items-center gap-[9px]">
+                      <Shield size={16} /> Administración
+                    </span>
                   </Link>
                 )}
                 <button type="button" role="menuitem" className={popoverItemClass} onClick={() => void handleLogout()}>
-                  <LogOut size={16} /> Cerrar sesión
+                  <span className="inline-flex items-center gap-[9px]">
+                    <LogOut size={16} /> Cerrar sesión
+                  </span>
                 </button>
               </div>
             </div>
@@ -259,12 +269,7 @@ export default function NavBar({ images }: NavBarProps) {
               <Link to="/perfil" tabIndex={open ? 0 : -1} className={`${mobileLinkBase} text-[#0c1933]`} onClick={closeMobileMenu}>
                 Mi perfil <UserRound size={17} />
               </Link>
-              {showWebContent && (
-                <Link to="/gestion/contenido-web" tabIndex={open ? 0 : -1} className={`${mobileLinkBase} text-[#0c1933]`} onClick={closeMobileMenu}>
-                  Contenido de la web <Globe size={17} />
-                </Link>
-              )}
-              {user.isSuperAdmin && (
+              {isSuperAdmin(user) && (
                 <Link to="/gestion/administracion" tabIndex={open ? 0 : -1} className={`${mobileLinkBase} text-[#0c1933]`} onClick={closeMobileMenu}>
                   Administración <Shield size={17} />
                 </Link>

@@ -13,10 +13,11 @@ import {
 import type { Request } from 'express';
 import {
   AuthGuard,
-  canReadSensitiveMedicalOrBankData,
   ensurePermission,
   type AuthenticatedRequest,
 } from '../auth.guard';
+import { RequirePermission } from '../authorization/authorization.decorators';
+import { AuthorizationGuard } from '../authorization/authorization.guard';
 import { ApplicationsService, type AuditContext } from './applications.service';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -49,38 +50,42 @@ export class ApplicationsController {
     return this.applicationsService.create(createApplicationDto, auditContextFromRequest(req));
   }
 
-  // Panel Kraal: Listar todas (compatibilidad + resumen seguro sin exponer datos médicos/IBAN)
+  // Panel Kraal: Listar todas (resumen seguro sin exponer datos médicos/IBAN)
   @Get()
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'read')
   findAll(@Query() query?: QueryApplicationsDto, @Req() req?: AuthenticatedRequest) {
-    ensurePermission(req!, 'Secretaría', 'canRead');
+    ensurePermission(req!, 'secretaria', 'read');
     return this.applicationsService.findAll(query);
   }
 
   // Panel Kraal: Listado paginado en servidor con contadores por pestaña
   @Get('paginated')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'read')
   findPaginated(@Query() query?: QueryApplicationsDto, @Req() req?: AuthenticatedRequest) {
-    ensurePermission(req!, 'Secretaría', 'canRead');
+    ensurePermission(req!, 'secretaria', 'read');
     return this.applicationsService.findPaginated(query);
   }
 
   // Panel Kraal: Obtener el Censo Oficial
   @Get('census')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'read')
   findCensus(@Query() query?: QueryApplicationsDto, @Req() req?: AuthenticatedRequest) {
-    ensurePermission(req!, 'Secretaría', 'canRead');
+    ensurePermission(req!, 'secretaria', 'read');
     return this.applicationsService.findCensus(query);
   }
 
   // Alta administrativa directa en censo
   @Post('census')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'create')
   createDirectCensus(
     @Body() dto: CreateDirectCensusDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canCreate');
+    ensurePermission(req, 'secretaria', 'create');
     return this.applicationsService.createDirectCensus(dto, auditContextFromRequest(req));
   }
 
@@ -106,43 +111,41 @@ export class ApplicationsController {
 
   // Detalle completo de expediente (controla visibilidad médica/bancaria y audita acceso)
   @Get(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'read')
   findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canRead');
+    ensurePermission(req, 'secretaria', 'read');
     return this.applicationsService.findOne(id, auditContextFromRequest(req));
   }
 
   // Historial de auditoría del expediente
   @Get(':id/history')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'read')
   getHistory(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canRead');
+    ensurePermission(req, 'secretaria', 'read');
     return this.applicationsService.getHistory(id);
   }
 
   // Vista previa del payload preparado para la futura integración con Aurora
   @Get(':id/aurora-preview')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   getAuroraPreview(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
-    if (
-      !canReadSensitiveMedicalOrBankData(req.user, 'medical') &&
-      !req.user?.isSuperAdmin
-    ) {
-      ensurePermission(req, 'Secretaría', 'canUpdate');
-    }
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.getAuroraPreview(id, {}, auditContextFromRequest(req));
   }
 
   // Editar datos de solicitud (sin transiciones directas de estado)
   @Patch(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   update(
     @Param('id') id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.update(
       id,
       updateApplicationDto,
@@ -152,105 +155,115 @@ export class ApplicationsController {
 
   // Validar solicitud inicial -> LISTA_ESPERA
   @Patch(':id/validate')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   validateApplication(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.validateApplication(id, auditContextFromRequest(req));
   }
 
   // Ofertar plaza y generar token mágico (+7 días)
   @Patch(':id/offer-spot')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   offerSpot(
     @Param('id') id: string,
     @Body() dto: OfferSpotDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.offerSpot(id, dto, auditContextFromRequest(req));
   }
 
   // Renovar enlace mágico caducado o reabrir oferta invalidando el token anterior
   @Patch(':id/renew-token')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   renewToken(
     @Param('id') id: string,
     @Body() dto: OfferSpotDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.renewMagicLink(id, dto, auditContextFromRequest(req));
   }
 
   // Devolver a lista de espera (invalidando el enlace mágico)
   @Patch(':id/return-waitlist')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   returnToWaitlist(
     @Param('id') id: string,
     @Body() dto: ReturnToWaitlistDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.returnToWaitlist(id, dto, auditContextFromRequest(req));
   }
 
   // Marcar inscripción completada como revisada por Secretaría
   @Patch(':id/mark-reviewed')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   markReviewed(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.markEnrollmentReviewed(id, auditContextFromRequest(req));
   }
 
   // Censar oficialmente al educando (establece admittedAt, ronda solar y rama)
   @Patch(':id/admit-census')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   admitToCensus(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.admitToCensus(id, auditContextFromRequest(req));
   }
 
   // Dar de baja con motivo estructurado
   @Patch(':id/deactivate')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   deactivate(
     @Param('id') id: string,
     @Body() dto: DeactivateApplicationDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.deactivate(id, dto, auditContextFromRequest(req));
   }
 
   // Reactivar expediente desde Baja
   @Patch(':id/reactivate')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   reactivate(
     @Param('id') id: string,
     @Body() dto: ReactivateApplicationDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.reactivate(id, dto, auditContextFromRequest(req));
   }
 
   // Editar expediente censado
   @Patch(':id/census')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'update')
   updateCensus(
     @Param('id') id: string,
     @Body() dto: UpdateCensusDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    ensurePermission(req, 'Secretaría', 'canUpdate');
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.updateCensus(id, dto, auditContextFromRequest(req));
   }
 
   // Eliminar expediente excepcionalmente
   @Delete(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AuthorizationGuard)
+  @RequirePermission('secretaria', 'delete')
   remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'Secretaría', 'canDelete');
+    ensurePermission(req, 'secretaria', 'delete');
     return this.applicationsService.remove(id, auditContextFromRequest(req));
   }
 }

@@ -954,16 +954,19 @@ describe('ApplicationsService - Reglas de negocio, ciclo de vida, seguridad, cif
       // Usuario lector externo sin permiso médico/bancario: findOne enmascara IBAN y oculta médicos
       const restrictedUser = {
         id: 'u-reader',
+        status: 'ACTIVE',
         isSuperAdmin: false,
         role: {
           name: 'Kraal Lectura',
           permissions: [
             {
+              canAccess: true,
               canRead: true,
               canCreate: false,
               canUpdate: false,
               canDelete: false,
-              module: { name: 'Secretaría' },
+              specialPermissions: [],
+              module: { key: 'secretaria', name: 'Secretaría' },
             },
           ],
         },
@@ -977,19 +980,47 @@ describe('ApplicationsService - Reglas de negocio, ciclo de vida, seguridad, cif
       expect((restrictedDetail.enrollment as any).allergies).toBeNull();
       expect((restrictedDetail.enrollment as any).iban).toBe('ES** **** **** **** **** 9012');
 
-      // Usuario de Secretaría autorizado ve la ficha descifrada y se registra auditoría sin exponer valores sensibles
-      const secretariaUser = {
-        id: 'u-sec',
+      // Incluso un cargo llamado "Secretaría" sin permiso de edición no accede a datos médicos ni bancarios
+      const secretariaNameOnlyUser = {
+        id: 'u-sec-no-update',
+        status: 'ACTIVE',
         isSuperAdmin: false,
         role: {
           name: 'Secretaría',
           permissions: [
             {
+              canAccess: true,
+              canRead: true,
+              canCreate: false,
+              canUpdate: false,
+              canDelete: false,
+              module: { key: 'secretaria', name: 'Secretaría' },
+            },
+          ],
+        },
+      };
+      const noSpecialDetail = await service.findOne(appId, {
+        actorId: 'u-sec-no-update',
+        user: secretariaNameOnlyUser,
+      });
+      expect((noSpecialDetail.enrollment as any).medicalAccessRestricted).toBe(true);
+      expect((noSpecialDetail.enrollment as any).bankAccessRestricted).toBe(true);
+
+      // Usuario autorizado con permiso de edición ve la ficha descifrada y se registra auditoría sin exponer valores sensibles
+      const secretariaUser = {
+        id: 'u-sec',
+        status: 'ACTIVE',
+        isSuperAdmin: false,
+        role: {
+          name: 'Secretaría',
+          permissions: [
+            {
+              canAccess: true,
               canRead: true,
               canCreate: true,
               canUpdate: true,
               canDelete: true,
-              module: { name: 'Secretaría' },
+              module: { key: 'secretaria', name: 'Secretaría' },
             },
           ],
         },

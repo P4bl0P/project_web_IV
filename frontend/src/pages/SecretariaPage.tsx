@@ -70,7 +70,7 @@ const TABS: {
 
 export default function SecretariaPage() {
   const { user } = useAuth();
-  const { canCreate, canUpdate, canDelete } = getModuleCapabilities(user, 'Secretaría');
+  const { canCreate, canUpdate, canDelete } = getModuleCapabilities(user, 'secretaria');
 
   const [pageData, setPageData] = useState<PaginatedApplicationsResponse>({
     items: [],

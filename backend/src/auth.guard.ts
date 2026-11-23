@@ -1,64 +1,109 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  Optional,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, sessionCookie } from './auth.service';
+import { ALLOW_PASSWORD_CHANGE_KEY } from './authorization/authorization.decorators';
+import {
+  canReadSensitiveData,
+  hasModulePermission as checkModulePermission,
+  hasWebContentPermission,
+  isSuperAdminUser,
+  type AuthorizedUser,
+  type PermissionAction,
+} from './authorization/module-registry';
 
-export type AuthenticatedRequest = Request & { user?: any };
+export type AuthenticatedRequest = Request & { user?: AuthorizedUser & Record<string, any> };
+
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly auth: AuthService) {}
-  async canActivate(context: ExecutionContext) {
+  constructor(
+    private readonly auth: AuthService,
+    @Optional() private readonly reflector?: Reflector,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const user = request.cookies?.scout_session ? await this.auth.getUserBySession(request.cookies.scout_session) : null;
-    if (!user) throw new UnauthorizedException('Sesión no válida o caducada');
+    const token = request.cookies?.[sessionCookie];
+    const user = token ? await this.auth.getUserBySession(token) : null;
+    if (!user) {
+      throw new UnauthorizedException('Sesión no válida o caducada');
+    }
+
+    const allowDuringOnboardingMeta = this.reflector?.getAllAndOverride<boolean>(
+      ALLOW_PASSWORD_CHANGE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
     const path = request.path;
     const allowedDuringOnboarding =
+      Boolean(allowDuringOnboardingMeta) ||
       path === '/auth/me' ||
       path === '/auth/password' ||
       path === '/auth/password/initial' ||
       path === '/auth/logout' ||
       path.startsWith('/auth/mfa');
+
     if (user.mustChangePassword && !allowedDuringOnboarding) {
       throw new ForbiddenException('Debes cambiar tu contraseña antes de continuar');
     }
-    request.user = user; return true;
+
+    request.user = user as AuthenticatedRequest['user'];
+    return true;
   }
 }
+
 export function ensureAdmin(request: AuthenticatedRequest) {
   if (!request.user) throw new UnauthorizedException('Sesión no válida o caducada');
-  if (!request.user?.isSuperAdmin) throw new ForbiddenException('Solo el administrador absoluto');
+  if (!isSuperAdminUser(request.user)) {
+    throw new ForbiddenException('Solo el superadministrador absoluto');
+  }
 }
 
-function normalizeName(name?: string | null): string {
-  return (name ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
+type LegacyOrModernAction = PermissionAction | 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete';
+
+function normalizeAction(action: LegacyOrModernAction): PermissionAction {
+  switch (action) {
+    case 'canRead':
+    case 'read':
+      return 'read';
+    case 'canCreate':
+    case 'create':
+      return 'create';
+    case 'canUpdate':
+    case 'update':
+      return 'update';
+    case 'canDelete':
+    case 'delete':
+      return 'delete';
+    case 'access':
+      return 'access';
+  }
 }
 
 export function hasModulePermission(
   user: AuthenticatedRequest['user'],
-  moduleName: string,
-  action: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete',
+  moduleNameOrKey: string,
+  action: LegacyOrModernAction,
 ): boolean {
-  if (!user) return false;
-  if (user.isSuperAdmin) return true;
-  const target = normalizeName(moduleName);
-  const permission = user.role?.permissions?.find(
-    (item: any) => normalizeName(item.module?.name) === target,
-  );
-  return Boolean(permission?.[action]);
+  return checkModulePermission(user, moduleNameOrKey, normalizeAction(action));
 }
 
 export function ensurePermission(
   request: AuthenticatedRequest,
-  moduleName: string,
-  action: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete',
+  moduleNameOrKey: string,
+  action: LegacyOrModernAction,
 ) {
   if (!request.user) {
     throw new UnauthorizedException('Sesión no válida o caducada');
   }
-  if (!hasModulePermission(request.user, moduleName, action)) {
+  if (!hasModulePermission(request.user, moduleNameOrKey, action)) {
     throw new ForbiddenException('Operación no autorizada');
   }
 }
@@ -67,43 +112,20 @@ export function canReadSensitiveMedicalOrBankData(
   user: AuthenticatedRequest['user'],
   kind: 'medical' | 'bank',
 ): boolean {
-  if (!user) return false;
-  if (user.isSuperAdmin) return true;
-  if (!hasModulePermission(user, 'Secretaría', 'canRead')) return false;
-
-  const subModule =
-    kind === 'medical' ? 'Secretaría - Datos Médicos' : 'Secretaría - Datos Bancarios';
-  if (hasModulePermission(user, subModule, 'canRead')) {
-    return true;
-  }
-
-  // Principio de mínimo privilegio: usuarios con rol Secretaría o permiso de actualización
-  // en Secretaría acceden a la ficha completa; lectores externos solo al listado/identificación general.
-  return (
-    normalizeName(user.role?.name) === 'secretaria' ||
-    hasModulePermission(user, 'Secretaría', 'canUpdate')
-  );
+  return canReadSensitiveData(user, kind);
 }
 
 export function ensureWebContentPermission(
   request: AuthenticatedRequest,
-  action: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete',
+  action: LegacyOrModernAction,
 ) {
   if (!request.user) {
     throw new UnauthorizedException('Sesión no válida o caducada');
   }
-  if (request.user.isSuperAdmin) return;
-
-  if (normalizeName(request.user.role?.name) === 'secretaria') {
+  const normalized = normalizeAction(action);
+  const crudAction = normalized === 'access' ? 'read' : normalized;
+  if (hasWebContentPermission(request.user, crudAction)) {
     return;
   }
-
-  const permission = request.user.role?.permissions?.find(
-    (item: any) => normalizeName(item.module?.name) === 'secretaria',
-  );
-  if (permission?.[action]) return;
-
-  throw new ForbiddenException(
-    'Operación no autorizada: acceso exclusivo para Secretaría y superadministradores',
-  );
+  throw new ForbiddenException('Operación no autorizada para gestionar contenido de la web');
 }

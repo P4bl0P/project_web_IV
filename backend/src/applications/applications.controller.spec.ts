@@ -20,6 +20,7 @@ function makeAuthReq(overrides: Record<string, unknown>): AuthenticatedRequest {
     ip: '127.0.0.1',
     user: {
       id: 'user-1',
+      status: 'ACTIVE',
       isSuperAdmin: false,
       role: {
         name: 'Secretaría',
@@ -70,17 +71,18 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
     expect(() => controller.admitToCensus('app-1', req)).toThrow(UnauthorizedException);
   });
 
-  it('deniega con ForbiddenException a usuarios de Tesorería o Jefatura sin permisos en Secretaría', () => {
+  it('deniega con ForbiddenException a usuarios de Tesorería, Jefatura o Secretaría sin permiso en el módulo', () => {
     const tesoreriaReq = makeAuthReq({
       role: {
         name: 'Tesorería',
         permissions: [
           {
+            canAccess: true,
             canRead: true,
             canCreate: true,
             canUpdate: true,
             canDelete: true,
-            module: { name: 'Tesorería' },
+            module: { key: 'tesoreria', name: 'Tesorería' },
           },
         ],
       },
@@ -90,11 +92,27 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
         name: 'Jefatura',
         permissions: [
           {
+            canAccess: true,
             canRead: true,
             canCreate: true,
             canUpdate: true,
             canDelete: true,
-            module: { name: 'Jefatura' },
+            module: { key: 'jefatura', name: 'Jefatura' },
+          },
+        ],
+      },
+    });
+    const secretariaWithoutAccess = makeAuthReq({
+      role: {
+        name: 'Secretaría',
+        permissions: [
+          {
+            canAccess: false,
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            canDelete: true,
+            module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
       },
@@ -106,22 +124,30 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
     expect(() => controller.offerSpot('app-1', {}, jefaturaReq)).toThrow(ForbiddenException);
     expect(() => controller.admitToCensus('app-1', tesoreriaReq)).toThrow(ForbiddenException);
     expect(() =>
-      controller.deactivate('app-1', { closureReason: 'OTRO' } as DeactivateApplicationDto, jefaturaReq),
+      controller.deactivate(
+        'app-1',
+        { closureReason: 'OTRO' } as DeactivateApplicationDto,
+        jefaturaReq,
+      ),
     ).toThrow(ForbiddenException);
     expect(() => controller.remove('app-1', tesoreriaReq)).toThrow(ForbiddenException);
+    expect(() => controller.findAll(undefined, secretariaWithoutAccess)).toThrow(
+      ForbiddenException,
+    );
   });
 
-  it('aplica mínimo privilegio: un lector de Secretaría (canRead=true, canUpdate=false) no puede mutar ni censar', () => {
+  it('aplica mínimo privilegio: un lector de Secretaría (canRead=true, canUpdate=false) no puede mutar, censar ni ver Aurora', () => {
     const readOnlyReq = makeAuthReq({
       role: {
         name: 'Kraal Lectura',
         permissions: [
           {
+            canAccess: true,
             canRead: true,
             canCreate: false,
             canUpdate: false,
             canDelete: false,
-            module: { name: 'Secretaría' },
+            module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
       },
@@ -132,38 +158,46 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
     expect(mockService.findPaginated).toHaveBeenCalledTimes(1);
     expect(mockService.findOne).toHaveBeenCalledTimes(1);
 
+    expect(() => controller.getAuroraPreview('app-1', readOnlyReq)).toThrow(ForbiddenException);
     expect(() => controller.validateApplication('app-1', readOnlyReq)).toThrow(ForbiddenException);
     expect(() => controller.offerSpot('app-1', {}, readOnlyReq)).toThrow(ForbiddenException);
     expect(() => controller.admitToCensus('app-1', readOnlyReq)).toThrow(ForbiddenException);
     expect(() => controller.remove('app-1', readOnlyReq)).toThrow(ForbiddenException);
   });
 
-  it('permite acciones de Secretaría cuando el rol tiene los permisos correspondientes', async () => {
-    const fullSecReq = makeAuthReq({
+  it('permite acciones de Secretaría cuando el cargo tiene los permisos explícitos independientemente de su nombre', async () => {
+    const authorizedCustomRoleReq = makeAuthReq({
       role: {
-        name: 'Secretaría',
+        name: 'Equipo Gestión Libre',
         permissions: [
           {
+            canAccess: true,
             canRead: true,
             canCreate: true,
             canUpdate: true,
             canDelete: true,
-            module: { name: 'Secretaría' },
+            module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
       },
     });
 
-    await controller.validateApplication('app-1', fullSecReq);
-    await controller.offerSpot('app-1', { daysValid: 7 }, fullSecReq);
-    await controller.renewToken('app-1', { daysValid: 7 }, fullSecReq);
-    await controller.returnToWaitlist('app-1', { reason: 'Posponen' }, fullSecReq);
-    await controller.markReviewed('app-1', fullSecReq);
-    await controller.admitToCensus('app-1', fullSecReq);
-    await controller.deactivate('app-1', { closureReason: 'BAJA_VOLUNTARIA' } as DeactivateApplicationDto, fullSecReq);
-    await controller.reactivate('app-1', {}, fullSecReq);
-    await controller.remove('app-1', fullSecReq);
+    await controller.getAuroraPreview('app-1', authorizedCustomRoleReq);
+    await controller.validateApplication('app-1', authorizedCustomRoleReq);
+    await controller.offerSpot('app-1', { daysValid: 7 }, authorizedCustomRoleReq);
+    await controller.renewToken('app-1', { daysValid: 7 }, authorizedCustomRoleReq);
+    await controller.returnToWaitlist('app-1', { reason: 'Posponen' }, authorizedCustomRoleReq);
+    await controller.markReviewed('app-1', authorizedCustomRoleReq);
+    await controller.admitToCensus('app-1', authorizedCustomRoleReq);
+    await controller.deactivate(
+      'app-1',
+      { closureReason: 'BAJA_VOLUNTARIA' } as DeactivateApplicationDto,
+      authorizedCustomRoleReq,
+    );
+    await controller.reactivate('app-1', {}, authorizedCustomRoleReq);
+    await controller.remove('app-1', authorizedCustomRoleReq);
 
+    expect(mockService.getAuroraPreview).toHaveBeenCalledTimes(1);
     expect(mockService.validateApplication).toHaveBeenCalledTimes(1);
     expect(mockService.offerSpot).toHaveBeenCalledTimes(1);
     expect(mockService.renewMagicLink).toHaveBeenCalledTimes(1);

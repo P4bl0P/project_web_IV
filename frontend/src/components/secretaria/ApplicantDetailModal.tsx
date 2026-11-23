@@ -24,6 +24,7 @@ import {
   type UpdateApplicationPayload,
   type UpdateCensusPayload,
 } from '../../services/api';
+import { formatAuditActionLabel } from '../../utils/auditLabels';
 import { formatIsoToHumanShort } from '../../utils/dateUtils';
 import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
 import { REGEX } from '../../utils/scoutValidators';
@@ -72,25 +73,6 @@ const WORKFLOW_STEPS: { status: ApplicationStatus; label: string }[] = [
   { status: 'INSCRIPCION_COMPLETADA', label: '4. Inscripción' },
   { status: 'CENSADO', label: '5. Censo oficial' },
 ];
-
-const AUDIT_ACTION_LABELS: Record<string, string> = {
-  APPLICATION_CREATED: 'Solicitud registrada',
-  APPLICATION_UPDATED: 'Datos del expediente actualizados',
-  APPLICATION_VALIDATED: 'Solicitud validada a Lista de espera',
-  APPLICATION_SPOT_OFFERED: 'Plaza ofertada (enlace mágico generado)',
-  APPLICATION_TOKEN_RENEWED: 'Enlace mágico renovado',
-  APPLICATION_RETURNED_TO_WAITLIST: 'Expediente devuelto a Lista de espera',
-  APPLICATION_ENROLLMENT_COMPLETED: 'Inscripción oficial completada por la familia',
-  APPLICATION_REVIEWED: 'Inscripción marcada como revisada por Secretaría',
-  APPLICATION_CENSUS_ADMITTED: 'Alta confirmada en el Censo Oficial',
-  APPLICATION_DIRECT_CENSUS_CREATED: 'Alta directa registrada en el Censo Oficial',
-  APPLICATION_CENSUS_UPDATED: 'Ficha del censo actualizada',
-  APPLICATION_DEACTIVATED: 'Expediente dado de baja / cerrado',
-  APPLICATION_REACTIVATED: 'Expediente reactivado desde baja',
-  APPLICATION_DELETED: 'Expediente eliminado',
-  APPLICATION_SENSITIVE_READ: 'Consulta de ficha confidencial',
-  APPLICATION_AURORA_PAYLOAD_PREVIEW: 'Vista previa de mapeo para Aurora',
-};
 
 const RELATIONSHIP_OPTIONS = [
   'Madre',
@@ -1562,7 +1544,7 @@ export default function ApplicantDetailModal({
                         >
                           <div>
                             <strong className="text-[#0c1933]">
-                              {AUDIT_ACTION_LABELS[event.action] || event.action}
+                              {formatAuditActionLabel(event.action)}
                             </strong>
                             <span className="text-slate-500 block text-[11px]">
                               Realizado por:{' '}

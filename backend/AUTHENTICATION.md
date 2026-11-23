@@ -2,127 +2,55 @@
 
 ## Arquitectura
 
-El backend mantiene sesiones opacas en PostgreSQL. La cookie `scout_session` es
-`HttpOnly`, `SameSite=Lax` y `Secure` en producción; solo se almacena el hash
-del token. Las sesiones caducan por inactividad y por duración máxima, y se
-revocan al cerrar sesión o cuando una cuenta deja de estar activa.
+El backend encapsula la autenticación, autorización y auditoría en `AuthModule` (`@Global()`), evitando instancias duplicadas de servicios y guards entre módulos de dominio.
 
-El frontend mantiene un único `AuthProvider` en `src/auth.tsx`. La sesión se
-valida contra `GET /auth/me` antes de mostrar accesos privados y se vuelve a
-comprobar periódicamente para retirar esos accesos cuando caduca. Todas las
-peticiones de autenticación usan `credentials: 'include'`; los errores de red
-se distinguen de los rechazos de credenciales. `NavBar` consume ese contexto y
-solo muestra «Gestión» después de la validación del servidor.
+### Autenticación y sesiones
+- **Sesiones opacas en PostgreSQL (`Session`)**: la cookie `scout_session` es `HttpOnly`, `SameSite=Lax` y `Secure` en producción (`maxAge` sincronizado con `SESSION_MAX_MS`). Solo se almacena el hash SHA-256 del token.
+- **Retos pre-MFA aislados (`MfaChallenge`)**: los retos temporales emitidos por `POST /auth/login` se almacenan en la tabla dedicada `MfaChallenge` (nunca en `Session`), con propósito explícito (`SETUP` o `LOGIN`), límite de intentos (`5`), caducidad corta (5 minutos) y consumo atómico de un solo uso. Es imposible utilizar un `challenge` como cookie `scout_session`.
+- **Contraseñas y protección frente a fuerza bruta**: Argon2id con política mínima de 15 caracteres (máximo 128, sin contraseñas basadas en espacios), verificación con hash ficticio para mitigar enumeración por tiempo, bloqueo temporal por cuenta tras 5 intentos fallidos (`15 minutos`) y *rate limiting* específico en `/auth/login`, `/auth/mfa` y `/auth/invitations`.
+- **MFA TOTP**: `otplib` cifrado con AES-256-GCM mediante `MFA_ENCRYPTION_KEY`. El secreto pendiente de verificación se aísla en `User.mfaPendingSecret` hasta confirmar el código TOTP; reconfigurar el segundo factor exige verificar la contraseña actual. Los códigos de recuperación son de un solo uso y se almacenan con Argon2id.
+- **Rotación de sesiones**: al cambiar la contraseña (`POST /auth/password` o `POST /auth/password/initial`), se revocan todas las sesiones previas y se emite una nueva cookie rotada. Todas las respuestas de autenticación y administración incluyen `Cache-Control: no-store`.
 
-`PrismaModule` es el proveedor compartido de persistencia. Los controladores y
-servicios deben importar su `PrismaService` desde `src/prisma/prisma.service`;
-mantener una segunda clase Prisma produciría instancias incompatibles y
-pruebas E2E que no pueden sustituir el acceso a datos de forma consistente.
+## Modelo funcional: usuarios, cargos, módulos y permisos
 
-Las contraseñas usan Argon2id. El segundo factor es TOTP compatible con
-Google Authenticator, Microsoft Authenticator y 2FAS. El secreto TOTP se
-cifra con AES-256-GCM usando `MFA_ENCRYPTION_KEY`; nunca se devuelve con
-`/auth/me`.
+1. **Usuario (`User`)**: persona con cuenta en la aplicación. Puede tener **como máximo un cargo** (`roleId`, relación `0..1` con `onDelete: Restrict`).
+2. **Cargo (`Role`)**: responsabilidad dentro del grupo (`name`, `description`). Los permisos se conceden exclusivamente a los cargos, nunca a usuarios individuales.
+3. **Módulo (`Module`)**: sección funcional registrada desde la fuente única de verdad (`src/authorization/module-registry.ts`) o desde el panel administrativo (`key`, `name`, `description`, `route`, `icon`, `isImplemented`, `supportsRead/Create/Update/Delete`, `specialActions`).
+4. **Permiso (`Permission`)**: relaciona un `Role` con un `Module`, distinguiendo:
+   - `canAccess`: acceso explícito al módulo. Si es `false`, cualquier operación CRUD o especial queda denegada.
+   - Operaciones CRUD: `canRead`, `canCreate`, `canUpdate`, `canDelete` (acotadas a las operaciones soportadas por el módulo).
+   - `specialPermissions`: lista JSON de claves de acciones especiales propias del módulo (por ejemplo `read_medical_data`, `read_bank_data`, `preview_aurora`, `manage_web_content` en Secretaría o `export_sepa` en Tesorería).
 
-## Usuarios, cargos y permisos
+### Reglas de autorización e invalidación
+- **Denegar por defecto**: ninguna operación está autorizada sin permiso explícito. Nunca se autoriza por el nombre del cargo (`role.name`).
+- **Centralización**: `AuthorizationGuard` + `@RequireSuperAdmin()` / `@RequirePermission(moduleKey, action, specialAction?)` y las funciones de `module-registry.ts` forman la única autoridad.
+- **Invalidación inmediata**: al cambiar el cargo de un usuario, desactivarlo/bloquearlo o modificar los permisos de un cargo, se revocan inmediatamente todas las sesiones activas y retos MFA pendientes afectados.
+- **Superadministrador (`User.isSuperAdmin`)**: cuenta global protegida frente a escalada de privilegios, modificación/desactivación/eliminación desde el panel ordinario y frente a la pérdida del último superadministrador activo.
 
-`User` pertenece como máximo a un `Role`. `Role`, `Module` y `Permission`
-permiten añadir cargos y módulos sin modificar el modelo de autenticación.
-Cada permiso separa lectura, creación, edición y eliminación. La cuenta
-absoluta se identifica con `isSuperAdmin`; el procedimiento de bootstrap
-impide crear una segunda cuenta con ese privilegio.
+## Cargos iniciales y seed
 
-## Instalación y cuenta inicial
+`npm run db:seed` registra los módulos iniciales (`Jefatura`, `Secretaría`, `Tesorería`) y únicamente los tres cargos funcionales iniciales (`Jefatura`, `Tesorería`, `Secretaría`), otorgándoles de forma predeterminada acceso a su módulo homónimo (editable posteriormente por el superadministrador sin sobrescribir cambios previos al re-ejecutar el seed).
 
-1. Configura las variables del `.env.example` de la raíz en el hosting, generando
-   `MFA_ENCRYPTION_KEY` con `openssl rand -base64 32`.
+## Instalación, bootstrap y recuperación administrativa
+
+1. Configura las variables del `.env.example` generando `MFA_ENCRYPTION_KEY` (y opcionalmente `DATA_ENCRYPTION_KEY`) con `openssl rand -base64 32`.
 2. Ejecuta `npm run db:migrate` y `npm run db:seed`.
 3. Ejecuta una única vez `ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run db:bootstrap`.
-4. Inicia sesión y completa la configuración TOTP.
+4. Inicia sesión y completa la configuración TOTP (guarda los 10 códigos de recuperación fuera de la aplicación).
 
-Con Docker Compose, ejecuta desde la raíz:
-
-```bash
-cp .env.example .env
-# Edita .env y sustituye todos los valores de ejemplo.
-docker compose up -d --build
-docker compose exec backend npm run db:seed
-docker compose exec backend npm run db:bootstrap
-```
-
-El comando `db:migrate` y el comando `db:seed` regeneran Prisma antes de
-trabajar con la base de datos. Esto es importante porque el contenedor de
-desarrollo conserva `node_modules` en un volumen y, sin regeneración, puede
-usar un cliente Prisma antiguo que no conoce los modelos nuevos.
-
-Si quieres empezar desde cero y borrar todos los datos locales:
+### Recuperación administrativa segura (emergencia)
+Si el superadministrador queda bloqueado o pierde su dispositivo MFA y códigos de recuperación, ejecuta desde consola autorizada en el servidor:
 
 ```bash
-docker compose down -v
-docker compose up -d --build
-docker compose exec backend npm run db:seed
-docker compose exec backend npm run db:bootstrap
+RECOVERY_CONFIRM=YES \
+RECOVERY_ADMIN_EMAIL=admin@example.org \
+RECOVERY_NEW_PASSWORD="una-contrasena-segura-de-al-menos-15-caracteres" \
+RECOVERY_RESET_MFA=true \
+npm run db:recover-admin
 ```
 
-Si una versión anterior falló con `P3018` o `P3009`, detén el backend y marca
-esa ejecución como revertida antes de volver a arrancar:
+El procedimiento reactiva o regenera la cuenta de superadministrador, revoca todas sus sesiones y retos MFA activos y deja registro en `AuditEvent` (`SUPERADMIN_RECOVERY`).
 
-```bash
-docker compose stop backend
-docker compose run --rm --no-deps backend \
-  npx prisma migrate resolve --rolled-back 20261103170000_authentication_security
-docker compose up -d backend
-docker compose exec backend npm run db:seed
-```
+## Auditoría
 
-La migración de autenticación debe ser incremental: la primera migración ya
-crea `Applicant` y sus enums; la segunda solo crea `User`, `Role`, `Module`,
-`Permission`, sesiones, invitaciones, códigos de recuperación y auditoría.
-   La respuesta de configuración genera diez códigos de recuperación; guárdalos
-   fuera de la aplicación. Cada código es de un solo uso y se almacena como
-   hash.
-
-   ## Gestión de cuentas, cargos y primer acceso
-
-   Las cuentas se separan de los cargos: `User.isSuperAdmin` identifica la única
-   cuenta absoluta y una cuenta normal referencia un `Role`. Los permisos viven en
-   `Permission` y relacionan un cargo con un `Module`, con operaciones
-   independientes de lectura, creación, edición y eliminación. El servidor obtiene
-   siempre el cargo y los permisos desde la sesión y la base de datos; nunca acepta
-   estos valores desde el cliente.
-
-   `SUPER_ADMIN` dispone de `/admin/users`, `/admin/roles`, `/admin/modules` y
-   `/admin/permissions`. Las cuentas normales se crean con una contraseña temporal
-   aleatoria, almacenada únicamente como hash, y `mustChangePassword=true`. La
-   contraseña temporal se devuelve una sola vez en la respuesta de alta o
-   restablecimiento. Mientras la obligación esté activa, `AuthGuard` bloquea los
-   endpoints privados y solo permite consultar el perfil, cambiar la contraseña y
-   completar MFA.
-
-   El cierre de sesión permanece disponible durante este estado: revoca la sesión
-   actual y limpia la cookie, pero no concede acceso a ningún dato privado.
-   Además, el perfil ofrece `POST /auth/password/initial`, que permite establecer
-   la contraseña definitiva tras completar el login y MFA sin volver a exigir la
-   contraseña temporal. El endpoint solo funciona mientras `mustChangePassword`
-   está activo, conserva la sesión autenticada actual y revoca las demás sesiones.
-
-   El perfil personal usa `POST /auth/password`, comprueba la contraseña anterior,
-   aplica la política mínima de 15 caracteres, invalida las sesiones existentes y
-   registra el cambio en auditoría. Las cuentas `SUPER_ADMIN` no aparecen en el
-   listado ordinario y no pueden editarse, desactivarse ni restablecerse desde el
-   panel.
-
-Las altas posteriores se realizan desde `POST /admin/users`; devuelve un token
-de invitación de un solo uso y 24 horas de duración para entregarlo mediante
-un canal controlado. La contraseña se establece en
-`POST /auth/invitations/:token/accept`; nunca se envían contraseñas por correo.
-
-## Despliegue, backups y riesgos residuales
-
-Sirve frontend y backend únicamente sobre HTTPS, restringe PostgreSQL a la red
-privada, rota secretos fuera del repositorio y cifra/protege los backups.
-La entrega de invitaciones y la recuperación de contraseña requieren integrar
-un proveedor de correo transaccional del hosting. Los documentos privados deben
-servirse mediante endpoints autenticados, nunca desde un directorio público.
-Completa además una revisión legal de minimización y retención por tratarse de
-datos de menores.
+`AuditService` registra en `AuditEvent` las operaciones administrativas, de autenticación y accesos denegados (`ACCESS_DENIED`), incluyendo actor, acción, tipo/identificador objetivo, valores previos y nuevos sanitizados (eliminando automáticamente contraseñas, tokens, secretos MFA, DNI, IBAN y firmas) e IP. Los registros son de solo consulta para el superadministrador (`GET /admin/audit`).

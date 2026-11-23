@@ -566,8 +566,8 @@ export class ApplicationsService {
     user?: AuthenticatedRequest['user'],
   ): DecryptedEnrollmentDetail {
     const decrypted = this.decryptEnrollmentFields(enrollment);
-    const allowMedical = user ? canReadSensitiveMedicalOrBankData(user, 'medical') : true;
-    const allowBank = user ? canReadSensitiveMedicalOrBankData(user, 'bank') : true;
+    const allowMedical = user ? canReadSensitiveMedicalOrBankData(user, 'medical') : false;
+    const allowBank = user ? canReadSensitiveMedicalOrBankData(user, 'bank') : false;
     const last4 = enrollment.ibanLast4 ?? this.crypto.extractIbanLast4(decrypted.iban);
 
     return {
@@ -2510,9 +2510,14 @@ export class ApplicationsService {
       : applicant;
 
     await this.recordAudit(context, 'APPLICATION_AURORA_PAYLOAD_PREVIEW', `applicant:${id}`);
-    return this.aurora.toCreateContactPayload(decryptedApplicant, config, {
+    const payload = this.aurora.toCreateContactPayload(decryptedApplicant, config, {
       includeEphemeralCredentials: false,
     });
+    if (context?.user && !canReadSensitiveMedicalOrBankData(context.user, 'medical')) {
+      payload.diseases = null;
+      payload.tin = null;
+    }
+    return payload;
   }
 
   // 10. Eliminar solicitud excepcionalmente (registrado en auditoría)

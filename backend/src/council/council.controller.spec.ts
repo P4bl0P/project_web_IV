@@ -1,26 +1,7 @@
 jest.mock('@nestjs/common', () => {
-  class HttpTestException extends Error {
-    constructor(message?: string) {
-      super(message);
-      this.name = new.target.name;
-    }
-  }
-  const noopDecorator = () => () => undefined;
+  const actual = jest.requireActual('@nestjs/common');
   return {
-    Injectable: noopDecorator,
-    Controller: noopDecorator,
-    UseGuards: noopDecorator,
-    Get: noopDecorator,
-    Post: noopDecorator,
-    Patch: noopDecorator,
-    Delete: noopDecorator,
-    Body: noopDecorator,
-    Param: noopDecorator,
-    Req: noopDecorator,
-    BadRequestException: class BadRequestException extends HttpTestException {},
-    NotFoundException: class NotFoundException extends HttpTestException {},
-    ForbiddenException: class ForbiddenException extends HttpTestException {},
-    UnauthorizedException: class UnauthorizedException extends HttpTestException {},
+    ...actual,
   };
 });
 
@@ -60,23 +41,36 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     expect(mockService.findAll).toHaveBeenCalledTimes(1);
   });
 
-  it('permite gestionar integrantes a usuarios con rol Secretaría', async () => {
-    const secretariaReq = {
+  it('permite gestionar integrantes cuando el cargo tiene permiso explícito de Secretaría sin importar el nombre', async () => {
+    const customWebEditorReq = {
       user: {
         id: 'u-sec',
+        status: 'ACTIVE',
         isSuperAdmin: false,
-        role: { name: 'Secretaría', permissions: [] },
+        role: {
+          name: 'Responsable Web',
+          permissions: [
+            {
+              canAccess: true,
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              canDelete: true,
+              module: { key: 'secretaria', name: 'Secretaría' },
+            },
+          ],
+        },
       },
     } as unknown as AuthenticatedRequest;
 
-    await controller.findManage(secretariaReq);
+    await controller.findManage(customWebEditorReq);
     await controller.create(
       { fullName: 'Nombre Ejemplo', role: 'Jefatura' },
-      secretariaReq,
+      customWebEditorReq,
     );
-    await controller.update('1', { fullName: 'Editado' }, secretariaReq);
-    await controller.reorder({ orderedIds: ['1'] }, secretariaReq);
-    await controller.remove('1', secretariaReq);
+    await controller.update('1', { fullName: 'Editado' }, customWebEditorReq);
+    await controller.reorder({ orderedIds: ['1'] }, customWebEditorReq);
+    await controller.remove('1', customWebEditorReq);
 
     expect(mockService.create).toHaveBeenCalledTimes(1);
     expect(mockService.update).toHaveBeenCalledTimes(1);
@@ -84,10 +78,46 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     expect(mockService.remove).toHaveBeenCalledTimes(1);
   });
 
+  it('rechaza incluso a un cargo llamado Secretaría si no tiene permisos activos en el módulo', () => {
+    const secretariaNameBypassAttempt = {
+      user: {
+        id: 'u-sec-empty',
+        status: 'ACTIVE',
+        isSuperAdmin: false,
+        role: { name: 'Secretaría', permissions: [] },
+      },
+    } as unknown as AuthenticatedRequest;
+
+    const secretariaDisabledModule = {
+      user: {
+        id: 'u-sec-disabled',
+        status: 'ACTIVE',
+        isSuperAdmin: false,
+        role: {
+          name: 'Secretaría',
+          permissions: [
+            {
+              canAccess: false,
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              canDelete: true,
+              module: { key: 'secretaria', name: 'Secretaría' },
+            },
+          ],
+        },
+      },
+    } as unknown as AuthenticatedRequest;
+
+    expect(() => controller.findManage(secretariaNameBypassAttempt)).toThrow(ForbiddenException);
+    expect(() => controller.findManage(secretariaDisabledModule)).toThrow(ForbiddenException);
+  });
+
   it('permite gestionar integrantes a superadministradores', async () => {
     const adminReq = {
       user: {
         id: 'u-admin',
+        status: 'ACTIVE',
         isSuperAdmin: true,
         role: null,
       },
@@ -103,20 +133,23 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     expect(mockService.create).toHaveBeenCalledTimes(1);
   });
 
-  it('bloquea con 403 ForbiddenException a usuarios normales o de otros roles sin permiso de Secretaría', () => {
+  it('bloquea con 403 ForbiddenException a usuarios normales o de otros cargos sin permiso', async () => {
     const jefaturaReq = {
       user: {
         id: 'u-jef',
+        status: 'ACTIVE',
         isSuperAdmin: false,
         role: {
           name: 'Jefatura',
           permissions: [
             {
+              canAccess: true,
               canRead: true,
               canCreate: true,
               canUpdate: true,
               canDelete: true,
-              module: { name: 'Jefatura' },
+              specialPermissions: [],
+              module: { key: 'jefatura', name: 'Jefatura' },
             },
           ],
         },
@@ -126,25 +159,23 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     const normalUserReq = {
       user: {
         id: 'u-normal',
+        status: 'ACTIVE',
         isSuperAdmin: false,
         role: null,
       },
     } as unknown as AuthenticatedRequest;
 
     expect(() => controller.findManage(jefaturaReq)).toThrow(ForbiddenException);
-    expect(() =>
-      controller.create(
-        { fullName: 'Intento', role: 'Jefatura' },
-        normalUserReq,
-      ),
-    ).toThrow(ForbiddenException);
-    expect(() =>
+    await expect(
+      controller.create({ fullName: 'Intento', role: 'Jefatura' }, normalUserReq),
+    ).rejects.toThrow(ForbiddenException);
+    await expect(
       controller.update('1', { fullName: 'Intento' }, jefaturaReq),
-    ).toThrow(ForbiddenException);
-    expect(() =>
+    ).rejects.toThrow(ForbiddenException);
+    await expect(
       controller.reorder({ orderedIds: ['1'] }, normalUserReq),
-    ).toThrow(ForbiddenException);
-    expect(() => controller.remove('1', normalUserReq)).toThrow(
+    ).rejects.toThrow(ForbiddenException);
+    await expect(controller.remove('1', normalUserReq)).rejects.toThrow(
       ForbiddenException,
     );
 
