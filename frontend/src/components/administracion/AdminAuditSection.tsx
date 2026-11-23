@@ -1,47 +1,13 @@
 import { useState } from 'react';
 import { RefreshCw, ScrollText } from 'lucide-react';
 import type { AdminAuditEvent } from '../../services/api';
+import { formatAuditActionLabel } from '../../utils/auditLabels';
 
 interface AdminAuditSectionProps {
   events: AdminAuditEvent[];
   loading: boolean;
   onRefresh: (filters?: { result?: 'ALLOWED' | 'DENIED' }) => Promise<void>;
 }
-
-const ACTION_LABELS: Record<string, string> = {
-  LOGIN_SUCCESS: 'Inicio de sesión',
-  LOGIN_FAILED: 'Intento de acceso fallido',
-  LOGIN_LOCKED: 'Cuenta bloqueada por intentos fallidos',
-  LOGIN_DENIED_INACTIVE: 'Acceso denegado (cuenta inactiva)',
-  LOGOUT: 'Cierre de sesión',
-  MFA_SETUP_COMPLETED: 'Verificación en dos pasos activada',
-  MFA_SETUP_FAILED: 'Configuración MFA fallida',
-  MFA_FAILED: 'Código MFA incorrecto',
-  MFA_RECONFIGURED: 'Verificación MFA actualizada',
-  PASSWORD_CHANGED: 'Contraseña actualizada',
-  INITIAL_PASSWORD_CHANGED: 'Contraseña inicial establecida',
-  INVITATION_ACCEPTED: 'Invitación aceptada',
-  USER_CREATED: 'Usuario creado',
-  USER_UPDATED: 'Datos de usuario editados',
-  USER_ROLE_CHANGED: 'Cambio de cargo de usuario',
-  USER_STATUS_CHANGED: 'Cambio de estado de usuario',
-  USER_PASSWORD_RESET: 'Contraseña restablecida',
-  USER_MFA_RESET: 'MFA reiniciado',
-  USER_DISABLED: 'Usuario desactivado',
-  USER_DELETED: 'Usuario eliminado',
-  ROLE_CREATED: 'Cargo creado',
-  ROLE_UPDATED: 'Cargo editado',
-  ROLE_DELETED: 'Cargo eliminado',
-  ROLE_PERMISSIONS_UPDATED: 'Permisos de cargo actualizados',
-  PERMISSION_CHANGED: 'Permiso actualizado',
-  ACCESS_DENIED: 'Acceso denegado',
-  COUNCIL_MEMBER_CREATED: 'Consejo: integrante añadido',
-  COUNCIL_MEMBER_UPDATED: 'Consejo: integrante editado',
-  COUNCIL_MEMBERS_REORDERED: 'Consejo: orden actualizado',
-  COUNCIL_MEMBER_DELETED: 'Consejo: integrante eliminado',
-  SUPERADMIN_BOOTSTRAPPED: 'Superadministrador inicial creado',
-  SUPERADMIN_RECOVERY: 'Recuperación administrativa ejecutada',
-};
 
 export default function AdminAuditSection({
   events,
@@ -58,7 +24,7 @@ export default function AdminAuditSection({
           <div>
             <h2 className="m-0 text-[20px] text-[#000254]">Registro de actividad</h2>
             <p className="m-0 text-xs text-[#627089]">
-              Historial de cambios en usuarios, cargos, permisos y accesos.
+              Historial de actividad en usuarios, cargos, accesos y expedientes.
             </p>
           </div>
         </div>
@@ -111,11 +77,15 @@ export default function AdminAuditSection({
                     {ev.result === 'DENIED' ? 'Denegado' : 'Permitido'}
                   </span>
                   <strong className="text-[#000254]">
-                    {ACTION_LABELS[ev.action] ?? ev.action}
+                    {formatAuditActionLabel(ev.action)}
                   </strong>
                 </div>
                 <div className="text-[11px] text-[#627089]">
-                  {ev.actor ? `${ev.actor.name} (${ev.actor.email})` : 'Sistema'}
+                  {ev.actor
+                    ? `${ev.actor.name} (${ev.actor.email})`
+                    : ev.action.startsWith('APPLICATION_')
+                      ? 'Familia / Formulario público'
+                      : 'Sistema'}
                 </div>
               </div>
 
