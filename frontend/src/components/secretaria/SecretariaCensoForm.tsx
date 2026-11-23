@@ -60,6 +60,31 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [loadingDetail, setLoadingDetail] = useState(() => Boolean(record?.id));
+
+  useEffect(() => {
+    if (!record?.id) return;
+    let cancelled = false;
+    applicationsApi
+      .getById(record.id)
+      .then((detailed) => {
+        if (!cancelled) setFormData(formFromRecord(detailed));
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setServerError(
+            reason instanceof Error ? reason.message : 'No se pudo cargar la ficha completa.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDetail(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [record?.id]);
+
   const showSecondParent = useMemo(
     () => Boolean(formData.parent2FirstName || formData.parent2Phone || formData.parent2Email),
     [formData.parent2Email, formData.parent2FirstName, formData.parent2Phone],
@@ -252,6 +277,11 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
         {/* Contenido del paso activo */}
         <main className="space-y-4 p-4 sm:p-6 max-h-[calc(85vh-9rem)] overflow-y-auto">
           {error && <CensusErrorSummary message={error} fieldErrors={fieldErrors} />}
+          {loadingDetail && (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
+              Cargando ficha confidencial del censado…
+            </div>
+          )}
 
           {step === 1 && (
             <div className="space-y-4">
@@ -265,6 +295,7 @@ export default function SecretariaCensoForm({ record, onClose, onSaved }: Props)
                 formData={formData}
                 onChange={handleChange}
                 fieldErrors={fieldErrors}
+                showIdentityRevision={false}
               />
               <CensusCriteriaSection
                 formData={formData}

@@ -157,7 +157,12 @@ export default function SecretariaPage() {
   );
 
   const handleStatusChange = async (id: string, status: ApplicationStatus) => {
-    const updated = await applicationsApi.update(id, { status });
+    const updated =
+      status === 'LISTA_ESPERA'
+        ? await applicationsApi.validate(id)
+        : status === 'CENSADO'
+          ? await applicationsApi.admitCensus(id)
+          : await applicationsApi.getById(id);
     setRecords((prev) => prev.map((r) => (r.id === id ? updated : r)));
   };
 

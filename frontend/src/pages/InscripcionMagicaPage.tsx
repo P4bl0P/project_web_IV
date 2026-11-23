@@ -1,7 +1,11 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, ShieldCheck } from 'lucide-react';
-import { applicationsApi, type ApplicantRecord, type CompleteEnrollmentPayload } from '../services/api';
+import {
+  applicationsApi,
+  type CompleteEnrollmentPayload,
+  type MagicEnrollmentPublicView,
+} from '../services/api';
 import { validateEnrollmentStep } from '../utils/scoutValidators';
 import Step1Legal from '../components/inscripcion/Step1Legal';
 import Step2Medical from '../components/inscripcion/Step2Medical';
@@ -12,13 +16,14 @@ import { SecButton } from '../components/secretaria/secretariaTheme';
 
 export default function InscripcionMagicaPage() {
   const { token } = useParams<{ token: string }>();
-  const [applicant, setApplicant] = useState<ApplicantRecord | null>(null);
+  const [applicant, setApplicant] = useState<MagicEnrollmentPublicView | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [stepError, setStepError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+
   const stepItems = [
     { number: 1, label: 'Datos legales' },
     { number: 2, label: 'Ficha médica' },
@@ -27,16 +32,29 @@ export default function InscripcionMagicaPage() {
   ];
 
   const [formData, setFormData] = useState<CompleteEnrollmentPayload>({
+    childFirstName: '',
+    childLastName1: '',
+    childLastName2: '',
+    hasNoSecondLastName: false,
+    noSecondLastNameJustification: '',
+    childBirthDate: '',
+    gender: '',
     streetAddress: '',
     streetNumber: '',
-    ApartmentDoor: '',
-    postalCode: '41089',
-    municipality: 'Dos Hermanas',
-    province: 'Sevilla',
+    apartmentDoor: '',
+    postalCode: '',
+    municipality: '',
+    province: '',
+    parent1FirstName: '',
+    parent1LastName: '',
     parent1Phone: '',
     parent1Email: '',
+    parent1Relationship: '',
+    parent2FirstName: '',
+    parent2LastName: '',
     parent2Phone: '',
     parent2Email: '',
+    parent2Relationship: '',
     childDni: '',
     childPhone: '',
     childEmail: '',
@@ -44,23 +62,30 @@ export default function InscripcionMagicaPage() {
     circularPreference: 'EMAIL',
     parent1Dni: '',
     parent2Dni: '',
-    parentsMaritalStatus: 'Casados',
+    parentsMaritalStatus: '',
     custodyType: 'SIN_ESPECIFICAR',
     acceptsDataStorage: true,
     acceptsDataTransfer: true,
     authorizesImages: true,
+    consentTextVersion: '2026.1',
     bloodType: '',
-    chronicDiseases: 'Ninguna',
-    allergies: 'Ninguna',
+    chronicDiseases: '',
+    allergies: '',
     medHeadache: '',
     medFever: '',
     medStomach: '',
     medThroat: '',
     medicalObservations: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: '',
     authorizesEmergency: true,
     accountHolderName: '',
     accountHolderDni: '',
-    iban: 'ES',
+    accountHolderAddress: '',
+    accountHolderMunicipality: '',
+    accountHolderPostalCode: '',
+    iban: '',
     authorizesSepa: true,
     signatureParent1: '',
     signatureParent2: '',
@@ -72,49 +97,32 @@ export default function InscripcionMagicaPage() {
       .getByMagicToken(token)
       .then((data) => {
         setApplicant(data);
-        if (data.status === 'INSCRIPCION_COMPLETADA') setCompleted(true);
         setFormData((prev) => ({
           ...prev,
+          childFirstName: data.childFirstName || '',
+          childLastName1: data.childLastName1 || '',
+          childLastName2: data.childLastName2 || '',
+          hasNoSecondLastName: Boolean(data.hasNoSecondLastName),
+          noSecondLastNameJustification: data.noSecondLastNameJustification || '',
+          childBirthDate: data.childBirthDate ? data.childBirthDate.slice(0, 10) : '',
+          gender:
+            data.gender === 'MASCULINO' || data.gender === 'FEMENINO' ? data.gender : '',
           streetAddress: data.streetAddress || '',
           streetNumber: data.streetNumber || '',
-          ApartmentDoor: data.ApartmentDoor || '',
-          postalCode: data.postalCode || '41089',
-          municipality: data.municipality || 'Dos Hermanas',
-          province: data.province || 'Sevilla',
+          apartmentDoor: data.apartmentDoor || '',
+          postalCode: data.postalCode || '',
+          municipality: data.municipality || '',
+          province: data.province || '',
+          parent1FirstName: data.parent1FirstName || '',
+          parent1LastName: data.parent1LastName || '',
           parent1Phone: data.parent1Phone || '',
           parent1Email: data.parent1Email || '',
-          accountHolderName: `${data.parent1FirstName} ${data.parent1LastName}`,
-          ...(data.enrollment
-            ? {
-                childDni: data.enrollment.childDni || '',
-                childPhone: data.enrollment.childPhone || '',
-                childEmail: data.enrollment.childEmail || '',
-                legalStatus: data.enrollment.legalStatus,
-                circularPreference: data.enrollment.circularPreference,
-                parent1Dni: data.enrollment.parent1Dni || '',
-                parent2Dni: data.enrollment.parent2Dni || '',
-                parentsMaritalStatus: data.enrollment.parentsMaritalStatus || '',
-                custodyType: data.enrollment.custodyType,
-                acceptsDataStorage: data.enrollment.acceptsDataStorage,
-                acceptsDataTransfer: data.enrollment.acceptsDataTransfer,
-                authorizesImages: data.enrollment.authorizesImages,
-                bloodType: data.enrollment.bloodType || '',
-                chronicDiseases: data.enrollment.chronicDiseases || 'Ninguna',
-                allergies: data.enrollment.allergies || 'Ninguna',
-                medHeadache: data.enrollment.medHeadache || '',
-                medFever: data.enrollment.medFever || '',
-                medStomach: data.enrollment.medStomach || '',
-                medThroat: data.enrollment.medThroat || '',
-                medicalObservations: data.enrollment.medicalObservations || '',
-                authorizesEmergency: data.enrollment.authorizesEmergency,
-                accountHolderName: data.enrollment.accountHolderName,
-                accountHolderDni: data.enrollment.accountHolderDni,
-                iban: data.enrollment.iban,
-                authorizesSepa: data.enrollment.authorizesSepa,
-                signatureParent1: data.enrollment.signatureParent1 || '',
-                signatureParent2: data.enrollment.signatureParent2 || '',
-              }
-            : {}),
+          parent1Relationship: data.parent1Relationship || '',
+          parent2FirstName: data.parent2FirstName || '',
+          parent2LastName: data.parent2LastName || '',
+          parent2Phone: data.parent2Phone || '',
+          parent2Email: data.parent2Email || '',
+          parent2Relationship: data.parent2Relationship || '',
         }));
       })
       .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Enlace inválido'))
@@ -124,16 +132,41 @@ export default function InscripcionMagicaPage() {
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-    setFormData((prev) => ({ ...prev, [name]: val }));
+    setFormData((prev) => {
+      if (name === 'hasNoSecondLastName' && val === true) {
+        return { ...prev, hasNoSecondLastName: true, childLastName2: '' };
+      }
+      return { ...prev, [name]: val };
+    });
     setStepError(null);
+  };
+
+  const handleFillEmergencyFromTutor1 = () => {
+    setFormData((prev) => ({
+      ...prev,
+      emergencyContactName: `${prev.parent1FirstName || ''} ${prev.parent1LastName || ''}`.trim(),
+      emergencyContactPhone: prev.parent1Phone || '',
+      emergencyContactRelationship: prev.parent1Relationship || 'Tutor principal',
+    }));
+  };
+
+  const handleFillHolderFromTutor1 = () => {
+    const fullAddress = [formData.streetAddress, formData.streetNumber, formData.apartmentDoor]
+      .filter(Boolean)
+      .join(', ');
+    setFormData((prev) => ({
+      ...prev,
+      accountHolderName: `${prev.parent1FirstName || ''} ${prev.parent1LastName || ''}`.trim(),
+      accountHolderDni: (prev.parent1Dni || '').trim().toUpperCase(),
+      accountHolderAddress: fullAddress,
+      accountHolderMunicipality: prev.municipality,
+      accountHolderPostalCode: prev.postalCode,
+    }));
   };
 
   const handleNext = () => {
     const err = validateEnrollmentStep(step, formData);
     if (err) return setStepError(err);
-    if (step === 1 && !formData.accountHolderDni) {
-      setFormData((p) => ({ ...p, accountHolderDni: p.parent1Dni.toUpperCase() }));
-    }
     setStep((s) => s + 1);
   };
 
@@ -154,18 +187,64 @@ export default function InscripcionMagicaPage() {
     if (!token) return setStepError('Enlace inválido');
     setIsSubmitting(true);
     try {
-      await applicationsApi.submitMagicEnrollment(token, {
+      const payload: CompleteEnrollmentPayload = {
         ...formData,
+        childFirstName: formData.childFirstName?.trim() || undefined,
+        childLastName1: formData.childLastName1?.trim() || undefined,
+        childLastName2: formData.hasNoSecondLastName
+          ? undefined
+          : formData.childLastName2?.trim() || undefined,
+        hasNoSecondLastName: Boolean(formData.hasNoSecondLastName),
+        noSecondLastNameJustification: formData.hasNoSecondLastName
+          ? formData.noSecondLastNameJustification?.trim() || undefined
+          : undefined,
+        childBirthDate: formData.childBirthDate || undefined,
+        gender: formData.gender as 'MASCULINO' | 'FEMENINO',
+        streetAddress: formData.streetAddress.trim(),
+        streetNumber: formData.streetNumber?.trim() || undefined,
+        apartmentDoor: formData.apartmentDoor?.trim() || undefined,
+        postalCode: formData.postalCode.trim(),
+        municipality: formData.municipality.trim(),
+        province: formData.province.trim(),
+        parent1FirstName: formData.parent1FirstName?.trim() || undefined,
+        parent1LastName: formData.parent1LastName?.trim() || undefined,
+        parent1Phone: formData.parent1Phone?.replace(/\s+/g, '') || undefined,
+        parent1Email: formData.parent1Email?.trim() || undefined,
+        parent1Relationship: formData.parent1Relationship?.trim() || undefined,
+        parent2FirstName: formData.parent2FirstName?.trim() || undefined,
+        parent2LastName: formData.parent2LastName?.trim() || undefined,
+        parent2Phone: formData.parent2Phone?.replace(/\s+/g, '') || undefined,
+        parent2Email: formData.parent2Email?.trim() || undefined,
+        parent2Relationship: formData.parent2Relationship?.trim() || undefined,
         parent1Dni: formData.parent1Dni.trim().toUpperCase(),
         parent2Dni: formData.parent2Dni?.trim().toUpperCase() || undefined,
         childDni: formData.childDni?.trim().toUpperCase() || undefined,
+        childPhone: formData.childPhone?.replace(/\s+/g, '') || undefined,
+        childEmail: formData.childEmail?.trim() || undefined,
+        emergencyContactName: formData.emergencyContactName?.trim() || undefined,
+        emergencyContactPhone: formData.emergencyContactPhone?.replace(/\s+/g, '') || undefined,
+        emergencyContactRelationship: formData.emergencyContactRelationship?.trim() || undefined,
+        accountHolderName: formData.accountHolderName.trim(),
         accountHolderDni: formData.accountHolderDni.trim().toUpperCase(),
+        accountHolderAddress: formData.accountHolderAddress?.trim() || undefined,
+        accountHolderMunicipality: formData.accountHolderMunicipality?.trim() || undefined,
+        accountHolderPostalCode: formData.accountHolderPostalCode?.trim() || undefined,
         iban: formData.iban.replace(/\s+/g, '').toUpperCase(),
+        signer1FullName: `${formData.parent1FirstName || ''} ${formData.parent1LastName || ''}`.trim(),
+        signer1Dni: formData.parent1Dni.trim().toUpperCase(),
+        signer2FullName: formData.signatureParent2
+          ? `${formData.parent2FirstName || ''} ${formData.parent2LastName || ''}`.trim() || undefined
+          : undefined,
+        signer2Dni: formData.signatureParent2
+          ? formData.parent2Dni?.trim().toUpperCase() || undefined
+          : undefined,
         signatureParent2: formData.signatureParent2 || undefined,
-      });
+      };
+
+      await applicationsApi.submitMagicEnrollment(token, payload);
       setCompleted(true);
     } catch (e: unknown) {
-      setStepError(e instanceof Error ? e.message : 'Error al guardar');
+      setStepError(e instanceof Error ? e.message : 'Error al guardar la inscripción.');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,8 +264,8 @@ export default function InscripcionMagicaPage() {
       <div className="state-card page-width">
         <CheckCircle2 size={40} className="text-emerald-600 mx-auto mb-3" />
         <h2 className="text-xl font-bold text-slate-900">¡Inscripción Completada!</h2>
-        <p className="text-xs text-slate-600 mt-2">
-          La ficha de {applicant.childFirstName} ({applicant.calculatedBranch}) ha quedado registrada.
+        <p className="text-xs sm:text-sm text-slate-600 mt-2">
+          La ficha de {formData.childFirstName || applicant.childFirstName} ({applicant.calculatedBranch} · Ronda {applicant.solarRound}) ha quedado registrada y este enlace de un solo uso se ha cerrado de forma segura.
         </p>
       </div>
     );
@@ -197,10 +276,12 @@ export default function InscripcionMagicaPage() {
       <div className="bg-gradient-to-r from-[#000254] to-[#01317b] text-white rounded-2xl px-6 py-5 flex flex-wrap items-center justify-between gap-4 shadow-[0_14px_34px_-10px_rgba(0,2,84,0.22)]">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
-            Secretaría · Inscripción Oficial
+            Secretaría · Inscripción Oficial ({applicant.solarRound})
           </p>
           <h1 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight">
-            {applicant.childFirstName} {applicant.childLastName}
+            {formData.childFirstName || applicant.childFirstName}{' '}
+            {formData.childLastName1 || applicant.childLastName1}{' '}
+            {!formData.hasNoSecondLastName ? formData.childLastName2 || applicant.childLastName2 || '' : ''}
           </h1>
           <p className="text-xs text-blue-100/85 mt-0.5">{applicant.calculatedBranch}</p>
         </div>
@@ -252,9 +333,28 @@ export default function InscripcionMagicaPage() {
         </nav>
 
         <div className="space-y-4">
-          {step === 1 && <Step1Legal applicant={applicant} formData={formData} onChange={handleChange} />}
-          {step === 2 && <Step2Medical formData={formData} onChange={handleChange} />}
-          {step === 3 && <Step3Bank formData={formData} onChange={handleChange} />}
+          {step === 1 && (
+            <Step1Legal
+              applicant={applicant}
+              formData={formData}
+              onChange={handleChange}
+              showIdentityRevision
+            />
+          )}
+          {step === 2 && (
+            <Step2Medical
+              formData={formData}
+              onChange={handleChange}
+              onFillEmergencyFromTutor1={handleFillEmergencyFromTutor1}
+            />
+          )}
+          {step === 3 && (
+            <Step3Bank
+              formData={formData}
+              onChange={handleChange}
+              onFillHolderFromTutor1={handleFillHolderFromTutor1}
+            />
+          )}
           {step === 4 && (
             <Step4Sign
               applicant={applicant}

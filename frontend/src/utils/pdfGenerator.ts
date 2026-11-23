@@ -82,8 +82,7 @@ async function addSignature(
 export async function generateOfficialScoutPdf(record: ApplicantRecord): Promise<void> {
   const enrollment = record.enrollment;
   if (!enrollment) {
-    alert('Este solicitante aún no tiene completada la Fase 2 (Hoja de Inscripción).');
-    return;
+    throw new Error('Este expediente aún no tiene completada la Hoja de Inscripción.');
   }
 
   const response = await fetch(TEMPLATE_URL);
@@ -96,6 +95,7 @@ export async function generateOfficialScoutPdf(record: ApplicantRecord): Promise
   const signedDate = formatDate(enrollment.signedAtParent1) || formatDate(new Date());
   const parent1Name = `${record.parent1FirstName} ${record.parent1LastName}`;
   const parent2Name = [record.parent2FirstName, record.parent2LastName].filter(Boolean).join(' ');
+  const door = record.apartmentDoor ?? record.ApartmentDoor ?? '';
 
   // The source is a fixed A4 administrative form. These positions intentionally
   // stay local to the template so replacing the template only requires updating
@@ -106,8 +106,8 @@ export async function generateOfficialScoutPdf(record: ApplicantRecord): Promise
   drawText(page1, font, value(record.gender), 250, 672, 8);
   drawText(page1, font, value(enrollment.childPhone), 395, 672, 8);
   drawText(page1, font, value(enrollment.childEmail), 95, 648, 8, 190);
-  drawText(page1, font, `${record.streetAddress} ${record.streetNumber || ''} ${record.ApartmentDoor || ''}`.trim(), 95, 624, 8, 300);
-  drawText(page1, font, `${record.postalCode} ${record.municipality}`, 95, 600, 8, 220);
+  drawText(page1, font, `${record.streetAddress || ''} ${record.streetNumber || ''} ${door}`.trim(), 95, 624, 8, 300);
+  drawText(page1, font, `${record.postalCode || ''} ${record.municipality || ''}`.trim(), 95, 600, 8, 220);
   drawText(page1, font, value(record.province), 350, 600, 8, 120);
   drawText(page1, font, parent1Name, 95, 565, 8, 200);
   drawText(page1, font, value(enrollment.parent1Dni), 410, 565, 8);
@@ -127,7 +127,7 @@ export async function generateOfficialScoutPdf(record: ApplicantRecord): Promise
 
   drawText(page2, font, `${record.childFirstName} ${record.childLastName}`, 100, 689, 8, 250);
   drawText(page2, font, value(record.calculatedBranch), 420, 689, 8);
-  drawText(page2, font, value(record.parent1Phone), 100, 665, 8);
+  drawText(page2, font, value(enrollment.emergencyContactPhone || record.parent1Phone), 100, 665, 8);
   drawText(page2, font, value(enrollment.bloodType), 100, 620, 8);
   drawWrappedText(page2, font, value(enrollment.chronicDiseases), 100, 594, 400);
   drawWrappedText(page2, font, value(enrollment.allergies), 100, 552, 400);
@@ -143,8 +143,24 @@ export async function generateOfficialScoutPdf(record: ApplicantRecord): Promise
   drawText(page3, font, value(enrollment.accountHolderName), 100, 702, 8, 350);
   drawText(page3, font, value(enrollment.accountHolderDni), 465, 702, 8);
   drawText(page3, font, `${record.childFirstName} ${record.childLastName}`, 100, 678, 8, 350);
-  drawText(page3, font, `${record.streetAddress} ${record.streetNumber || ''} ${record.ApartmentDoor || ''}`.trim(), 100, 654, 8, 300);
-  drawText(page3, font, `${record.municipality} ${record.postalCode}`, 420, 654, 8);
+  drawText(
+    page3,
+    font,
+    value(enrollment.accountHolderAddress) ||
+      `${record.streetAddress || ''} ${record.streetNumber || ''} ${door}`.trim(),
+    100,
+    654,
+    8,
+    300,
+  );
+  drawText(
+    page3,
+    font,
+    `${value(enrollment.accountHolderMunicipality) || record.municipality || ''} ${value(enrollment.accountHolderPostalCode) || record.postalCode || ''}`.trim(),
+    420,
+    654,
+    8,
+  );
   drawText(page3, font, value(enrollment.iban).replace(/\s+/g, ''), 100, 610, 10, 390);
   drawCheck(page3, font, enrollment.authorizesSepa, 40, 525);
   await addSignature(pdfDocument, page3, font, enrollment.signatureParent1, 70, 190, 180, 60);

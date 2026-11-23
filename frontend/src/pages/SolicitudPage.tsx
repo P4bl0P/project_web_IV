@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import { applicationsApi, type CreateApplicationPayload } from '../services/api';
 import { validateSolicitudForm, type SolicitudFieldErrors } from '../utils/scoutValidators';
@@ -8,55 +8,56 @@ import FamilySection from '../components/solicitud/FamilySection';
 import SolicitudSuccess from '../components/solicitud/SolicitudSuccess';
 import FormAlert from '../components/shared/forms/FormAlert';
 
-const STORAGE_KEY = 'grupo_iv_solicitud_draft';
+const STORAGE_KEY = 'grupo_iv_solicitud_draft_v2';
 
-const initialFormState: CreateApplicationPayload = {
-  childFirstName: '',
-  childLastName: '',
-  childBirthDate: '',
-  gender: 'MASCULINO',
-  streetAddress: '',
-  streetNumber: '',
-  ApartmentDoor: '',
-  postalCode: '41089',
-  municipality: 'Dos Hermanas',
-  province: 'Sevilla',
-  parent1FirstName: '',
-  parent1LastName: '',
-  parent1Phone: '',
-  parent1Email: '',
-  parent2FirstName: '',
-  parent2LastName: '',
-  parent2Phone: '',
-  parent2Email: '',
-  motivation: '',
-  hasFamilyInGroup: false,
-  familyMemberDetails: '',
-  comesFromOtherGroup: false,
-  originGroupDetails: '',
-};
+function createInitialFormState(): CreateApplicationPayload {
+  return {
+    childFirstName: '',
+    childLastName1: '',
+    childLastName2: '',
+    hasNoSecondLastName: false,
+    noSecondLastNameJustification: '',
+    childBirthDate: '',
+    familyUnitId: crypto.randomUUID(),
+    parent1FirstName: '',
+    parent1LastName: '',
+    parent1Phone: '',
+    parent1Email: '',
+    parent2FirstName: '',
+    parent2LastName: '',
+    parent2Phone: '',
+    parent2Email: '',
+    motivation: '',
+    hasFamilyInGroup: false,
+    familyMemberDetails: '',
+    comesFromOtherGroup: false,
+    originGroupDetails: '',
+  };
+}
 
 export default function SolicitudPage() {
   const [formData, setFormData] = useState<CreateApplicationPayload>(() => {
+    const base = createInitialFormState();
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return { ...initialFormState, ...JSON.parse(saved) };
+        return { ...base, ...JSON.parse(saved) };
       } catch {
-        return initialFormState;
+        return base;
       }
     }
-    return initialFormState;
+    return base;
   });
 
   const [showSecondParent, setShowSecondParent] = useState<boolean>(
-    Boolean(formData.parent2FirstName || formData.parent2Phone),
+    Boolean(formData.parent2FirstName || formData.parent2Phone || formData.parent2Email),
   );
   const [fieldErrors, setFieldErrors] = useState<SolicitudFieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [submittedChildren, setSubmittedChildren] = useState<Array<{ name: string; branch: string }>>([]);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
@@ -67,15 +68,33 @@ export default function SolicitudPage() {
     const fieldName = name as keyof CreateApplicationPayload;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
 
-    setFormData((prev) => ({ ...prev, [fieldName]: val }));
+    idempotencyKeyRef.current = crypto.randomUUID();
+    setFormData((prev) => {
+      if (fieldName === 'hasNoSecondLastName' && val === true) {
+        return { ...prev, hasNoSecondLastName: true, childLastName2: '' };
+      }
+      if (fieldName === 'hasNoSecondLastName' && val === false) {
+        return { ...prev, hasNoSecondLastName: false, noSecondLastNameJustification: '' };
+      }
+      return { ...prev, [fieldName]: val };
+    });
+
     if (fieldErrors[fieldName]) {
       setFieldErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+    }
+    if (fieldName === 'hasNoSecondLastName') {
+      setFieldErrors((prev) => ({
+        ...prev,
+        childLastName2: undefined,
+        noSecondLastNameJustification: undefined,
+      }));
     }
   };
 
   const handleClearDraft = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setFormData(initialFormState);
+    idempotencyKeyRef.current = crypto.randomUUID();
+    setFormData(createInitialFormState());
     setShowSecondParent(false);
     setFieldErrors({});
     setServerError(null);
@@ -83,12 +102,14 @@ export default function SolicitudPage() {
 
   const handleAddSibling = () => {
     const lastChild = submittedChildren[submittedChildren.length - 1];
+    idempotencyKeyRef.current = crypto.randomUUID();
     setFormData((prev) => ({
       ...prev,
       childFirstName: '',
-      childLastName: prev.childLastName,
       childBirthDate: '',
-      familyMemberDetails: prev.familyMemberDetails || (lastChild ? `Hermano/a de ${lastChild.name}` : ''),
+      hasFamilyInGroup: true,
+      familyMemberDetails:
+        prev.familyMemberDetails || (lastChild ? `Hermano/a de ${lastChild.name}` : ''),
     }));
     setFieldErrors({});
     setServerError(null);
@@ -109,24 +130,61 @@ export default function SolicitudPage() {
 
     setIsSubmitting(true);
     try {
+      const cleanLastName1 = formData.childLastName1.trim();
+      const cleanLastName2 = formData.hasNoSecondLastName
+        ? undefined
+        : formData.childLastName2?.trim() || undefined;
+
       const payload: CreateApplicationPayload = {
-        ...formData,
+        childFirstName: formData.childFirstName.trim(),
+        childLastName1: cleanLastName1,
+        childLastName2: cleanLastName2,
+        hasNoSecondLastName: Boolean(formData.hasNoSecondLastName),
+        noSecondLastNameJustification: formData.hasNoSecondLastName
+          ? formData.noSecondLastNameJustification?.trim()
+          : undefined,
+        childBirthDate: formData.childBirthDate,
+        familyUnitId: formData.familyUnitId,
+        parent1FirstName: formData.parent1FirstName.trim(),
+        parent1LastName: formData.parent1LastName.trim(),
         parent1Phone: formData.parent1Phone.replace(/\s+/g, ''),
-        streetNumber: formData.streetNumber?.trim() || undefined,
-        ApartmentDoor: formData.ApartmentDoor?.trim() || undefined,
-        parent2Phone: showSecondParent && formData.parent2Phone?.trim() ? formData.parent2Phone.replace(/\s+/g, '') : undefined,
-        parent2Email: showSecondParent && formData.parent2Email?.trim() ? formData.parent2Email.trim() : undefined,
+        parent1Email: formData.parent1Email.trim(),
+        parent2FirstName: showSecondParent ? formData.parent2FirstName?.trim() || undefined : undefined,
+        parent2LastName: showSecondParent ? formData.parent2LastName?.trim() || undefined : undefined,
+        parent2Phone:
+          showSecondParent && formData.parent2Phone?.trim()
+            ? formData.parent2Phone.replace(/\s+/g, '')
+            : undefined,
+        parent2Email:
+          showSecondParent && formData.parent2Email?.trim()
+            ? formData.parent2Email.trim()
+            : undefined,
         motivation: formData.motivation?.trim() || undefined,
-        familyMemberDetails: formData.hasFamilyInGroup ? formData.familyMemberDetails?.trim() : undefined,
-        originGroupDetails: formData.comesFromOtherGroup ? formData.originGroupDetails?.trim() : undefined,
+        hasFamilyInGroup: formData.hasFamilyInGroup,
+        familyMemberDetails: formData.hasFamilyInGroup
+          ? formData.familyMemberDetails?.trim()
+          : undefined,
+        comesFromOtherGroup: formData.comesFromOtherGroup,
+        originGroupDetails: formData.comesFromOtherGroup
+          ? formData.originGroupDetails?.trim()
+          : undefined,
+        idempotencyKey: idempotencyKeyRef.current,
       };
 
       const result = await applicationsApi.submitApplication(payload);
       localStorage.removeItem(STORAGE_KEY);
 
+      setFormData((prev) => ({
+        ...prev,
+        familyUnitId: result.familyUnitId ?? prev.familyUnitId,
+      }));
+
       setSubmittedChildren((prev) => [
         ...prev,
-        { name: `${result.childFirstName} ${result.childLastName}`, branch: result.calculatedBranch },
+        {
+          name: `${result.childFirstName} ${result.childLastName}`,
+          branch: result.calculatedBranch,
+        },
       ]);
       setShowSuccessScreen(true);
     } catch (err: unknown) {
@@ -145,7 +203,7 @@ export default function SolicitudPage() {
       <div className="mb-[27px] flex flex-col items-start justify-between gap-5 rounded-[25px] bg-[linear-gradient(120deg,#000254,#01317b)] px-[23px] py-[27px] text-white shadow-[0_18px_40px_rgba(0,5,84,0.15)] min-[801px]:flex-row min-[801px]:items-center min-[801px]:px-[38px] min-[801px]:py-[34px]">
         <div>
           <span className="mb-2 inline-block rounded-full bg-white/[0.14] px-3 py-1 text-xs font-semibold">
-            Fase 1 · Lista de espera
+            Fase 1 · Solicitud de plaza
           </span>
           <h1 className="mt-[11px] mb-[5px] text-[clamp(25px,4vw,38px)] font-bold tracking-[-0.04em]">
             Solicitud de Entrada al Grupo IV

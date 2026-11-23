@@ -24,23 +24,28 @@ export interface CensusStepValidationResult {
 
 export const EMPTY_CENSUS_FORM: DirectCensusPayload = {
   childFirstName: '',
-  childLastName: '',
+  childLastName1: '',
+  childLastName2: '',
+  hasNoSecondLastName: false,
+  noSecondLastNameJustification: '',
   childBirthDate: '',
-  gender: 'MASCULINO',
+  gender: '',
   streetAddress: '',
   streetNumber: '',
-  ApartmentDoor: '',
-  postalCode: '41089',
-  municipality: 'Dos Hermanas',
-  province: 'Sevilla',
+  apartmentDoor: '',
+  postalCode: '',
+  municipality: '',
+  province: '',
   parent1FirstName: '',
   parent1LastName: '',
   parent1Phone: '',
   parent1Email: '',
+  parent1Relationship: '',
   parent2FirstName: '',
   parent2LastName: '',
   parent2Phone: '',
   parent2Email: '',
+  parent2Relationship: '',
   motivation: '',
   hasFamilyInGroup: false,
   familyMemberDetails: '',
@@ -58,18 +63,25 @@ export const EMPTY_CENSUS_FORM: DirectCensusPayload = {
   acceptsDataStorage: true,
   acceptsDataTransfer: true,
   authorizesImages: true,
+  consentTextVersion: '2026.1',
   bloodType: '',
-  chronicDiseases: 'Ninguna',
-  allergies: 'Ninguna',
+  chronicDiseases: '',
+  allergies: '',
   medHeadache: '',
   medFever: '',
   medStomach: '',
   medThroat: '',
   medicalObservations: '',
+  emergencyContactName: '',
+  emergencyContactPhone: '',
+  emergencyContactRelationship: '',
   authorizesEmergency: true,
   accountHolderName: '',
   accountHolderDni: '',
-  iban: 'ES',
+  accountHolderAddress: '',
+  accountHolderMunicipality: '',
+  accountHolderPostalCode: '',
+  iban: '',
   authorizesSepa: true,
   signatureParent1: '',
   signatureParent2: '',
@@ -77,11 +89,14 @@ export const EMPTY_CENSUS_FORM: DirectCensusPayload = {
 
 export const CENSUS_FIELD_LABELS: Record<string, string> = {
   childFirstName: 'nombre del educando',
-  childLastName: 'apellidos del educando',
+  childLastName1: 'primer apellido',
+  childLastName2: 'segundo apellido',
+  noSecondLastNameJustification: 'justificación de segundo apellido',
   childBirthDate: 'fecha de nacimiento',
+  gender: 'género',
   streetAddress: 'dirección',
   postalCode: 'código postal',
-  municipality: 'municipio',
+  municipality: 'localidad',
   province: 'provincia',
   parent1FirstName: 'nombre del tutor 1',
   parent1LastName: 'apellidos del tutor 1',
@@ -94,9 +109,11 @@ export const CENSUS_FIELD_LABELS: Record<string, string> = {
   parent1Dni: 'DNI del tutor 1',
   parent2Dni: 'DNI del tutor 2',
   childDni: 'DNI del educando',
+  emergencyContactPhone: 'teléfono de emergencia',
   authorizesEmergency: 'autorización médica de urgencia',
   accountHolderName: 'titular de la cuenta',
   accountHolderDni: 'DNI del titular',
+  accountHolderPostalCode: 'código postal del titular',
   iban: 'IBAN',
   authorizesSepa: 'autorización de domiciliación SEPA',
   acceptsDataStorage: 'consentimiento de protección de datos',
@@ -115,17 +132,28 @@ export function validateCensusStep(
     Boolean(formData.parent2FirstName || formData.parent2Phone || formData.parent2Email);
 
   if (step === 1) {
-    const solicitudErrors = validateSolicitudForm(formData, hasSecondParent) as CensusFieldErrors;
+    const solicitudErrors = validateSolicitudForm(formData, hasSecondParent, {
+      allowAdultResponsables: true,
+    }) as CensusFieldErrors;
     const fieldErrors: CensusFieldErrors = { ...solicitudErrors };
 
-    if (!formData.streetAddress?.trim() && !fieldErrors.streetAddress) {
+    if (formData.gender !== 'MASCULINO' && formData.gender !== 'FEMENINO') {
+      fieldErrors.gender = 'Selecciona Masculino o Femenino.';
+    }
+    if (!formData.streetAddress?.trim() || formData.streetAddress.trim().length < 3) {
       fieldErrors.streetAddress = 'Introduce la calle o avenida.';
     }
-    if (!formData.postalCode?.trim() && !fieldErrors.postalCode) {
+    if (!REGEX.POSTAL_CODE.test((formData.postalCode || '').trim())) {
       fieldErrors.postalCode = 'CP inválido (5 dígitos).';
     }
-    if (!REGEX.DNI.test(formData.parent1Dni.trim())) {
-      fieldErrors.parent1Dni = 'Introduce un DNI/NIE válido para el Tutor 1 (ej. 12345678A).';
+    if (!formData.municipality?.trim()) {
+      fieldErrors.municipality = 'Localidad obligatoria.';
+    }
+    if (!formData.province?.trim()) {
+      fieldErrors.province = 'Provincia obligatoria.';
+    }
+    if (!REGEX.DNI.test((formData.parent1Dni || '').trim())) {
+      fieldErrors.parent1Dni = 'Introduce un DNI/NIE válido para el Tutor 1 (ej. 12345678Z).';
     }
     if (
       formData.custodyType === 'CUSTODIA_CONJUNTA' &&
@@ -133,8 +161,16 @@ export function validateCensusStep(
     ) {
       fieldErrors.parent2Dni = 'Con custodia conjunta, el DNI del segundo tutor es obligatorio.';
     }
-    if (formData.childDni?.trim() && !REGEX.DNI.test(formData.childDni.trim())) {
-      fieldErrors.childDni = 'El formato del DNI del menor no es válido.';
+    if (formData.childDni?.trim()) {
+      if (!REGEX.DNI.test(formData.childDni.trim())) {
+        fieldErrors.childDni = 'El formato del DNI del educando no es válido.';
+      } else if (
+        formData.childDni.trim().toUpperCase() === formData.parent1Dni.trim().toUpperCase() ||
+        (formData.parent2Dni &&
+          formData.childDni.trim().toUpperCase() === formData.parent2Dni.trim().toUpperCase())
+      ) {
+        fieldErrors.childDni = 'El DNI del educando no puede coincidir con el de un tutor.';
+      }
     }
 
     const enrollmentError = validateEnrollmentStep(1, formData);
@@ -154,6 +190,12 @@ export function validateCensusStep(
   if (step === 2) {
     const fieldErrors: CensusFieldErrors = {};
     const enrollmentError = validateEnrollmentStep(2, formData);
+    if (
+      formData.emergencyContactPhone?.trim() &&
+      !REGEX.PHONE.test(formData.emergencyContactPhone.replace(/\s+/g, ''))
+    ) {
+      fieldErrors.emergencyContactPhone = 'Teléfono de emergencia inválido (9 dígitos).';
+    }
     if (!formData.authorizesEmergency) {
       fieldErrors.authorizesEmergency = 'Debes marcar la autorización médica de urgencia.';
     }
@@ -173,6 +215,12 @@ export function validateCensusStep(
     }
     if (!REGEX.DNI.test(formData.accountHolderDni.trim())) {
       fieldErrors.accountHolderDni = 'DNI del titular inválido.';
+    }
+    if (
+      formData.accountHolderPostalCode?.trim() &&
+      !REGEX.POSTAL_CODE.test(formData.accountHolderPostalCode.trim())
+    ) {
+      fieldErrors.accountHolderPostalCode = 'CP inválido (5 dígitos).';
     }
     if (!REGEX.IBAN.test(formData.iban.replace(/\s+/g, ''))) {
       fieldErrors.iban = 'El IBAN debe tener 24 caracteres empezando por ES.';
@@ -240,23 +288,29 @@ export function formFromRecord(record?: ApplicantRecord | null): DirectCensusPay
   return {
     ...EMPTY_CENSUS_FORM,
     childFirstName: record.childFirstName,
-    childLastName: record.childLastName,
+    childLastName1: record.childLastName1 || '',
+    childLastName2: record.childLastName2 || '',
+    hasNoSecondLastName: Boolean(record.hasNoSecondLastName),
+    noSecondLastNameJustification: record.noSecondLastNameJustification || '',
     childBirthDate: record.childBirthDate.slice(0, 10),
-    gender: record.gender,
-    streetAddress: record.streetAddress,
+    gender:
+      record.gender === 'MASCULINO' || record.gender === 'FEMENINO' ? record.gender : '',
+    streetAddress: record.streetAddress || '',
     streetNumber: record.streetNumber || '',
-    ApartmentDoor: record.ApartmentDoor || '',
-    postalCode: record.postalCode,
-    municipality: record.municipality,
-    province: record.province,
+    apartmentDoor: record.apartmentDoor ?? record.ApartmentDoor ?? '',
+    postalCode: record.postalCode || '',
+    municipality: record.municipality || '',
+    province: record.province || '',
     parent1FirstName: record.parent1FirstName,
     parent1LastName: record.parent1LastName,
     parent1Phone: record.parent1Phone,
     parent1Email: record.parent1Email,
+    parent1Relationship: record.parent1Relationship || '',
     parent2FirstName: record.parent2FirstName || '',
     parent2LastName: record.parent2LastName || '',
     parent2Phone: record.parent2Phone || '',
     parent2Email: record.parent2Email || '',
+    parent2Relationship: record.parent2Relationship || '',
     motivation: record.motivation || '',
     hasFamilyInGroup: record.hasFamilyInGroup,
     familyMemberDetails: record.familyMemberDetails || '',
@@ -274,6 +328,7 @@ export function formFromRecord(record?: ApplicantRecord | null): DirectCensusPay
     acceptsDataStorage: enrollment?.acceptsDataStorage ?? true,
     acceptsDataTransfer: enrollment?.acceptsDataTransfer ?? true,
     authorizesImages: enrollment?.authorizesImages ?? true,
+    consentTextVersion: enrollment?.consentTextVersion || '2026.1',
     bloodType: enrollment?.bloodType || '',
     chronicDiseases: enrollment?.chronicDiseases || '',
     allergies: enrollment?.allergies || '',
@@ -282,10 +337,16 @@ export function formFromRecord(record?: ApplicantRecord | null): DirectCensusPay
     medStomach: enrollment?.medStomach || '',
     medThroat: enrollment?.medThroat || '',
     medicalObservations: enrollment?.medicalObservations || '',
+    emergencyContactName: enrollment?.emergencyContactName || '',
+    emergencyContactPhone: enrollment?.emergencyContactPhone || '',
+    emergencyContactRelationship: enrollment?.emergencyContactRelationship || '',
     authorizesEmergency: enrollment?.authorizesEmergency ?? true,
     accountHolderName: enrollment?.accountHolderName || '',
     accountHolderDni: enrollment?.accountHolderDni || '',
-    iban: enrollment?.iban || 'ES',
+    accountHolderAddress: enrollment?.accountHolderAddress || '',
+    accountHolderMunicipality: enrollment?.accountHolderMunicipality || '',
+    accountHolderPostalCode: enrollment?.accountHolderPostalCode || '',
+    iban: enrollment?.iban || '',
     authorizesSepa: enrollment?.authorizesSepa ?? true,
     signatureParent1: enrollment?.signatureParent1 || '',
     signatureParent2: enrollment?.signatureParent2 || '',
@@ -295,12 +356,19 @@ export function formFromRecord(record?: ApplicantRecord | null): DirectCensusPay
 export function buildCensusPayload(formData: DirectCensusPayload): DirectCensusPayload {
   return {
     childFirstName: formData.childFirstName.trim(),
-    childLastName: formData.childLastName.trim(),
+    childLastName1: formData.childLastName1.trim(),
+    childLastName2: formData.hasNoSecondLastName
+      ? undefined
+      : formData.childLastName2?.trim() || undefined,
+    hasNoSecondLastName: Boolean(formData.hasNoSecondLastName),
+    noSecondLastNameJustification: formData.hasNoSecondLastName
+      ? formData.noSecondLastNameJustification?.trim() || undefined
+      : undefined,
     childBirthDate: formData.childBirthDate,
-    gender: formData.gender,
+    gender: formData.gender as 'MASCULINO' | 'FEMENINO',
     streetAddress: formData.streetAddress.trim(),
     streetNumber: formData.streetNumber?.trim() || undefined,
-    ApartmentDoor: formData.ApartmentDoor?.trim() || undefined,
+    apartmentDoor: formData.apartmentDoor?.trim() || undefined,
     postalCode: formData.postalCode.trim(),
     municipality: formData.municipality.trim(),
     province: formData.province.trim(),
@@ -308,18 +376,24 @@ export function buildCensusPayload(formData: DirectCensusPayload): DirectCensusP
     parent1LastName: formData.parent1LastName.trim(),
     parent1Phone: formData.parent1Phone.replace(/\s+/g, ''),
     parent1Email: formData.parent1Email.trim(),
+    parent1Relationship: formData.parent1Relationship?.trim() || undefined,
     parent2FirstName: formData.parent2FirstName?.trim() || undefined,
     parent2LastName: formData.parent2LastName?.trim() || undefined,
     parent2Phone: formData.parent2Phone?.replace(/\s+/g, '') || undefined,
     parent2Email: formData.parent2Email?.trim() || undefined,
+    parent2Relationship: formData.parent2Relationship?.trim() || undefined,
     motivation: formData.motivation?.trim() || undefined,
     hasFamilyInGroup: formData.hasFamilyInGroup,
-    familyMemberDetails: formData.hasFamilyInGroup ? formData.familyMemberDetails?.trim() : undefined,
+    familyMemberDetails: formData.hasFamilyInGroup
+      ? formData.familyMemberDetails?.trim()
+      : undefined,
     comesFromOtherGroup: formData.comesFromOtherGroup,
-    originGroupDetails: formData.comesFromOtherGroup ? formData.originGroupDetails?.trim() : undefined,
+    originGroupDetails: formData.comesFromOtherGroup
+      ? formData.originGroupDetails?.trim()
+      : undefined,
     childEmail: formData.childEmail?.trim() || undefined,
     childDni: formData.childDni?.trim().toUpperCase() || undefined,
-    childPhone: formData.childPhone?.trim() || undefined,
+    childPhone: formData.childPhone?.replace(/\s+/g, '') || undefined,
     legalStatus: formData.legalStatus,
     circularPreference: formData.circularPreference,
     parent1Dni: formData.parent1Dni.trim().toUpperCase(),
@@ -329,6 +403,7 @@ export function buildCensusPayload(formData: DirectCensusPayload): DirectCensusP
     acceptsDataStorage: formData.acceptsDataStorage,
     acceptsDataTransfer: formData.acceptsDataTransfer,
     authorizesImages: formData.authorizesImages,
+    consentTextVersion: formData.consentTextVersion || '2026.1',
     bloodType: formData.bloodType?.trim() || undefined,
     chronicDiseases: formData.chronicDiseases?.trim() || undefined,
     allergies: formData.allergies?.trim() || undefined,
@@ -337,9 +412,15 @@ export function buildCensusPayload(formData: DirectCensusPayload): DirectCensusP
     medStomach: formData.medStomach?.trim() || undefined,
     medThroat: formData.medThroat?.trim() || undefined,
     medicalObservations: formData.medicalObservations?.trim() || undefined,
+    emergencyContactName: formData.emergencyContactName?.trim() || undefined,
+    emergencyContactPhone: formData.emergencyContactPhone?.replace(/\s+/g, '') || undefined,
+    emergencyContactRelationship: formData.emergencyContactRelationship?.trim() || undefined,
     authorizesEmergency: formData.authorizesEmergency,
     accountHolderName: formData.accountHolderName.trim(),
     accountHolderDni: formData.accountHolderDni.trim().toUpperCase(),
+    accountHolderAddress: formData.accountHolderAddress?.trim() || undefined,
+    accountHolderMunicipality: formData.accountHolderMunicipality?.trim() || undefined,
+    accountHolderPostalCode: formData.accountHolderPostalCode?.trim() || undefined,
     iban: formData.iban.replace(/\s+/g, '').toUpperCase(),
     authorizesSepa: formData.authorizesSepa,
     signatureParent1: formData.signatureParent1,

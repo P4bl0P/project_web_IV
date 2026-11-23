@@ -92,7 +92,7 @@ export default function ApplicantCard({
         })
       : null;
 
-  const completeness = evaluateRecordCompleteness(record, activeTab);
+  const completeness = evaluateRecordCompleteness(record);
 
   const hasPriorityBadges =
     record.hasFamilyInGroup ||
