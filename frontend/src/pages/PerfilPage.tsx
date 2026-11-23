@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../auth';
+import { getAccessibleModules, hasModulePermission, isSuperAdmin, useAuth } from '../auth';
 import FormAlert from '../components/shared/forms/FormAlert';
 import { profileApi } from '../services/api';
 
@@ -73,7 +73,48 @@ export default function PerfilPage() {
           </span>
           <h2 className="m-0 text-[20px] text-[#000254]">{user.name}</h2>
           <p className="m-0 break-all text-[13px] text-[#627089]">{user.email}</p>
-          <span className="role-pill">{user.isSuperAdmin ? 'SUPER_ADMIN' : user.role?.name ?? 'Sin cargo'}</span>
+          <span className="role-pill">
+            {isSuperAdmin(user) ? 'Superadministrador' : user.role?.name ?? 'Sin cargo asignado'}
+          </span>
+          {user.role?.description && (
+            <p className="m-0 text-xs leading-relaxed text-[#627089]">{user.role.description}</p>
+          )}
+          <div className="mt-2 w-full border-t border-[#eef1f6] pt-3">
+            <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-[#627089]">
+              Módulos habilitados
+            </span>
+            {isSuperAdmin(user) ? (
+              <p className="mt-1.5 mb-0 text-xs text-[#000254]">
+                Acceso completo a todos los módulos y administración global.
+              </p>
+            ) : getAccessibleModules(user).length === 0 ? (
+              <p className="mt-1.5 mb-0 text-xs text-[#627089]">
+                Tu cargo no tiene módulos habilitados actualmente.
+              </p>
+            ) : (
+              <ul className="mt-2 mb-0 grid gap-1.5 pl-0 list-none">
+                {getAccessibleModules(user).map((mod) => {
+                  const ops = [
+                    hasModulePermission(user, mod.key, 'canRead') && 'Leer',
+                    hasModulePermission(user, mod.key, 'canCreate') && 'Crear',
+                    hasModulePermission(user, mod.key, 'canUpdate') && 'Editar',
+                    hasModulePermission(user, mod.key, 'canDelete') && 'Eliminar',
+                  ].filter(Boolean);
+                  return (
+                    <li
+                      key={mod.key}
+                      className="rounded-lg border border-[#eef1f6] bg-[#f8fafc] px-2.5 py-1.5 text-xs"
+                    >
+                      <strong className="text-[#000254]">{mod.name}</strong>
+                      <span className="block text-[11px] text-[#627089]">
+                        {ops.length ? ops.join(' · ') : 'Solo acceso'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
           <Link
             className="mt-[15px] text-[12px] font-bold text-[#01317b] no-underline"
             to="/gestion"

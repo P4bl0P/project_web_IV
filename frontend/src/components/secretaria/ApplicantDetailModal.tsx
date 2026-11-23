@@ -40,6 +40,7 @@ interface Props {
   recordId: string;
   canUpdate: boolean;
   canDelete: boolean;
+  canPreviewAurora?: boolean;
   onClose: () => void;
   onSelectRecord: (id: string) => void;
   onUpdated: (updated: ApplicantRecord) => void;
@@ -242,6 +243,7 @@ export default function ApplicantDetailModal({
   recordId,
   canUpdate,
   canDelete,
+  canPreviewAurora = false,
   onClose,
   onSelectRecord,
   onUpdated,
@@ -1272,7 +1274,7 @@ export default function ApplicantDetailModal({
                           {detail.censusSolarRound || detail.solarRound} · Rama{' '}
                           {detail.censusBranch || detail.calculatedBranch}
                         </span>
-                        {canUpdate && (
+                        {canPreviewAurora && (
                           <SecButton
                             variant="secondary"
                             size="xs"

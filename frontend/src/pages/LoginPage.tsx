@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (user) return <Navigate to="/gestion" replace />;
+  if (user && !recoveryCodes.length) return <Navigate to="/gestion" replace />;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -67,7 +67,7 @@ export default function LoginPage() {
           <button
             className="button button-primary cursor-pointer"
             type="button"
-            onClick={() => navigate('/gestion')}
+            onClick={() => navigate(user?.mustChangePassword ? '/perfil' : '/gestion')}
           >
             Continuar
           </button>
@@ -125,15 +125,20 @@ export default function LoginPage() {
                 </code>
               </div>
             )}
-            <FormField label="Código temporal" required>
+            <FormField label="Código temporal o de recuperación" required>
               <input
-                inputMode="numeric"
-                pattern="[0-9]{6}"
+                inputMode="text"
+                autoComplete="one-time-code"
+                minLength={6}
+                maxLength={20}
                 required
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
                 className={formInputClass()}
               />
+              <small className="mt-1 block text-[11px] text-[#627089]">
+                Introduce los 6 dígitos de tu app autenticadora o uno de tus códigos de recuperación.
+              </small>
             </FormField>
             <button className="button button-primary cursor-pointer" type="submit" disabled={submitting}>
               {submitting ? 'Verificando…' : 'Entrar'}

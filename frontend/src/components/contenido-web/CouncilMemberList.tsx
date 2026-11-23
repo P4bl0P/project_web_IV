@@ -7,6 +7,9 @@ interface Props {
   members: CouncilMember[];
   loading: boolean;
   saving: boolean;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
   onAdd: () => void;
   onEdit: (member: CouncilMember) => void;
   onDelete: (member: CouncilMember) => void;
@@ -17,6 +20,9 @@ export default function CouncilMemberList({
   members,
   loading,
   saving,
+  canCreate = true,
+  canUpdate = true,
+  canDelete = true,
   onAdd,
   onEdit,
   onDelete,
@@ -55,12 +61,14 @@ export default function CouncilMemberList({
           elegante sin inventar nombres. Añade aquí a los responsables actuales cuando quieras
           publicarlos.
         </p>
-        <div className="mt-5">
-          <SecButton variant="primary" size="md" onClick={onAdd}>
-            <Plus size={15} />
-            <span>Añadir primer integrante</span>
-          </SecButton>
-        </div>
+        {canCreate && (
+          <div className="mt-5">
+            <SecButton variant="primary" size="md" onClick={onAdd}>
+              <Plus size={15} />
+              <span>Añadir primer integrante</span>
+            </SecButton>
+          </div>
+        )}
       </div>
     );
   }
@@ -103,52 +111,58 @@ export default function CouncilMemberList({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <div
-                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-[#f8f9fc] p-1"
-                  role="group"
-                  aria-label={`Ordenar a ${member.fullName}`}
-                >
-                  <button
-                    type="button"
-                    disabled={saving || index === 0}
-                    onClick={() => onMove(index, -1)}
-                    aria-label={`Subir a ${member.fullName}`}
-                    title="Subir orden"
-                    className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-white hover:text-[#000254] disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
-                  >
-                    <ArrowUp size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving || index === members.length - 1}
-                    onClick={() => onMove(index, 1)}
-                    aria-label={`Bajar a ${member.fullName}`}
-                    title="Bajar orden"
-                    className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-white hover:text-[#000254] disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
-                  >
-                    <ArrowDown size={14} />
-                  </button>
-                </div>
+                {canUpdate && (
+                  <>
+                    <div
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-[#f8f9fc] p-1"
+                      role="group"
+                      aria-label={`Ordenar a ${member.fullName}`}
+                    >
+                      <button
+                        type="button"
+                        disabled={saving || index === 0}
+                        onClick={() => onMove(index, -1)}
+                        aria-label={`Subir a ${member.fullName}`}
+                        title="Subir orden"
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-white hover:text-[#000254] disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving || index === members.length - 1}
+                        onClick={() => onMove(index, 1)}
+                        aria-label={`Bajar a ${member.fullName}`}
+                        title="Bajar orden"
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-white hover:text-[#000254] disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                    </div>
 
-                <SecButton
-                  variant="secondary"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() => onEdit(member)}
-                >
-                  <Pencil size={13} />
-                  <span>Editar</span>
-                </SecButton>
+                    <SecButton
+                      variant="secondary"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => onEdit(member)}
+                    >
+                      <Pencil size={13} />
+                      <span>Editar</span>
+                    </SecButton>
+                  </>
+                )}
 
-                <SecButton
-                  variant="destructive"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() => onDelete(member)}
-                >
-                  <Trash2 size={13} />
-                  <span>Eliminar</span>
-                </SecButton>
+                {canDelete && (
+                  <SecButton
+                    variant="destructive"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => onDelete(member)}
+                  >
+                    <Trash2 size={13} />
+                    <span>Eliminar</span>
+                  </SecButton>
+                )}
               </div>
             </div>
           </article>

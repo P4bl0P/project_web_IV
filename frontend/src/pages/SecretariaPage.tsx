@@ -70,7 +70,9 @@ const TABS: {
 
 export default function SecretariaPage() {
   const { user } = useAuth();
-  const { canCreate, canUpdate, canDelete } = getModuleCapabilities(user, 'Secretaría');
+  const capabilities = getModuleCapabilities(user, 'secretaria');
+  const { canCreate, canUpdate, canDelete } = capabilities;
+  const canPreviewAurora = capabilities.hasSpecial('preview_aurora');
 
   const [pageData, setPageData] = useState<PaginatedApplicationsResponse>({
     items: [],
@@ -435,6 +437,7 @@ export default function SecretariaPage() {
             recordId={detailRecordId}
             canUpdate={canUpdate}
             canDelete={canDelete}
+            canPreviewAurora={canPreviewAurora}
             onClose={() => setDetailRecordId(null)}
             onSelectRecord={(nextId) => setDetailRecordId(nextId)}
             onUpdated={() => triggerReload()}
