@@ -12,7 +12,7 @@ import {
 import {
   canAccessWebContent,
   getRegisteredModules,
-  hasModulePermission,
+  hasModuleAccess,
   isSuperAdmin,
   useAuth,
 } from '../auth';
@@ -27,11 +27,11 @@ const ICON_MAP: Record<string, typeof Layers> = {
 export default function GestionPage() {
   const { user } = useAuth();
   const registeredModules = getRegisteredModules(user);
-  const webContentAllowed = canAccessWebContent(user, 'canRead');
+  const webContentAllowed = canAccessWebContent(user);
 
   const cards = [
     ...registeredModules.map((mod) => {
-      const allowed = hasModulePermission(user, mod.key, 'canRead');
+      const allowed = hasModuleAccess(user, mod.key);
       return {
         title: mod.name,
         description: mod.description ?? 'Módulo operativo del grupo.',
@@ -53,7 +53,7 @@ export default function GestionPage() {
       ? [
           {
             title: 'Administración',
-            description: 'Gestión de usuarios, cargos, permisos por módulo y auditoría.',
+            description: 'Gestión de usuarios, cargos, acceso a módulos y auditoría.',
             path: '/gestion/administracion',
             icon: Shield,
             allowed: true,
@@ -80,16 +80,8 @@ export default function GestionPage() {
       <div className="grid grid-cols-1 gap-[18px] min-[801px]:grid-cols-3">
         {cards.map((mod) => {
           const Icon = mod.icon;
-          return (
-            <Link
-              key={mod.path}
-              to={mod.path}
-              className={`group relative flex min-h-[164px] items-center gap-[15px] rounded-[22px] border p-[25px] no-underline transition-all duration-250 ${
-                mod.allowed
-                  ? 'border-[#e4e9f1] bg-white shadow-[0_7px_25px_rgba(0,5,84,0.04)] hover:-translate-y-[5px] hover:border-[#bac9e1] hover:shadow-[0_18px_50px_rgba(0,5,84,0.09)]'
-                  : 'border-[#e4e9f1] bg-[#f8fafc] text-[#627089] shadow-[0_4px_16px_rgba(0,5,84,0.02)] hover:border-[#d5deec] hover:bg-white'
-              }`}
-            >
+          const cardContent = (
+            <>
               <span
                 className={`grid h-12 w-12 flex-none place-items-center rounded-[15px] ${
                   mod.allowed
@@ -126,7 +118,29 @@ export default function GestionPage() {
                   className="absolute top-5 right-5 text-[#9aa7ba]"
                 />
               )}
-            </Link>
+            </>
+          );
+
+          if (mod.allowed) {
+            return (
+              <Link
+                key={mod.path}
+                to={mod.path}
+                className="group relative flex min-h-[164px] items-center gap-[15px] rounded-[22px] border border-[#e4e9f1] bg-white p-[25px] no-underline shadow-[0_7px_25px_rgba(0,5,84,0.04)] transition-all duration-250 hover:-translate-y-[5px] hover:border-[#bac9e1] hover:shadow-[0_18px_50px_rgba(0,5,84,0.09)]"
+              >
+                {cardContent}
+              </Link>
+            );
+          }
+
+          return (
+            <div
+              key={mod.path}
+              aria-disabled="true"
+              className="relative flex min-h-[164px] cursor-not-allowed select-none items-center gap-[15px] rounded-[22px] border border-[#e4e9f1] bg-[#f8fafc] p-[25px] text-[#627089] shadow-[0_4px_16px_rgba(0,5,84,0.02)]"
+            >
+              {cardContent}
+            </div>
           );
         })}
       </div>

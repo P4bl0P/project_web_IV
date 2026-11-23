@@ -29,21 +29,15 @@ function buildDraftFromRole(
   for (const mod of modules) {
     if (!mod.id) continue;
     const existing = byModuleId.get(mod.id);
-    const canCreate = Boolean(existing?.canCreate && mod.supportsCreate);
-    const canUpdate = Boolean(existing?.canUpdate && mod.supportsUpdate);
-    const canDelete = Boolean(existing?.canDelete && mod.supportsDelete);
-    const canRead = Boolean(
-      (existing?.canRead || canCreate || canUpdate || canDelete) && mod.supportsRead,
-    );
-    const canAccess = Boolean(canRead || canCreate || canUpdate || canDelete);
+    const canAccess = Boolean(existing?.canAccess);
 
     draft[mod.id] = {
       moduleId: mod.id,
       canAccess,
-      canRead,
-      canCreate,
-      canUpdate,
-      canDelete,
+      canRead: canAccess,
+      canCreate: canAccess,
+      canUpdate: canAccess,
+      canDelete: canAccess,
       specialPermissions: [],
     };
   }
@@ -86,40 +80,28 @@ export default function AdminPermissionsTable({
     [draft, initialDraft],
   );
 
-  const toggleCrud = (
-    mod: RegisteredModule,
-    key: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete',
-  ) => {
+  const toggleModuleAccess = (mod: RegisteredModule) => {
     if (!selectedRole || !mod.id) return;
     setDraftState((prev) => {
       const base = prev?.roleId === selectedRole.id ? prev.map : initialDraft;
-      const current = base[mod.id!] ?? {
-        moduleId: mod.id!,
-        canAccess: false,
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        canDelete: false,
-        specialPermissions: [],
+      const current = base[mod.id!];
+      const nextAccess = !current?.canAccess;
+
+      return {
+        roleId: selectedRole.id,
+        map: {
+          ...base,
+          [mod.id!]: {
+            moduleId: mod.id!,
+            canAccess: nextAccess,
+            canRead: nextAccess,
+            canCreate: nextAccess,
+            canUpdate: nextAccess,
+            canDelete: nextAccess,
+            specialPermissions: [],
+          },
+        },
       };
-
-      const nextValue = !current[key];
-      let next = { ...current, [key]: nextValue };
-
-      if (key === 'canRead' && !nextValue) {
-        next = {
-          ...next,
-          canRead: false,
-          canCreate: false,
-          canUpdate: false,
-          canDelete: false,
-        };
-      } else if (key !== 'canRead' && nextValue && mod.supportsRead) {
-        next.canRead = true;
-      }
-
-      next.canAccess = Boolean(next.canRead || next.canCreate || next.canUpdate || next.canDelete);
-      return { roleId: selectedRole.id, map: { ...base, [mod.id!]: next } };
     });
   };
 
@@ -132,7 +114,7 @@ export default function AdminPermissionsTable({
   if (!selectedRole) {
     return (
       <section className="rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] text-sm text-[#627089]">
-        Crea al menos un cargo para configurar sus permisos.
+        Crea al menos un cargo para configurar el acceso a módulos.
       </section>
     );
   }
@@ -141,9 +123,9 @@ export default function AdminPermissionsTable({
     <section className="space-y-5 rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] shadow-[0_7px_25px_rgba(0,5,84,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="m-0 text-[20px] text-[#000254]">Permisos por cargo</h2>
+          <h2 className="m-0 text-[20px] text-[#000254]">Acceso a módulos por cargo</h2>
           <p className="mt-1 mb-0 text-xs text-[#627089]">
-            Elige un cargo y marca qué puede hacer en cada módulo.
+            Elige un cargo y marca a qué módulos tiene acceso.
           </p>
         </div>
 
@@ -192,41 +174,20 @@ export default function AdminPermissionsTable({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="grid min-w-[520px] grid-cols-[minmax(180px,1fr)_repeat(4,80px)] items-center gap-2 border-b border-[#e4e9f1] px-3 py-3 text-center text-[11px] font-extrabold uppercase tracking-[0.06em] text-[#627089]">
+        <div className="grid grid-cols-[minmax(180px,1fr)_100px] items-center gap-2 border-b border-[#e4e9f1] px-3 py-3 text-center text-[11px] font-extrabold uppercase tracking-[0.06em] text-[#627089]">
           <span className="text-left">Módulo</span>
-          <span>Leer</span>
-          <span>Crear</span>
-          <span>Editar</span>
-          <span>Eliminar</span>
+          <span>Acceso</span>
         </div>
 
         {modules.map((mod) => {
           if (!mod.id) return null;
-          const entry = draft[mod.id] ?? {
-            moduleId: mod.id,
-            canAccess: false,
-            canRead: false,
-            canCreate: false,
-            canUpdate: false,
-            canDelete: false,
-            specialPermissions: [],
-          };
-
-          const columns: Array<{
-            key: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete';
-            label: string;
-            supported: boolean;
-          }> = [
-            { key: 'canRead', label: 'Leer', supported: mod.supportsRead },
-            { key: 'canCreate', label: 'Crear', supported: mod.supportsCreate },
-            { key: 'canUpdate', label: 'Editar', supported: mod.supportsUpdate },
-            { key: 'canDelete', label: 'Eliminar', supported: mod.supportsDelete },
-          ];
+          const entry = draft[mod.id];
+          const canAccess = Boolean(entry?.canAccess);
 
           return (
             <div
               key={mod.id}
-              className="grid min-w-[520px] grid-cols-[minmax(180px,1fr)_repeat(4,80px)] items-center gap-2 border-b border-[#eef1f6] px-3 py-3.5"
+              className="grid grid-cols-[minmax(180px,1fr)_100px] items-center gap-2 border-b border-[#eef1f6] px-3 py-3.5"
             >
               <div className="text-left">
                 <strong className="text-sm text-[#000254]">{mod.name}</strong>
@@ -237,21 +198,15 @@ export default function AdminPermissionsTable({
                 )}
               </div>
 
-              {columns.map((col) => (
-                <label key={col.key} className="grid place-items-center">
-                  {col.supported ? (
-                    <input
-                      type="checkbox"
-                      checked={entry[col.key]}
-                      onChange={() => toggleCrud(mod, col.key)}
-                      aria-label={`${mod.name} ${col.label}`}
-                      className="h-[18px] w-[18px] cursor-pointer accent-[#01317b]"
-                    />
-                  ) : (
-                    <span className="text-xs text-[#a7b3c5]">—</span>
-                  )}
-                </label>
-              ))}
+              <label className="grid place-items-center">
+                <input
+                  type="checkbox"
+                  checked={canAccess}
+                  onChange={() => toggleModuleAccess(mod)}
+                  aria-label={`${mod.name} Acceso`}
+                  className="h-[18px] w-[18px] cursor-pointer accent-[#01317b]"
+                />
+              </label>
             </div>
           );
         })}

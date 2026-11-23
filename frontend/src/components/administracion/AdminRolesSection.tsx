@@ -1,15 +1,22 @@
 import { useState, type FormEvent } from 'react';
-import { Check, Pencil, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
-import type { AdminRole } from '../../services/api';
+import { Check, Lock, Pencil, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
+import type { AdminRole, RegisteredModule } from '../../services/api';
 import FormField from '../shared/forms/FormField';
 import { formInputClass } from '../shared/forms/formStyles';
 
 interface AdminRolesSectionProps {
   roles: AdminRole[];
+  modules: RegisteredModule[];
   roleForm: { name: string; description: string };
+  savingRoleId?: string | null;
   onRoleFormChange: (next: { name: string; description: string }) => void;
   onCreateRole: (event: FormEvent) => Promise<void>;
   onUpdateRole: (roleId: string, data: { name: string; description: string | null }) => Promise<void>;
+  onToggleRoleModuleAccess: (
+    role: AdminRole,
+    moduleId: string,
+    nextAccess: boolean,
+  ) => Promise<void>;
   onRequestDeleteRole: (role: AdminRole) => void;
 }
 
@@ -38,10 +45,13 @@ function validateRoleFields(name: string, description: string): RoleFieldErrors 
 
 export default function AdminRolesSection({
   roles,
+  modules,
   roleForm,
+  savingRoleId = null,
   onRoleFormChange,
   onCreateRole,
   onUpdateRole,
+  onToggleRoleModuleAccess,
   onRequestDeleteRole,
 }: AdminRolesSectionProps) {
   const [createErrors, setCreateErrors] = useState<RoleFieldErrors>({});
@@ -130,13 +140,10 @@ export default function AdminRolesSection({
 
         {roles.map((role) => {
           const isEditing = editingId === role.id;
-          const activeModules = role.permissions
-            .filter(
-              (perm) =>
-                perm.canAccess &&
-                (perm.canRead || perm.canCreate || perm.canUpdate || perm.canDelete),
-            )
-            .map((perm) => perm.module.name);
+          const isSavingAccess = savingRoleId === role.id;
+          const permissionByModuleId = new Map(
+            role.permissions.map((perm) => [perm.moduleId, perm]),
+          );
           const hasAssignedUsers = role._count.users > 0;
 
           return (
@@ -252,19 +259,44 @@ export default function AdminRolesSection({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 border-t border-[#eef1f6] pt-2">
-                {activeModules.length > 0 ? (
-                  activeModules.map((moduleName) => (
-                    <span
-                      key={moduleName}
-                      className="rounded-lg bg-[#edf3fb] px-2.5 py-0.5 text-[11px] font-semibold text-[#01317b]"
-                    >
-                      {moduleName}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[11px] text-[#627089]">Sin módulos habilitados</span>
-                )}
+              <div className="space-y-2 border-t border-[#eef1f6] pt-3">
+                <div className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#627089]">
+                  Acceso a módulos
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {modules
+                    .filter((mod): mod is RegisteredModule & { id: string } => Boolean(mod.id))
+                    .map((mod) => {
+                      const hasAccess = Boolean(permissionByModuleId.get(mod.id)?.canAccess);
+                      return (
+                        <label
+                          key={mod.id}
+                          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition ${
+                            hasAccess
+                              ? 'border-[#01317b]/30 bg-[#edf3fb] text-[#01317b]'
+                              : 'border-[#e4e9f1] bg-white text-[#627089]'
+                          } ${isSavingAccess ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={hasAccess}
+                            disabled={isSavingAccess}
+                            onChange={() =>
+                              void onToggleRoleModuleAccess(role, mod.id, !hasAccess)
+                            }
+                            aria-label={`Acceso de ${role.name} a ${mod.name}`}
+                            className="h-3.5 w-3.5 cursor-pointer accent-[#01317b]"
+                          />
+                          {hasAccess ? (
+                            <Check size={12} aria-hidden="true" />
+                          ) : (
+                            <Lock size={12} aria-hidden="true" />
+                          )}
+                          <span>{mod.name}</span>
+                        </label>
+                      );
+                    })}
+                </div>
               </div>
             </div>
           );

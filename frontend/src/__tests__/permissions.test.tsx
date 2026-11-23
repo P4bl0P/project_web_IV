@@ -4,11 +4,13 @@ import {
   AdminRoute,
   AuthProvider,
   DEFAULT_REGISTERED_MODULES,
+  getModuleCapabilities,
   ModuleRoute,
   WebContentRoute,
   type User,
 } from '../auth';
 import AdminPermissionsTable from '../components/administracion/AdminPermissionsTable';
+import AdminRolesSection from '../components/administracion/AdminRolesSection';
 import CouncilMemberList from '../components/contenido-web/CouncilMemberList';
 import GestionPage from '../pages/GestionPage';
 import type { AdminRole } from '../services/api';
@@ -22,6 +24,11 @@ const assert = {
   doesNotMatch(actual: string, pattern: RegExp) {
     if (pattern.test(actual)) {
       throw new Error(`Expected output NOT to match ${pattern.toString()}`);
+    }
+  },
+  equal<T>(actual: T, expected: T) {
+    if (actual !== expected) {
+      throw new Error(`Expected ${String(actual)} to equal ${String(expected)}`);
     }
   },
 };
@@ -79,9 +86,9 @@ export async function runPermissionTests() {
       permissions: [
         {
           canAccess: true,
-          canRead: true,
-          canCreate: true,
-          canUpdate: true,
+          canRead: false,
+          canCreate: false,
+          canUpdate: false,
           canDelete: false,
           module: { key: 'secretaria', name: 'Secretaría' },
         },
@@ -101,19 +108,31 @@ export async function runPermissionTests() {
     modules: DEFAULT_REGISTERED_MODULES,
   };
 
-  test('GestionPage mantiene todos los módulos visibles aunque el usuario no tenga acceso', () => {
-    const html = renderWithAuth(userWithoutPermissions, '/gestion', <GestionPage />);
-    assert.match(html, /Jefatura/);
-    assert.match(html, /Secretaría/);
-    assert.match(html, /Tesorería/);
-    assert.match(html, /Contenido de la web/);
-    assert.match(html, /Sin acceso habilitado para tu cargo/);
-    assert.doesNotMatch(html, /Administración/);
+  test('GestionPage muestra candado y bloquea la navegación en módulos sin acceso', () => {
+    const blockedHtml = renderWithAuth(userWithoutPermissions, '/gestion', <GestionPage />);
+    assert.match(blockedHtml, /Jefatura/);
+    assert.match(blockedHtml, /Secretaría/);
+    assert.match(blockedHtml, /Tesorería/);
+    assert.match(blockedHtml, /Contenido de la web/);
+    assert.match(blockedHtml, /Sin acceso habilitado para tu cargo/);
+    assert.match(blockedHtml, /aria-disabled="true"/);
+    assert.match(blockedHtml, /aria-label="Sin acceso"/);
+    assert.doesNotMatch(blockedHtml, /href="\/gestion\/secretaria"/);
+    assert.doesNotMatch(blockedHtml, /href="\/gestion\/jefatura"/);
+    assert.doesNotMatch(blockedHtml, /href="\/gestion\/tesoreria"/);
+    assert.doesNotMatch(blockedHtml, /href="\/gestion\/contenido-web"/);
+    assert.doesNotMatch(blockedHtml, /Administración/);
+
+    const secHtml = renderWithAuth(secretariaAuthorizedUser, '/gestion', <GestionPage />);
+    assert.match(secHtml, /href="\/gestion\/secretaria"/);
+    assert.match(secHtml, /href="\/gestion\/contenido-web"/);
+    assert.doesNotMatch(secHtml, /href="\/gestion\/jefatura"/);
   });
 
-  test('Entrar por URL a módulos sin permiso muestra AccessDeniedView y no monta el contenido privado (ni siquiera por nombre Secretaría)', () => {
+  test('Entrar por URL a módulos sin permiso redirige a /gestion y no muestra pantalla de acceso denegado', () => {
     const routes = (
       <Routes>
+        <Route path="/gestion" element={<div>PANEL_GESTION</div>} />
         <Route
           path="/gestion/secretaria"
           element={
@@ -150,24 +169,30 @@ export async function runPermissionTests() {
     );
 
     const secHtml = renderWithAuth(userWithoutPermissions, '/gestion/secretaria', routes);
-    assert.match(secHtml, /No tienes acceso a Secretaría/);
-    assert.match(secHtml, /Volver al panel de gestión/);
+    assert.doesNotMatch(secHtml, /No tienes acceso/);
     assert.doesNotMatch(secHtml, /CONTENIDO_PRIVADO_SECRETARIA/);
 
     const jefHtml = renderWithAuth(userWithoutPermissions, '/gestion/jefatura', routes);
-    assert.match(jefHtml, /No tienes acceso a Jefatura/);
+    assert.doesNotMatch(jefHtml, /No tienes acceso/);
     assert.doesNotMatch(jefHtml, /CONTENIDO_PRIVADO_JEFATURA/);
 
     const webHtml = renderWithAuth(userWithoutPermissions, '/gestion/contenido-web', routes);
-    assert.match(webHtml, /No tienes acceso a Contenido de la web/);
+    assert.doesNotMatch(webHtml, /No tienes acceso/);
     assert.doesNotMatch(webHtml, /CONTENIDO_PRIVADO_WEB/);
 
     const adminHtml = renderWithAuth(secretariaAuthorizedUser, '/gestion/administracion', routes);
-    assert.match(adminHtml, /No tienes acceso a Administración/);
+    assert.doesNotMatch(adminHtml, /No tienes acceso/);
     assert.doesNotMatch(adminHtml, /CONTENIDO_PRIVADO_ADMIN/);
   });
 
-  test('Usuario autorizado accede normalmente a Secretaría, Contenido web y Superadmin a Administración', () => {
+  test('Usuario con canAccess accede a Secretaría, Contenido web y recibe todas las capacidades del módulo', () => {
+    const caps = getModuleCapabilities(secretariaAuthorizedUser, 'secretaria');
+    assert.equal(caps.canAccess, true);
+    assert.equal(caps.canRead, true);
+    assert.equal(caps.canCreate, true);
+    assert.equal(caps.canUpdate, true);
+    assert.equal(caps.canDelete, true);
+
     const secHtml = renderWithAuth(
       secretariaAuthorizedUser,
       '/gestion/secretaria',
@@ -196,7 +221,7 @@ export async function runPermissionTests() {
     assert.match(adminHtml, /CONTENIDO_PRIVADO_ADMIN/);
   });
 
-  test('AdminPermissionsTable refleja la matriz simple de 4 permisos sin operaciones especiales', () => {
+  test('La configuración de cargos solo permite activar o desactivar el acceso por módulo', () => {
     const roles: AdminRole[] = [
       {
         id: 'role-sec',
@@ -212,7 +237,7 @@ export async function runPermissionTests() {
             canRead: true,
             canCreate: true,
             canUpdate: true,
-            canDelete: false,
+            canDelete: true,
             specialPermissions: [],
             module: { ...DEFAULT_REGISTERED_MODULES[1], id: 'mod-sec' },
           },
@@ -237,7 +262,25 @@ export async function runPermissionTests() {
       { ...DEFAULT_REGISTERED_MODULES[1], id: 'mod-sec' },
     ];
 
-    const html = renderToStaticMarkup(
+    const rolesHtml = renderToStaticMarkup(
+      <AdminRolesSection
+        roles={roles}
+        modules={modulesWithIds}
+        roleForm={{ name: '', description: '' }}
+        onRoleFormChange={() => undefined}
+        onCreateRole={async () => undefined}
+        onUpdateRole={async () => undefined}
+        onToggleRoleModuleAccess={async () => undefined}
+        onRequestDeleteRole={() => undefined}
+      />,
+    );
+
+    assert.match(rolesHtml, /Acceso a módulos/);
+    assert.match(rolesHtml, /aria-label="Acceso de Secretaría a Secretaría"[^>]*checked=""/);
+    assert.doesNotMatch(rolesHtml, /aria-label="Acceso de Secretaría a Jefatura"[^>]*checked=""/);
+    assert.doesNotMatch(rolesHtml, /Operaciones especiales/);
+
+    const tableHtml = renderToStaticMarkup(
       <AdminPermissionsTable
         roles={roles}
         modules={modulesWithIds}
@@ -247,16 +290,16 @@ export async function runPermissionTests() {
       />,
     );
 
-    assert.match(html, /Secretaría/);
-    assert.match(html, /Jefatura/);
-    assert.doesNotMatch(html, /Operaciones especiales/);
-    assert.doesNotMatch(html, /Acceso al módulo/);
-    assert.match(html, /aria-label="Secretaría Leer"[^>]*checked=""/);
-    assert.match(html, /aria-label="Secretaría Editar"[^>]*checked=""/);
-    assert.doesNotMatch(html, /aria-label="Secretaría Eliminar"[^>]*checked=""/);
+    assert.match(tableHtml, /Acceso a módulos por cargo/);
+    assert.match(tableHtml, /aria-label="Secretaría Acceso"[^>]*checked=""/);
+    assert.doesNotMatch(tableHtml, /aria-label="Jefatura Acceso"[^>]*checked=""/);
+    assert.doesNotMatch(tableHtml, />Leer</);
+    assert.doesNotMatch(tableHtml, />Crear</);
+    assert.doesNotMatch(tableHtml, />Editar</);
+    assert.doesNotMatch(tableHtml, />Eliminar</);
   });
 
-  test('CouncilMemberList respeta capacidades CRUD granulares en la UI', () => {
+  test('CouncilMemberList respeta capacidades CRUD cuando el componente las recibe', () => {
     const members = [
       {
         id: 'm-1',

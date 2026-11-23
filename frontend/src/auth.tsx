@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import AccessDeniedView from './components/shared/AccessDeniedView';
 import type { RegisteredModule, SpecialActionDefinition } from './services/api';
 
 export type { RegisteredModule, SpecialActionDefinition };
@@ -134,28 +133,6 @@ function findUserModulePermission(
   });
 }
 
-function normalizeAction(
-  action: PermissionAction,
-): 'canAccess' | 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete' {
-  switch (action) {
-    case 'access':
-    case 'canAccess':
-      return 'canAccess';
-    case 'read':
-    case 'canRead':
-      return 'canRead';
-    case 'create':
-    case 'canCreate':
-      return 'canCreate';
-    case 'update':
-    case 'canUpdate':
-      return 'canUpdate';
-    case 'delete':
-    case 'canDelete':
-      return 'canDelete';
-  }
-}
-
 export function hasModuleAccess(
   user: User | null | undefined,
   moduleKeyOrName: string,
@@ -164,52 +141,35 @@ export function hasModuleAccess(
   if (user.status && user.status !== 'ACTIVE') return false;
   if (isSuperAdmin(user)) return true;
   const permission = findUserModulePermission(user, moduleKeyOrName);
-  if (!permission || permission.canAccess === false) return false;
-  return Boolean(
-    permission.canAccess ||
-      permission.canRead ||
-      permission.canCreate ||
-      permission.canUpdate ||
-      permission.canDelete,
-  );
+  return Boolean(permission?.canAccess);
 }
 
 export function hasModulePermission(
   user: User | null | undefined,
   moduleKeyOrName: string,
-  action: PermissionAction = 'canRead',
+  action?: PermissionAction,
 ): boolean {
-  if (!user) return false;
-  if (user.status && user.status !== 'ACTIVE') return false;
-  if (isSuperAdmin(user)) return true;
-
-  const permission = findUserModulePermission(user, moduleKeyOrName);
-  if (!permission || permission.canAccess === false) return false;
-
-  const normalized = normalizeAction(action);
-  if (normalized === 'canAccess') {
-    return hasModuleAccess(user, moduleKeyOrName);
-  }
-  return Boolean(permission[normalized]);
+  void action;
+  return hasModuleAccess(user, moduleKeyOrName);
 }
 
 export function getModuleCapabilities(user: User | null | undefined, moduleKeyOrName: string) {
+  const allowed = hasModuleAccess(user, moduleKeyOrName);
   return {
-    canAccess: hasModuleAccess(user, moduleKeyOrName),
-    canRead: hasModulePermission(user, moduleKeyOrName, 'canRead'),
-    canCreate: hasModulePermission(user, moduleKeyOrName, 'canCreate'),
-    canUpdate: hasModulePermission(user, moduleKeyOrName, 'canUpdate'),
-    canDelete: hasModulePermission(user, moduleKeyOrName, 'canDelete'),
+    canAccess: allowed,
+    canRead: allowed,
+    canCreate: allowed,
+    canUpdate: allowed,
+    canDelete: allowed,
   };
 }
 
 export function canAccessWebContent(
   user: User | null | undefined,
-  action: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete' = 'canRead',
+  action?: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete',
 ): boolean {
-  if (!user) return false;
-  if (isSuperAdmin(user)) return true;
-  return hasModulePermission(user, 'secretaria', action);
+  void action;
+  return hasModuleAccess(user, 'secretaria');
 }
 
 export function getRegisteredModules(user: User | null | undefined): RegisteredModule[] {
@@ -377,17 +337,11 @@ export function AdminRoute({ children }: { children: ReactNode }) {
   if (loading) return <div className="state-card">Comprobando permisos…</div>;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user.mustChangePassword) return <Navigate to="/perfil" replace />;
-  return isSuperAdmin(user) ? (
-    children
-  ) : (
-    <AccessDeniedView moduleName="Administración" isAdminOnly />
-  );
+  return isSuperAdmin(user) ? children : <Navigate to="/gestion" replace />;
 }
 
 export function ModuleRoute({
   moduleKey,
-  moduleLabel,
-  action = 'canRead',
   children,
 }: {
   moduleKey: string;
@@ -401,17 +355,15 @@ export function ModuleRoute({
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user.mustChangePassword) return <Navigate to="/perfil" replace />;
 
-  const allowed = hasModulePermission(user, moduleKey, action);
-
-  if (!allowed) {
-    return <AccessDeniedView moduleName={moduleLabel ?? moduleKey} />;
+  if (!hasModuleAccess(user, moduleKey)) {
+    return <Navigate to="/gestion" replace />;
   }
   return children;
 }
 
 export function WebContentRoute({ children }: { children: ReactNode }) {
   return (
-    <ModuleRoute moduleKey="secretaria" moduleLabel="Contenido de la web" action="canRead">
+    <ModuleRoute moduleKey="secretaria" moduleLabel="Contenido de la web">
       {children}
     </ModuleRoute>
   );

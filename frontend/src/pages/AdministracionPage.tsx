@@ -4,7 +4,6 @@ import { ArrowLeft, Copy, RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth';
 import AdminAuditSection from '../components/administracion/AdminAuditSection';
 import AdminConfirmModal from '../components/administracion/AdminConfirmModal';
-import AdminPermissionsTable from '../components/administracion/AdminPermissionsTable';
 import AdminRolesSection from '../components/administracion/AdminRolesSection';
 import AdminUsersSection from '../components/administracion/AdminUsersSection';
 import FormAlert from '../components/shared/forms/FormAlert';
@@ -17,12 +16,11 @@ import {
   type RolePermissionUpdateItem,
 } from '../services/api';
 
-type Tab = 'users' | 'roles' | 'permissions' | 'audit';
+type Tab = 'users' | 'roles' | 'audit';
 
 const TAB_LABELS: Record<Tab, string> = {
   users: 'Usuarios',
   roles: 'Cargos',
-  permissions: 'Permisos',
   audit: 'Auditoría',
 };
 
@@ -38,9 +36,8 @@ export default function AdministracionPage() {
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [modules, setModules] = useState<RegisteredModule[]>([]);
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState('');
   const [busy, setBusy] = useState(true);
-  const [savingPermissions, setSavingPermissions] = useState(false);
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
@@ -63,11 +60,6 @@ export default function AdministracionPage() {
       setRoles(nextRoles);
       setModules(nextModules);
       setForm((v) => ({ ...v, roleId: v.roleId || nextRoles[0]?.id || '' }));
-      setSelectedRoleId((current) =>
-        current && nextRoles.some((role) => role.id === current)
-          ? current
-          : nextRoles[0]?.id || '',
-      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo cargar la administración');
     } finally {
@@ -95,11 +87,6 @@ export default function AdministracionPage() {
         setRoles(nextRoles);
         setModules(nextModules);
         setForm((v) => ({ ...v, roleId: v.roleId || nextRoles[0]?.id || '' }));
-        setSelectedRoleId((current) =>
-          current && nextRoles.some((role) => role.id === current)
-            ? current
-            : nextRoles[0]?.id || '',
-        );
         setError('');
       })
       .catch((reason: unknown) => {
@@ -258,23 +245,40 @@ export default function AdministracionPage() {
     }
   };
 
-  const saveRolePermissions = async (
-    roleId: string,
-    permissionsPayload: RolePermissionUpdateItem[],
+  const toggleRoleModuleAccess = async (
+    role: AdminRole,
+    moduleId: string,
+    nextAccess: boolean,
   ) => {
-    setSavingPermissions(true);
+    setSavingRoleId(role.id);
     setError('');
     setNotice('');
     try {
-      const updatedRole = await adminApi.updateRolePermissions(roleId, permissionsPayload);
-      setRoles((current) =>
-        current.map((item) => (item.id === roleId ? updatedRole : item)),
-      );
-      setNotice(`Permisos de "${updatedRole.name}" guardados correctamente.`);
+      const existingByModuleId = new Map(role.permissions.map((perm) => [perm.moduleId, perm]));
+      const permissionsPayload: RolePermissionUpdateItem[] = modules
+        .filter((mod): mod is RegisteredModule & { id: string } => Boolean(mod.id))
+        .map((mod) => {
+          const enabled =
+            mod.id === moduleId ? nextAccess : Boolean(existingByModuleId.get(mod.id)?.canAccess);
+          return {
+            moduleId: mod.id,
+            canAccess: enabled,
+            canRead: enabled,
+            canCreate: enabled,
+            canUpdate: enabled,
+            canDelete: enabled,
+            specialPermissions: [],
+          };
+        });
+      const updatedRole = await adminApi.updateRolePermissions(role.id, permissionsPayload);
+      setRoles((current) => current.map((item) => (item.id === role.id ? updatedRole : item)));
+      setNotice(`Acceso a módulos actualizado para "${updatedRole.name}".`);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudieron guardar los permisos');
+      setError(
+        reason instanceof Error ? reason.message : 'No se pudo actualizar el acceso al módulo',
+      );
     } finally {
-      setSavingPermissions(false);
+      setSavingRoleId(null);
     }
   };
 
@@ -293,7 +297,7 @@ export default function AdministracionPage() {
             Administración
           </h1>
           <p className="m-0 text-[#627089]">
-            Gestiona cuentas, cargos y permisos desde un único lugar.
+            Gestiona cuentas, cargos y acceso a módulos desde un único lugar.
           </p>
         </div>
 
@@ -384,22 +388,14 @@ export default function AdministracionPage() {
       {tab === 'roles' && (
         <AdminRolesSection
           roles={roles}
+          modules={modules}
           roleForm={roleForm}
+          savingRoleId={savingRoleId}
           onRoleFormChange={setRoleForm}
           onCreateRole={createRole}
           onUpdateRole={updateRole}
+          onToggleRoleModuleAccess={toggleRoleModuleAccess}
           onRequestDeleteRole={(role) => setPendingDelete({ kind: 'role', role })}
-        />
-      )}
-
-      {tab === 'permissions' && (
-        <AdminPermissionsTable
-          roles={roles}
-          modules={modules}
-          selectedRoleId={selectedRoleId}
-          onSelectRole={setSelectedRoleId}
-          onSaveRolePermissions={saveRolePermissions}
-          saving={savingPermissions}
         />
       )}
 
