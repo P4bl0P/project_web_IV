@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
-  Globe,
-  Lock,
   LogOut,
   Menu,
   Settings,
@@ -11,7 +9,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { canAccessWebContent, isSuperAdmin, useAuth } from '../../auth';
+import { isSuperAdmin, useAuth } from '../../auth';
 import type { SharedImagesCatalog } from '../../config/images/sharedImages';
 
 const links = [
@@ -109,7 +107,6 @@ export default function NavBar({ images }: NavBarProps) {
 
   const privateDestination = user ? '/gestion' : '/login';
   const privateLabel = user ? `Abrir área privada de ${user.name}` : 'Acceder al área privada';
-  const canWebContent = canAccessWebContent(user, 'canRead');
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e4e9f1]/85 bg-white/95 min-[801px]:bg-white/[0.82] backdrop-blur-[18px]">
@@ -184,16 +181,6 @@ export default function NavBar({ images }: NavBarProps) {
                   <span className="inline-flex items-center gap-[9px]">
                     <UserRound size={16} /> Mi perfil
                   </span>
-                </Link>
-                <Link
-                  to="/gestion/contenido-web"
-                  role="menuitem"
-                  className={`${popoverItemClass} ${canWebContent ? '' : 'text-[#627089]'}`}
-                >
-                  <span className="inline-flex items-center gap-[9px]">
-                    <Globe size={16} /> Contenido de la web
-                  </span>
-                  {!canWebContent && <Lock size={13} className="text-[#9aa7ba]" aria-label="Sin acceso" />}
                 </Link>
                 {isSuperAdmin(user) && (
                   <Link to="/gestion/administracion" role="menuitem" className={popoverItemClass}>
@@ -281,15 +268,6 @@ export default function NavBar({ images }: NavBarProps) {
               </Link>
               <Link to="/perfil" tabIndex={open ? 0 : -1} className={`${mobileLinkBase} text-[#0c1933]`} onClick={closeMobileMenu}>
                 Mi perfil <UserRound size={17} />
-              </Link>
-              <Link
-                to="/gestion/contenido-web"
-                tabIndex={open ? 0 : -1}
-                className={`${mobileLinkBase} ${canWebContent ? 'text-[#0c1933]' : 'text-[#627089]'}`}
-                onClick={closeMobileMenu}
-              >
-                <span>Contenido de la web</span>
-                {canWebContent ? <Globe size={17} /> : <Lock size={16} className="text-[#9aa7ba]" />}
               </Link>
               {isSuperAdmin(user) && (
                 <Link to="/gestion/administracion" tabIndex={open ? 0 : -1} className={`${mobileLinkBase} text-[#0c1933]`} onClick={closeMobileMenu}>
