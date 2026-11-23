@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -13,33 +13,48 @@ import {
   FileText,
   Users,
   Archive,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from 'lucide-react';
+import { getModuleCapabilities, useAuth } from '../auth';
 import {
   applicationsApi,
   type ApplicantRecord,
-  type ApplicationStatus,
+  type ClosureReason,
+  type PaginatedApplicationsResponse,
+  type RecordStage,
   type SortField,
   type SortOrder,
 } from '../services/api';
-import ApplicantCard from '../components/secretaria/ApplicantCard';
-import SecretariaCensoForm from '../components/secretaria/SecretariaCensoForm';
-import SecretariaPagination from '../components/secretaria/SecretariaPagination';
-import SecretariaToolbar from '../components/secretaria/SecretariaToolbar';
-import { SecButton } from '../components/secretaria/secretariaTheme';
-import {
-  secButtonClass,
-  secTokens,
-} from '../components/secretaria/secretariaTokens';
+import { generateOfficialScoutPdf } from '../utils/pdfGenerator';
 import {
   INITIAL_SECRETARIA_FILTERS,
   SECRETARIA_SECTIONS,
-  filterAndSortSecretariaRecords,
   getActiveFilterChips,
   type SecretariaFiltersState,
   type SecretariaTab,
 } from '../utils/secretariaSearchFilter';
+import ApplicantCard from '../components/secretaria/ApplicantCard';
+import ApplicantDetailModal from '../components/secretaria/ApplicantDetailModal';
+import SecretariaCensoForm from '../components/secretaria/SecretariaCensoForm';
+import SecretariaConfirmModal, {
+  type SecretariaConfirmAction,
+} from '../components/secretaria/SecretariaConfirmModal';
+import SecretariaPagination from '../components/secretaria/SecretariaPagination';
+import SecretariaToolbar from '../components/secretaria/SecretariaToolbar';
+import { SecButton } from '../components/secretaria/secretariaTheme';
+import { secButtonClass, secTokens } from '../components/secretaria/secretariaTokens';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const TAB_TO_STAGE: Record<SecretariaTab, RecordStage> = {
+  INITIAL: 'INITIAL',
+  WAITLIST: 'WAITLIST',
+  OFFERED: 'PENDING_ENROLLMENT',
+  CENSUS: 'CENSUS',
+  ARCHIVED: 'ARCHIVED',
+};
 
 const TABS: {
   id: SecretariaTab;
@@ -54,7 +69,17 @@ const TABS: {
 ];
 
 export default function SecretariaPage() {
-  const [records, setRecords] = useState<ApplicantRecord[]>([]);
+  const { user } = useAuth();
+  const { canCreate, canUpdate, canDelete } = getModuleCapabilities(user, 'Secretaría');
+
+  const [pageData, setPageData] = useState<PaginatedApplicationsResponse>({
+    items: [],
+    totalMatching: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+    sectionCounts: { INITIAL: 0, WAITLIST: 0, OFFERED: 0, CENSUS: 0, ARCHIVED: 0 },
+  });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SecretariaTab>('WAITLIST');
   const [filters, setFilters] = useState<SecretariaFiltersState>(INITIAL_SECRETARIA_FILTERS);
@@ -64,45 +89,85 @@ export default function SecretariaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [safeModeWhatsApp, setSafeModeWhatsApp] = useState(true);
-  const [censusFormRecord, setCensusFormRecord] = useState<
-    ApplicantRecord | null | undefined
-  >(undefined);
+  const [censusFormRecord, setCensusFormRecord] = useState<ApplicantRecord | null | undefined>(
+    undefined,
+  );
+  const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<SecretariaConfirmAction | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(
+    null,
+  );
+  const [reloadTick, setReloadTick] = useState(0);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      setRecords(await applicationsApi.getAll());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Load the remote collection once when the module opens.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
+  const notify = useCallback((tone: 'success' | 'error', text: string) => {
+    setFeedback({ tone, text });
   }, []);
 
-  const sectionCounts = useMemo(() => {
-    const counts: Record<SecretariaTab, number> = {
-      INITIAL: 0,
-      WAITLIST: 0,
-      OFFERED: 0,
-      CENSUS: 0,
-      ARCHIVED: 0,
+  useEffect(() => {
+    if (!feedback || feedback.tone !== 'success') return;
+    const timer = window.setTimeout(() => setFeedback(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
+  useEffect(() => {
+    let cancelled = false;
+    applicationsApi
+      .getPaginated({
+        stage: TAB_TO_STAGE[activeTab],
+        enrollmentSubStatus:
+          activeTab === 'OFFERED' ? filters.enrollmentSubStatus : undefined,
+        search: filters.search || undefined,
+        branch: filters.branch !== 'Todas' ? filters.branch : undefined,
+        gender: filters.gender || undefined,
+        minAge: filters.minAge !== '' ? Number(filters.minAge) : undefined,
+        maxAge: filters.maxAge !== '' ? Number(filters.maxAge) : undefined,
+        birthDateFrom: filters.birthDateFrom || undefined,
+        birthDateTo: filters.birthDateTo || undefined,
+        tutorName: filters.tutorName || undefined,
+        email: filters.email || undefined,
+        phone: filters.phone || undefined,
+        admittedFrom:
+          SECRETARIA_SECTIONS[activeTab].capabilities.admittedAt && filters.admittedFrom
+            ? filters.admittedFrom
+            : undefined,
+        admittedTo:
+          SECRETARIA_SECTIONS[activeTab].capabilities.admittedAt && filters.admittedTo
+            ? filters.admittedTo
+            : undefined,
+        incompleteOnly: filters.incompleteOnly ? true : undefined,
+        sortBy,
+        sortOrder,
+        page: currentPage,
+        pageSize,
+      })
+      .then((response) => {
+        if (!cancelled) setPageData(response);
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          notify(
+            'error',
+            reason instanceof Error ? reason.message : 'No se pudieron cargar los registros.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
     };
-    for (const r of records) {
-      if (r.status === 'PENDIENTE_REVISION') counts.INITIAL++;
-      else if (r.status === 'LISTA_ESPERA') counts.WAITLIST++;
-      else if (r.status === 'PLAZA_OFERTADA' || r.status === 'INSCRIPCION_COMPLETADA')
-        counts.OFFERED++;
-      else if (r.status === 'CENSADO') counts.CENSUS++;
-      else if (r.status === 'BAJA') counts.ARCHIVED++;
-    }
-    return counts;
-  }, [records]);
+  }, [activeTab, filters, sortBy, sortOrder, currentPage, pageSize, reloadTick, notify]);
+
+  const triggerReload = () => {
+    setLoading(true);
+    setReloadTick((t) => t + 1);
+  };
 
   const handleSelectTab = (nextTab: SecretariaTab) => {
+    setLoading(true);
     setActiveTab(nextTab);
     setCurrentPage(1);
     const nextSchema = SECRETARIA_SECTIONS[nextTab];
@@ -116,92 +181,142 @@ export default function SecretariaPage() {
     key: K,
     value: SecretariaFiltersState[K],
   ) => {
+    setLoading(true);
     setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1);
   };
 
   const handleClearFilter = (key: keyof SecretariaFiltersState) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: INITIAL_SECRETARIA_FILTERS[key],
-    }));
+    setLoading(true);
+    setFilters((prev) => ({ ...prev, [key]: INITIAL_SECRETARIA_FILTERS[key] }));
     setCurrentPage(1);
   };
 
   const handleClearAllFilters = () => {
+    setLoading(true);
     setFilters(INITIAL_SECRETARIA_FILTERS);
     setCurrentPage(1);
   };
 
   const handleChangeSort = (nextSortBy: SortField, nextSortOrder: SortOrder) => {
+    setLoading(true);
     setSortBy(nextSortBy);
     setSortOrder(nextSortOrder);
     setCurrentPage(1);
   };
-
-  const filteredRecords = useMemo(() => {
-    return filterAndSortSecretariaRecords(records, activeTab, filters, sortBy, sortOrder);
-  }, [records, activeTab, filters, sortBy, sortOrder]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (safeCurrentPage - 1) * pageSize;
-    return filteredRecords.slice(startIndex, startIndex + pageSize);
-  }, [filteredRecords, safeCurrentPage, pageSize]);
 
   const activeChips = useMemo(
     () => getActiveFilterChips(filters, activeTab),
     [filters, activeTab],
   );
 
-  const handleStatusChange = async (id: string, status: ApplicationStatus) => {
-    const updated =
-      status === 'LISTA_ESPERA'
-        ? await applicationsApi.validate(id)
-        : status === 'CENSADO'
-          ? await applicationsApi.admitCensus(id)
-          : await applicationsApi.getById(id);
-    setRecords((prev) => prev.map((r) => (r.id === id ? updated : r)));
-  };
-
   const handleToggleInclusion = async (record: ApplicantRecord) => {
-    const updated = await applicationsApi.update(record.id, {
-      socialInclusionPriority: !record.socialInclusionPriority,
-    });
-    setRecords((prev) => prev.map((r) => (r.id === record.id ? updated : r)));
+    try {
+      const updated = await applicationsApi.update(record.id, {
+        socialInclusionPriority: !record.socialInclusionPriority,
+      });
+      setPageData((prev) => ({
+        ...prev,
+        items: prev.items.map((item) => (item.id === record.id ? updated : item)),
+      }));
+      notify(
+        'success',
+        updated.socialInclusionPriority
+          ? `Prioridad de inclusión activada para ${record.childFirstName}.`
+          : `Prioridad de inclusión retirada de ${record.childFirstName}.`,
+      );
+      triggerReload();
+    } catch (reason) {
+      notify(
+        'error',
+        reason instanceof Error ? reason.message : 'No se pudo actualizar la prioridad.',
+      );
+    }
   };
 
-  const handleOfferSpot = async (record: ApplicantRecord) => {
-    const updated = await applicationsApi.offerSpot(record.id);
-    setRecords((prev) => prev.map((r) => (r.id === record.id ? updated : r)));
-    handleSelectTab('OFFERED');
+  const handleExecuteConfirmedAction = async (payload?: {
+    closureReason?: ClosureReason;
+    closureNotes?: string;
+    reason?: string;
+    notes?: string;
+  }) => {
+    if (!confirmAction || confirmAction.type === 'WHATSAPP_PREVIEW') return;
+    setActionBusy(true);
+    const { record } = confirmAction;
+
+    try {
+      if (confirmAction.type === 'VALIDATE') {
+        await applicationsApi.validate(record.id);
+        notify('success', `${record.childFirstName} ha pasado a Lista de Espera.`);
+      } else if (confirmAction.type === 'OFFER_SPOT') {
+        await applicationsApi.offerSpot(record.id);
+        notify(
+          'success',
+          `Plaza ofertada a ${record.childFirstName} con enlace mágico válido por 7 días.`,
+        );
+        setActiveTab('OFFERED');
+        setCurrentPage(1);
+      } else if (confirmAction.type === 'RENEW_TOKEN') {
+        await applicationsApi.renewToken(record.id);
+        notify('success', `Enlace mágico renovado para ${record.childFirstName}.`);
+      } else if (confirmAction.type === 'RETURN_WAITLIST') {
+        await applicationsApi.returnToWaitlist(record.id, payload?.reason);
+        notify('success', `${record.childFirstName} ha vuelto a Lista de Espera.`);
+      } else if (confirmAction.type === 'MARK_REVIEWED') {
+        await applicationsApi.markReviewed(record.id);
+        notify('success', `Inscripción de ${record.childFirstName} marcada como revisada.`);
+      } else if (confirmAction.type === 'ADMIT_CENSUS') {
+        await applicationsApi.admitCensus(record.id);
+        notify(
+          'success',
+          `${record.childFirstName} ha sido dado de alta en el Censo Oficial.`,
+        );
+        setActiveTab('CENSUS');
+        setCurrentPage(1);
+      } else if (confirmAction.type === 'DEACTIVATE') {
+        await applicationsApi.deactivate(record.id, {
+          closureReason: payload?.closureReason ?? 'OTRO',
+          closureNotes: payload?.closureNotes,
+        });
+        notify('success', `Expediente de ${record.childFirstName} dado de baja.`);
+      } else if (confirmAction.type === 'REACTIVATE') {
+        await applicationsApi.reactivate(record.id, payload?.notes);
+        notify('success', `Expediente de ${record.childFirstName} reactivado.`);
+      } else if (confirmAction.type === 'DELETE') {
+        await applicationsApi.remove(record.id);
+        notify('success', `Expediente de ${record.childFirstName} eliminado permanentemente.`);
+      }
+
+      setConfirmAction(null);
+      if (detailRecordId === record.id && confirmAction.type === 'DELETE') {
+        setDetailRecordId(null);
+      }
+      triggerReload();
+    } catch (reason) {
+      notify(
+        'error',
+        reason instanceof Error ? reason.message : 'No se pudo completar la operación.',
+      );
+    } finally {
+      setActionBusy(false);
+    }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`¿Eliminar a ${name}?`)) return;
-    await applicationsApi.remove(id);
-    setRecords((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const handleCensusSaved = (saved: ApplicantRecord) => {
-    setRecords((prev) => {
-      const exists = prev.some((record) => record.id === saved.id);
-      return exists
-        ? prev.map((record) => (record.id === saved.id ? saved : record))
-        : [...prev, saved];
-    });
-    handleSelectTab('CENSUS');
+  const handleCensusSaved = () => {
     setCensusFormRecord(undefined);
+    setActiveTab('CENSUS');
+    setCurrentPage(1);
+    notify('success', 'Ficha del censo guardada correctamente.');
+    triggerReload();
   };
 
   const handleCopyLink = (record: ApplicantRecord) => {
     if (!record.enrollmentToken) return;
-    navigator.clipboard.writeText(
+    void navigator.clipboard.writeText(
       `${window.location.origin}/inscripcion/${record.enrollmentToken}`,
     );
     setCopiedId(record.id);
+    notify('success', `Enlace mágico de ${record.childFirstName} copiado al portapapeles.`);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -209,20 +324,39 @@ export default function SecretariaPage() {
     const link = `${window.location.origin}/inscripcion/${record.enrollmentToken}`;
     const msg = `¡Hola ${record.parent1FirstName}! Tenemos plaza para *${record.childFirstName}* en *${record.calculatedBranch}*. Completa su inscripción aquí:\n${link}`;
     if (safeModeWhatsApp) {
-      alert(`[MODO SEGURO]\nPara: ${record.parent1Phone}\n\n${msg}`);
+      setConfirmAction({
+        type: 'WHATSAPP_PREVIEW',
+        record,
+        message: msg,
+        phone: record.parent1Phone,
+      });
       return;
     }
     const phone = record.parent1Phone.replace(/\D/g, '').replace(/^(?!34)/, '34');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const pageOffset = (safeCurrentPage - 1) * pageSize;
+  const handleDownloadPdf = async (record: ApplicantRecord) => {
+    try {
+      const detailed = await applicationsApi.getById(record.id);
+      await generateOfficialScoutPdf(detailed);
+    } catch (reason) {
+      notify(
+        'error',
+        reason instanceof Error ? reason.message : 'No se pudo generar el PDF oficial.',
+      );
+    }
+  };
+
+  const pageOffset = (pageData.page - 1) * pageData.pageSize;
   const activeSectionMeta = SECRETARIA_SECTIONS[activeTab];
 
   return (
     <div className="w-full min-h-[calc(100vh-4.75rem)] bg-gradient-to-b from-[#f8fafd] to-[#f2f5fa] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="max-w-[1220px] mx-auto space-y-4">
-        <header className={`${secTokens.surface} px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4`}>
+        <header
+          className={`${secTokens.surface} px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4`}
+        >
           <div className="flex items-center gap-3.5 min-w-0">
             <Link
               to="/gestion"
@@ -236,7 +370,9 @@ export default function SecretariaPage() {
                 <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#e22328]">
                   Gestión interna
                 </span>
-                <span className="text-slate-300 text-xs" aria-hidden="true">·</span>
+                <span className="text-slate-300 text-xs" aria-hidden="true">
+                  ·
+                </span>
                 <span className="text-[11px] font-medium text-slate-500 truncate">
                   {activeSectionMeta.label}
                 </span>
@@ -261,7 +397,7 @@ export default function SecretariaPage() {
               <span>{safeModeWhatsApp ? 'WhatsApp Bloqueado' : 'WhatsApp Activo'}</span>
             </button>
 
-            {activeTab === 'CENSUS' && (
+            {activeTab === 'CENSUS' && canCreate && (
               <SecButton
                 variant="primary"
                 size="md"
@@ -275,7 +411,7 @@ export default function SecretariaPage() {
             <SecButton
               variant="secondary"
               size="icon"
-              onClick={loadData}
+              onClick={triggerReload}
               aria-label="Actualizar listado"
               title="Actualizar listado"
             >
@@ -284,11 +420,67 @@ export default function SecretariaPage() {
           </div>
         </header>
 
+        {feedback && (
+          <div
+            role="status"
+            className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs font-medium shadow-2xs ${
+              feedback.tone === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                : 'border-rose-200 bg-rose-50 text-rose-900'
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              {feedback.tone === 'success' ? (
+                <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle size={15} className="text-rose-600 shrink-0" />
+              )}
+              <span>{feedback.text}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              className="p-1 rounded-lg hover:bg-black/5 cursor-pointer"
+              aria-label="Cerrar notificación"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {censusFormRecord !== undefined && (
           <SecretariaCensoForm
             record={censusFormRecord}
             onClose={() => setCensusFormRecord(undefined)}
             onSaved={handleCensusSaved}
+          />
+        )}
+
+        {detailRecordId && (
+          <ApplicantDetailModal
+            key={detailRecordId}
+            recordId={detailRecordId}
+            canUpdate={canUpdate}
+            onClose={() => setDetailRecordId(null)}
+            onSelectRecord={(nextId) => setDetailRecordId(nextId)}
+            onUpdated={() => triggerReload()}
+            onRequestEditCensus={(rec) => {
+              setDetailRecordId(null);
+              setCensusFormRecord(rec);
+            }}
+            onTriggerLifecycleAction={(type, rec) => {
+              setConfirmAction({ type, record: rec } as SecretariaConfirmAction);
+            }}
+            onNotify={notify}
+          />
+        )}
+
+        {confirmAction && (
+          <SecretariaConfirmModal
+            action={confirmAction}
+            busy={actionBusy}
+            onCancel={() => setConfirmAction(null)}
+            onConfirm={handleExecuteConfirmedAction}
           />
         )}
 
@@ -300,7 +492,7 @@ export default function SecretariaPage() {
           >
             {TABS.map((t) => {
               const isActive = activeTab === t.id;
-              const count = sectionCounts[t.id];
+              const count = pageData.sectionCounts[t.id];
               const Icon = t.icon;
               return (
                 <button
@@ -322,9 +514,7 @@ export default function SecretariaPage() {
                   <span>{t.label}</span>
                   <span
                     className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold transition-colors ${
-                      isActive
-                        ? 'bg-[#01317b] text-white'
-                        : 'bg-slate-200/80 text-slate-600'
+                      isActive ? 'bg-[#01317b] text-white' : 'bg-slate-200/80 text-slate-600'
                     }`}
                   >
                     {count}
@@ -340,8 +530,8 @@ export default function SecretariaPage() {
           filters={filters}
           sortBy={sortBy}
           sortOrder={sortOrder}
-          totalMatchingCount={filteredRecords.length}
-          totalSectionCount={sectionCounts[activeTab]}
+          totalMatchingCount={pageData.totalMatching}
+          totalSectionCount={pageData.sectionCounts[activeTab]}
           onChangeFilter={handleChangeFilter}
           onClearFilter={handleClearFilter}
           onClearAllFilters={handleClearAllFilters}
@@ -370,7 +560,7 @@ export default function SecretariaPage() {
                 </div>
               ))}
             </div>
-          ) : filteredRecords.length === 0 ? (
+          ) : pageData.items.length === 0 ? (
             <div className={`${secTokens.surface} px-6 py-14 text-center space-y-3.5`}>
               <div className="w-12 h-12 rounded-2xl bg-[#01317b]/[0.07] text-[#01317b] flex items-center justify-center mx-auto">
                 <SearchX size={22} />
@@ -389,11 +579,7 @@ export default function SecretariaPage() {
               </div>
               {activeChips.length > 0 && (
                 <div className="pt-1">
-                  <SecButton
-                    variant="secondary"
-                    size="md"
-                    onClick={handleClearAllFilters}
-                  >
+                  <SecButton variant="secondary" size="md" onClick={handleClearAllFilters}>
                     <RotateCcw size={13} />
                     <span>Limpiar búsqueda y filtros</span>
                   </SecButton>
@@ -403,7 +589,7 @@ export default function SecretariaPage() {
           ) : (
             <>
               <div className="space-y-2.5">
-                {paginatedRecords.map((record, index) => (
+                {pageData.items.map((record, index) => (
                   <ApplicantCard
                     key={record.id}
                     record={record}
@@ -411,30 +597,48 @@ export default function SecretariaPage() {
                     activeTab={activeTab}
                     safeModeWhatsApp={safeModeWhatsApp}
                     copiedId={copiedId}
+                    canUpdate={canUpdate}
+                    canDelete={canDelete}
                     onToggleInclusion={handleToggleInclusion}
-                    onStatusChange={handleStatusChange}
-                    onOfferSpot={handleOfferSpot}
+                    onValidate={(rec) => setConfirmAction({ type: 'VALIDATE', record: rec })}
+                    onOfferSpot={(rec) => setConfirmAction({ type: 'OFFER_SPOT', record: rec })}
+                    onRenewToken={(rec) => setConfirmAction({ type: 'RENEW_TOKEN', record: rec })}
+                    onReturnWaitlist={(rec) =>
+                      setConfirmAction({ type: 'RETURN_WAITLIST', record: rec })
+                    }
+                    onMarkReviewed={(rec) =>
+                      setConfirmAction({ type: 'MARK_REVIEWED', record: rec })
+                    }
+                    onAdmitCensus={(rec) => setConfirmAction({ type: 'ADMIT_CENSUS', record: rec })}
+                    onDeactivate={(rec) => setConfirmAction({ type: 'DEACTIVATE', record: rec })}
+                    onReactivate={(rec) => setConfirmAction({ type: 'REACTIVATE', record: rec })}
                     onOpenWhatsApp={handleOpenWhatsApp}
                     onCopyLink={handleCopyLink}
-                    onDelete={handleDelete}
+                    onDownloadPdf={handleDownloadPdf}
+                    onDelete={(rec) => setConfirmAction({ type: 'DELETE', record: rec })}
                     onEditCensus={(rec) => setCensusFormRecord(rec)}
+                    onEdit={(rec) => setDetailRecordId(rec.id)}
                   />
                 ))}
               </div>
 
-              {filteredRecords.length > PAGE_SIZE_OPTIONS[0] && (
+              {(pageData.totalMatching > PAGE_SIZE_OPTIONS[0] || pageData.totalPages > 1) && (
                 <SecretariaPagination
                   pageOffset={pageOffset}
-                  pageSize={pageSize}
-                  totalCount={filteredRecords.length}
-                  currentPage={safeCurrentPage}
-                  totalPages={totalPages}
+                  pageSize={pageData.pageSize}
+                  totalCount={pageData.totalMatching}
+                  currentPage={pageData.page}
+                  totalPages={pageData.totalPages}
                   pageSizeOptions={PAGE_SIZE_OPTIONS}
                   onPageSizeChange={(nextSize) => {
+                    setLoading(true);
                     setPageSize(nextSize);
                     setCurrentPage(1);
                   }}
-                  onPageChange={setCurrentPage}
+                  onPageChange={(nextPage) => {
+                    setLoading(true);
+                    setCurrentPage(nextPage);
+                  }}
                 />
               )}
             </>
