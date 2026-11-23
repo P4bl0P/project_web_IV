@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CheckCircle2,
   ChevronLeft,
@@ -11,6 +12,7 @@ import {
   type ApplicantRecord,
   type DirectCensusPayload,
 } from '../../services/api';
+import { useLockBodyScroll } from '../../utils/useLockBodyScroll';
 import Step1Legal from '../inscripcion/Step1Legal';
 import Step2Medical from '../inscripcion/Step2Medical';
 import Step3Bank from '../inscripcion/Step3Bank';
@@ -47,6 +49,8 @@ const STEPS: {
 ];
 
 export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
+  useLockBodyScroll();
+
   const [formData, setFormData] = useState<DirectCensusPayload>(() => ({ ...EMPTY_CENSUS_FORM }));
   const [step, setStep] = useState<CensusStepNumber>(1);
   const [visitedSteps, setVisitedSteps] = useState<Partial<Record<CensusStepNumber, boolean>>>({
@@ -158,7 +162,7 @@ export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
 
   const applicantForSteps = { parent1FirstName: formData.parent1FirstName };
 
-  return (
+  return createPortal(
     <div
       className={secTokens.modalBackdrop}
       role="dialog"
@@ -166,7 +170,7 @@ export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
       aria-labelledby="census-form-title"
     >
       <div className={secTokens.modalPanel}>
-        <header className="flex items-start justify-between gap-4 bg-gradient-to-r from-[#000254] to-[#01317b] px-5 sm:px-7 py-5 text-white">
+        <header className="shrink-0 flex items-start justify-between gap-4 bg-gradient-to-r from-[#000254] to-[#01317b] px-5 sm:px-7 py-5 text-white">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
               Secretaría · Censo Oficial
@@ -190,7 +194,7 @@ export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
         </header>
 
         <nav
-          className="grid grid-cols-2 gap-2 border-b border-slate-200/85 bg-white px-4 sm:px-6 py-3 md:grid-cols-4"
+          className="shrink-0 grid grid-cols-2 gap-2 border-b border-slate-200/85 bg-white px-4 sm:px-6 py-3 md:grid-cols-4"
           aria-label="Pasos del formulario"
         >
           {STEPS.map((item) => {
@@ -247,7 +251,7 @@ export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
           })}
         </nav>
 
-        <main className="space-y-4 p-4 sm:p-6 max-h-[calc(85vh-9rem)] overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4 p-4 sm:p-6">
           {error && <CensusErrorSummary message={error} fieldErrors={fieldErrors} />}
 
           {step === 1 && (
@@ -302,34 +306,35 @@ export default function SecretariaCensoForm({ onClose, onSaved }: Props) {
               }}
             />
           )}
-
-          <footer className="flex items-center justify-between gap-3 border-t border-slate-200/85 pt-4 mt-2">
-            {step > 1 ? (
-              <SecButton variant="secondary" size="lg" onClick={handlePrevious}>
-                <ChevronLeft size={15} /> Anterior
-              </SecButton>
-            ) : (
-              <div />
-            )}
-
-            {step < 4 ? (
-              <SecButton variant="primary" size="lg" onClick={handleNext}>
-                Siguiente <ChevronRight size={15} />
-              </SecButton>
-            ) : (
-              <SecButton
-                variant="success"
-                size="lg"
-                disabled={saving}
-                onClick={handleSubmit}
-              >
-                <ShieldCheck size={16} />
-                {saving ? 'Guardando…' : 'Crear y censar'}
-              </SecButton>
-            )}
-          </footer>
         </main>
+
+        <footer className="shrink-0 flex items-center justify-between gap-3 border-t border-slate-200/85 bg-white px-5 py-3.5">
+          {step > 1 ? (
+            <SecButton variant="secondary" size="lg" onClick={handlePrevious}>
+              <ChevronLeft size={15} /> Anterior
+            </SecButton>
+          ) : (
+            <div />
+          )}
+
+          {step < 4 ? (
+            <SecButton variant="primary" size="lg" onClick={handleNext}>
+              Siguiente <ChevronRight size={15} />
+            </SecButton>
+          ) : (
+            <SecButton
+              variant="success"
+              size="lg"
+              disabled={saving}
+              onClick={handleSubmit}
+            >
+              <ShieldCheck size={16} />
+              {saving ? 'Guardando…' : 'Crear y censar'}
+            </SecButton>
+          )}
+        </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

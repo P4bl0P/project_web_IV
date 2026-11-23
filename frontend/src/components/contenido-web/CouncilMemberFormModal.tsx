@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import type {
   CouncilMember,
@@ -13,6 +14,7 @@ import {
   type CouncilFormErrors,
   type CouncilFormValues,
 } from '../../utils/councilValidators';
+import { useLockBodyScroll } from '../../utils/useLockBodyScroll';
 import { SecButton } from '../secretaria/secretariaTheme';
 import FormAlert from '../shared/forms/FormAlert';
 import FormField from '../shared/forms/FormField';
@@ -40,6 +42,8 @@ export default function CouncilMemberFormModal({
   onClose,
   onSubmit,
 }: Props) {
+  useLockBodyScroll();
+
   const isEditing = Boolean(member);
   const rolesList = availableRoles.length ? availableRoles : [...COUNCIL_ROLES];
 
@@ -94,14 +98,14 @@ export default function CouncilMemberFormModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#0c1933]/40 backdrop-blur-md p-4 flex items-center justify-center animate-sec-backdrop"
+      className="fixed inset-0 z-50 m-0 h-dvh w-screen overflow-hidden overscroll-none bg-[#0c1933]/45 backdrop-blur-md p-4 flex items-center justify-center animate-sec-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="council-modal-title"
     >
-      <div className="relative w-full max-w-xl rounded-[24px] border border-white/80 bg-[#f8f9fc] shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal overflow-hidden">
+      <div className="relative w-full max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-[24px] border border-white/80 bg-[#f8f9fc] shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 bg-white px-6 py-4">
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#e22328]">
@@ -216,6 +220,7 @@ export default function CouncilMemberFormModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

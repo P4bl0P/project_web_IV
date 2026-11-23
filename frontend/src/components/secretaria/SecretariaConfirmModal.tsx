@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Check,
@@ -20,6 +21,7 @@ import {
   type ApplicantRecord,
   type ClosureReason,
 } from '../../services/api';
+import { useLockBodyScroll } from '../../utils/useLockBodyScroll';
 import { SecButton } from './secretariaTheme';
 import { secFilterControlClass, secTokens } from './secretariaTokens';
 
@@ -50,6 +52,8 @@ interface Props {
 const CLOSURE_REASONS = Object.keys(CLOSURE_REASON_LABELS) as ClosureReason[];
 
 export default function SecretariaConfirmModal({ action, busy, onCancel, onConfirm }: Props) {
+  useLockBodyScroll();
+
   const [closureReason, setClosureReason] = useState<ClosureReason>('BAJA_VOLUNTARIA');
   const [closureNotes, setClosureNotes] = useState('');
   const [reasonText, setReasonText] = useState('');
@@ -64,14 +68,14 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
       setTimeout(() => setCopiedMsg(false), 2000);
     };
 
-    return (
+    return createPortal(
       <div
-        className={secTokens.modalBackdrop}
+        className={`${secTokens.modalBackdrop} z-[60]`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="sec-confirm-title"
       >
-        <div className="w-full max-w-lg my-auto rounded-[22px] border border-white/80 bg-white p-6 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal space-y-4">
+        <div className="w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-[22px] border border-white/80 bg-white p-6 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
@@ -108,7 +112,8 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
             </SecButton>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
@@ -222,14 +227,14 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
     void onConfirm();
   };
 
-  return (
+  return createPortal(
     <div
-      className={secTokens.modalBackdrop}
+      className={`${secTokens.modalBackdrop} z-[60]`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="sec-confirm-title"
     >
-      <div className="w-full max-w-md my-auto rounded-[22px] border border-white/80 bg-white p-6 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal space-y-4">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-[22px] border border-white/80 bg-white p-6 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22)] animate-sec-modal space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3.5 min-w-0">
             <span
@@ -349,6 +354,7 @@ export default function SecretariaConfirmModal({ action, busy, onCancel, onConfi
           </SecButton>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

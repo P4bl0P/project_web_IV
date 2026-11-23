@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -26,6 +27,7 @@ import {
 import { formatIsoToHumanShort } from '../../utils/dateUtils';
 import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
 import { REGEX } from '../../utils/scoutValidators';
+import { useLockBodyScroll } from '../../utils/useLockBodyScroll';
 import DatePicker from '../shared/forms/DatePicker';
 import FormField from '../shared/forms/FormField';
 import { formCheckboxClass, formInputClass } from '../shared/forms/formStyles';
@@ -246,6 +248,8 @@ export default function ApplicantDetailModal({
   onTriggerLifecycleAction,
   onNotify,
 }: Props) {
+  useLockBodyScroll();
+
   const [detail, setDetail] = useState<ApplicantRecord | null>(null);
   const [history, setHistory] = useState<AuditHistoryEvent[]>([]);
   const [auroraPreview, setAuroraPreview] = useState<Record<string, unknown> | null>(null);
@@ -550,7 +554,7 @@ export default function ApplicantDetailModal({
     : -1;
   const hasEnrollment = Boolean(detail?.enrollment);
 
-  return (
+  return createPortal(
     <div
       className={secTokens.modalBackdrop}
       role="dialog"
@@ -558,7 +562,7 @@ export default function ApplicantDetailModal({
       aria-labelledby="applicant-detail-title"
     >
       <div className={secTokens.modalPanel}>
-        <header className="flex items-start justify-between gap-4 bg-gradient-to-r from-[#000254] to-[#01317b] px-5 sm:px-7 py-5 text-white">
+        <header className="shrink-0 flex items-start justify-between gap-4 bg-gradient-to-r from-[#000254] to-[#01317b] px-5 sm:px-7 py-5 text-white">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-200">
               Secretaría · Ficha del expediente
@@ -591,7 +595,7 @@ export default function ApplicantDetailModal({
 
         {/* Indicador visual de fase del ciclo de vida */}
         {detail && detail.status !== 'BAJA' && (
-          <div className="border-b border-slate-200/80 bg-[#f8fafd] px-5 py-2.5 overflow-x-auto">
+          <div className="shrink-0 border-b border-slate-200/80 bg-[#f8fafd] px-5 py-2.5 overflow-x-auto">
             <div className="flex items-center gap-1.5 min-w-max">
               {WORKFLOW_STEPS.map((stepItem, idx) => {
                 const isDone = idx < currentStepIdx;
@@ -621,7 +625,7 @@ export default function ApplicantDetailModal({
           </div>
         )}
 
-        <nav className="flex items-center gap-1.5 border-b border-slate-200/85 bg-white px-5 py-2.5 overflow-x-auto">
+        <nav className="shrink-0 flex items-center gap-1.5 border-b border-slate-200/85 bg-white px-5 py-2.5 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('expediente')}
@@ -659,7 +663,7 @@ export default function ApplicantDetailModal({
           </button>
         </nav>
 
-        <main className="p-5 sm:p-6 max-h-[calc(85vh-13rem)] overflow-y-auto space-y-4">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4">
           {loading ? (
             <div className="py-12 text-center text-xs text-slate-500">
               Cargando expediente y auditoría…
@@ -1581,7 +1585,7 @@ export default function ApplicantDetailModal({
         </main>
 
         {detail && (
-          <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/85 bg-white px-5 py-3.5">
+          <footer className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/85 bg-white px-5 py-3.5">
             <div className="flex flex-wrap items-center gap-2">
               {canUpdate && detail.status === 'PENDIENTE_REVISION' && (
                 <SecButton
@@ -1682,6 +1686,7 @@ export default function ApplicantDetailModal({
           </footer>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

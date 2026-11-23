@@ -29,9 +29,9 @@ export const secTokens = {
   cardInteractive:
     'bg-white border border-slate-200/85 rounded-2xl shadow-[0_2px_10px_-3px_rgba(12,25,51,0.04)] hover:border-slate-300/95 hover:shadow-[0_12px_28px_-8px_rgba(0,2,84,0.08)] transition-all duration-200 ease-out',
   modalBackdrop:
-    'fixed inset-0 z-50 overflow-y-auto bg-[#0c1933]/40 backdrop-blur-md p-3 sm:p-6 flex items-start justify-center animate-sec-backdrop',
+    'fixed inset-0 z-50 m-0 h-dvh w-screen overflow-hidden overscroll-none bg-[#0c1933]/45 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center animate-sec-backdrop',
   modalPanel:
-    'relative w-full max-w-4xl my-auto overflow-hidden rounded-[24px] bg-[#f8f9fc] border border-white/80 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22),0_4px_16px_rgba(12,25,51,0.08)] animate-sec-modal',
+    'relative flex flex-col w-full max-w-4xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] overflow-hidden rounded-[24px] bg-[#f8f9fc] border border-white/80 shadow-[0_24px_64px_-12px_rgba(0,2,84,0.22),0_4px_16px_rgba(12,25,51,0.08)] animate-sec-modal',
   focusRing:
     'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#01317b]/20 focus-visible:border-[#01317b]',
 };
