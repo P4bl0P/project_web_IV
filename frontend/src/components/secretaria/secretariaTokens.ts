@@ -143,6 +143,9 @@ export function getBranchVisualConfig(calculatedBranch: string): {
   if (normalized.startsWith('rutas')) {
     return { name: 'Rutas', tone: 'rutas', dotColor: BRANCH_DOT_COLORS.Rutas };
   }
+  if (normalized.startsWith('responsables')) {
+    return { name: 'Responsables', tone: 'navy', dotColor: 'bg-[#000254]' };
+  }
   return { name: calculatedBranch, tone: 'neutral', dotColor: 'bg-slate-400' };
 }
 

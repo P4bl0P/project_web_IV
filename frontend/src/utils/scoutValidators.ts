@@ -1,4 +1,5 @@
 import type { CreateApplicationPayload, CompleteEnrollmentPayload } from '../services/api';
+import { calculateScoutBranchForRound } from './scoutBranch';
 import { getTodayIsoDate, parseIsoDate } from './dateUtils';
 
 export const REGEX = {
@@ -11,25 +12,28 @@ export const REGEX = {
 
 export type SolicitudFieldErrors = Partial<Record<keyof CreateApplicationPayload, string>>;
 
-export function calculatePreviewBranch(birthDateStr: string): { branch: string; age: number } | null {
+const BRANCH_SUBTITLES: Record<string, string> = {
+  Castores: 'Castores (Colonia)',
+  Lobatos: 'Lobatos (Manada)',
+  Rangers: 'Rangers (Tropa)',
+  Pioneros: 'Pioneros (Escultas)',
+  Rutas: 'Rutas (Agrupación de Rutas · fuera de grupo)',
+  Responsables: 'Responsables (21+ años)',
+  'Menor de 6 años': 'Menor de 6 años (fuera de edad mínima)',
+};
+
+export function calculatePreviewBranch(birthDateStr: string): { branch: string; age: number; solarRoundLabel: string; isEligibleAsYouth: boolean } | null {
   if (!birthDateStr) return null;
   const parsed = parseIsoDate(birthDateStr);
-  const birthYear = parsed ? parsed.year : new Date(birthDateStr).getFullYear();
-  if (Number.isNaN(birthYear)) return null;
+  if (!parsed) return null;
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const solarRoundStartYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-  const age = solarRoundStartYear - birthYear;
-
-  if (age < 6) return { branch: 'Pre-Castor (< 6 años)', age };
-  if (age >= 6 && age <= 7) return { branch: 'Castores (Colonia)', age };
-  if (age >= 8 && age <= 10) return { branch: 'Lobatos (Manada)', age };
-  if (age >= 11 && age <= 13) return { branch: 'Rangers (Tropa)', age };
-  if (age >= 14 && age <= 16) return { branch: 'Pioneros (Escultas)', age };
-  if (age >= 17 && age <= 19) return { branch: 'Rutas (Clan)', age };
-  return { branch: 'Fuera de rango (> 19 años)', age };
+  const calc = calculateScoutBranchForRound(birthDateStr);
+  return {
+    branch: BRANCH_SUBTITLES[calc.branch] ?? calc.branch,
+    age: calc.age,
+    solarRoundLabel: calc.solarRound.label,
+    isEligibleAsYouth: calc.isEligibleAsYouth,
+  };
 }
 
 export function validateSolicitudForm(

@@ -11,11 +11,13 @@ import { CreateDirectCensusDto, UpdateCensusDto } from './dto/direct-census.dto'
 import { QueryApplicationsDto, SortField, SortOrder } from './dto/query-applications.dto';
 import { ApplicationStatus, Applicant, EnrollmentDetails } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { calculateScoutBranchForRound } from './scout-branch.util';
 
 export type EnrichedApplicant = Applicant & {
   enrollment?: EnrollmentDetails | null;
   calculatedBranch: string;
   currentAge: number;
+  solarRound?: string;
   priorityScore: number;
   isIncomplete: boolean;
   missingFields: string[];
@@ -30,13 +32,13 @@ const VALIDATION_REGEX = {
 };
 
 const BRANCH_ORDER: Record<string, number> = {
-  'Pre-Castor (< 6 años)': 0,
+  'Menor de 6 años': 0,
   Castores: 1,
   Lobatos: 2,
   Rangers: 3,
   Pioneros: 4,
   Rutas: 5,
-  'Fuera de rango': 6,
+  Responsables: 6,
 };
 
 export function normalizeSearchText(text: string | null | undefined): string {
@@ -59,34 +61,18 @@ export class ApplicationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Calcula dinámicamente la rama scout según el año de nacimiento y la Ronda Solar actual.
-   * Si estamos en sept-dic, la ronda solar es el año actual; si es ene-ago, empezó el año anterior.
+   * Calcula dinámicamente la rama scout según la edad que el educando cumple durante la Ronda Solar.
    */
-  calculateScoutBranch(birthDate: Date): { branch: string; age: number } {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1 - 12
-    const solarRoundStartYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-
-    const birthYear = birthDate.getFullYear();
-    const ageInSolarRound = solarRoundStartYear - birthYear;
-
-    let branch = 'Fuera de rango';
-    if (ageInSolarRound >= 6 && ageInSolarRound <= 7) {
-      branch = 'Castores';
-    } else if (ageInSolarRound >= 8 && ageInSolarRound <= 10) {
-      branch = 'Lobatos';
-    } else if (ageInSolarRound >= 11 && ageInSolarRound <= 13) {
-      branch = 'Rangers';
-    } else if (ageInSolarRound >= 14 && ageInSolarRound <= 16) {
-      branch = 'Pioneros';
-    } else if (ageInSolarRound >= 17 && ageInSolarRound <= 19) {
-      branch = 'Rutas';
-    } else if (ageInSolarRound < 6) {
-      branch = 'Pre-Castor (< 6 años)';
-    }
-
-    return { branch, age: ageInSolarRound };
+  calculateScoutBranch(
+    birthDate: Date,
+    solarRound?: string | number | Date,
+  ): { branch: string; age: number; solarRoundLabel: string } {
+    const calc = calculateScoutBranchForRound(birthDate, solarRound);
+    return {
+      branch: calc.branch,
+      age: calc.age,
+      solarRoundLabel: calc.solarRound.label,
+    };
   }
 
   /**
@@ -540,10 +526,17 @@ export class ApplicationsService {
 
   // 1. Crear solicitud inicial (Fase 1)
   async create(dto: CreateApplicationDto): Promise<EnrichedApplicant> {
-    const { childBirthDate, ...rest } = dto;
+    const { childBirthDate, ApartmentDoor, ...rest } = dto;
+    const normalizedLastName = rest.childLastName.trim();
+    const [firstSurname, ...otherSurnames] = normalizedLastName.split(/\s+/);
     const created = await this.prisma.applicant.create({
       data: {
         ...rest,
+        childLastName: normalizedLastName,
+        childLastName1: firstSurname || normalizedLastName,
+        childLastName2: otherSurnames.length > 0 ? otherSurnames.join(' ') : null,
+        hasNoSecondLastName: otherSurnames.length === 0,
+        apartmentDoor: ApartmentDoor,
         childBirthDate: new Date(childBirthDate),
       },
     });
@@ -620,15 +613,20 @@ export class ApplicationsService {
     } = dto;
 
     const created = await this.prisma.$transaction(async (tx) => {
+      const normalizedLastName = childLastName.trim();
+      const [firstSurname, ...otherSurnames] = normalizedLastName.split(/\s+/);
       return tx.applicant.create({
         data: {
           childFirstName,
-          childLastName,
+          childLastName: normalizedLastName,
+          childLastName1: firstSurname || normalizedLastName,
+          childLastName2: otherSurnames.length > 0 ? otherSurnames.join(' ') : null,
+          hasNoSecondLastName: otherSurnames.length === 0,
           childBirthDate: new Date(childBirthDate),
           gender,
           streetAddress,
           streetNumber,
-          ApartmentDoor,
+          apartmentDoor: ApartmentDoor,
           postalCode,
           municipality,
           province,
@@ -742,7 +740,7 @@ export class ApplicationsService {
           ...(gender !== undefined ? { gender } : {}),
           ...(streetAddress !== undefined ? { streetAddress } : {}),
           ...(streetNumber !== undefined ? { streetNumber } : {}),
-          ...(ApartmentDoor !== undefined ? { ApartmentDoor } : {}),
+          ...(ApartmentDoor !== undefined ? { apartmentDoor: ApartmentDoor } : {}),
           ...(postalCode !== undefined ? { postalCode } : {}),
           ...(municipality !== undefined ? { municipality } : {}),
           ...(province !== undefined ? { province } : {}),
@@ -867,7 +865,7 @@ export class ApplicationsService {
         status: ApplicationStatus.INSCRIPCION_COMPLETADA,
         ...(streetAddress ? { streetAddress } : {}),
         ...(streetNumber !== undefined ? { streetNumber } : {}),
-        ...(ApartmentDoor !== undefined ? { ApartmentDoor } : {}),
+        ...(ApartmentDoor !== undefined ? { apartmentDoor: ApartmentDoor } : {}),
         ...(postalCode ? { postalCode } : {}),
         ...(municipality ? { municipality } : {}),
         ...(province ? { province } : {}),
