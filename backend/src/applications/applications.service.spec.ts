@@ -163,13 +163,29 @@ describe('ApplicationsService - Buscador inteligente, filtros y ordenación en S
       expect(result.missingFields).toContain('Detalles del familiar en el grupo');
     });
 
-    it('marca un registro en LISTA_ESPERA o CENSADO sin ficha de inscripción completa como incompleto', () => {
-      const waitlistWithoutEnrollment = makeBaseApplicant({
+    it('NO marca una solicitud en LISTA_ESPERA sin ficha de inscripción (Fase 2) como incompleta si su Fase 1 es válida', () => {
+      const waitlistApplicant = makeBaseApplicant({
         status: ApplicationStatus.LISTA_ESPERA,
+        streetAddress: null,
+        postalCode: null,
+        municipality: null,
+        province: null,
+        gender: null,
         enrollment: null,
       });
 
-      const result = service.evaluateCompleteness(waitlistWithoutEnrollment);
+      const result = service.evaluateCompleteness(waitlistApplicant);
+      expect(result.isIncomplete).toBe(false);
+      expect(result.missingFields).toEqual([]);
+    });
+
+    it('marca una inscripción completada o registro CENSADO sin ficha de inscripción como incompleto', () => {
+      const censusWithoutEnrollment = makeBaseApplicant({
+        status: ApplicationStatus.CENSADO,
+        enrollment: null,
+      });
+
+      const result = service.evaluateCompleteness(censusWithoutEnrollment);
       expect(result.isIncomplete).toBe(true);
       expect(result.missingFields).toContain('Ficha de inscripción completa');
     });

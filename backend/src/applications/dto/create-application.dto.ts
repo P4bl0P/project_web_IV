@@ -20,62 +20,119 @@ const trimString = ({ value }: { value: unknown }) =>
 const cleanPhone = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.replace(/\s+/g, '') : value;
 
+const trimOptionalString = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 export class CreateApplicationDto {
   @Transform(trimString)
   @IsString()
-  @MinLength(2, { message: 'El nombre del menor debe tener al menos 2 caracteres.' })
-  @MaxLength(60, { message: 'El nombre del menor es demasiado largo.' })
+  @MinLength(2, { message: 'El nombre del educando debe tener al menos 2 caracteres.' })
+  @MaxLength(60, { message: 'El nombre del educando es demasiado largo.' })
   childFirstName: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @IsString()
-  @MinLength(2, { message: 'Los apellidos del menor deben tener al menos 2 caracteres.' })
-  @MaxLength(100, { message: 'Los apellidos del menor son demasiado largos.' })
-  childLastName: string;
+  @MinLength(2, { message: 'El primer apellido debe tener al menos 2 caracteres.' })
+  @MaxLength(60)
+  @IsOptional()
+  childLastName1?: string;
+
+  @Transform(trimOptionalString)
+  @IsString()
+  @MaxLength(60)
+  @IsOptional()
+  childLastName2?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  hasNoSecondLastName?: boolean;
+
+  @Transform(trimOptionalString)
+  @ValidateIf((o) => o.hasNoSecondLastName === true)
+  @IsString()
+  @MinLength(5, {
+    message: 'Debes justificar explícitamente por qué no dispone de segundo apellido.',
+  })
+  @MaxLength(250)
+  noSecondLastNameJustification?: string;
+
+  // Compatibilidad con clientes legados (si no envían childLastName1 desglosado)
+  @Transform(trimOptionalString)
+  @ValidateIf((o) => !o.childLastName1)
+  @IsString()
+  @MinLength(2, { message: 'Los apellidos del educando son obligatorios.' })
+  @MaxLength(120)
+  childLastName?: string;
 
   @IsDateString({}, { message: 'La fecha de nacimiento no tiene un formato válido.' })
   childBirthDate: string;
 
-  @IsEnum(Gender, { message: 'El género seleccionado no es válido.' })
+  // Opcional en Fase 1 (se solicita oficialmente en Inscripción Fase 2)
+  @IsEnum([Gender.MASCULINO, Gender.FEMENINO], {
+    message: 'El género debe ser Masculino o Femenino.',
+  })
   @IsOptional()
   gender?: Gender;
 
-  @Transform(trimString)
+  // Dirección opcional en Fase 1 (se recoge exclusivamente en Inscripción Fase 2)
+  @Transform(trimOptionalString)
   @IsString()
-  @MinLength(3, { message: 'La dirección debe tener al menos 3 caracteres.' })
+  @MinLength(3)
   @MaxLength(150)
-  streetAddress: string;
+  @IsOptional()
+  streetAddress?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @IsString()
   @MaxLength(20)
   @IsOptional()
   streetNumber?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
+  @IsString()
+  @MaxLength(30)
+  @IsOptional()
+  apartmentDoor?: string;
+
+  // Compatibilidad temporal con clientes que envíen ApartmentDoor
+  @Transform(trimOptionalString)
   @IsString()
   @MaxLength(30)
   @IsOptional()
   ApartmentDoor?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @Matches(/^(?:0[1-9]|[1-4]\d|5[0-2])\d{3}$/, {
     message: 'El código postal debe ser un código español válido de 5 dígitos (ej. 41089).',
   })
-  postalCode: string;
+  @IsOptional()
+  postalCode?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @IsString()
-  @MinLength(2, { message: 'El municipio es obligatorio.' })
+  @MinLength(2)
   @MaxLength(80)
-  municipality: string;
+  @IsOptional()
+  municipality?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @IsString()
-  @MinLength(2, { message: 'La provincia es obligatoria.' })
+  @MinLength(2)
   @MaxLength(50)
-  province: string;
+  @IsOptional()
+  province?: string;
 
+  // Identificador de unidad familiar (para agrupar hermanos reutilizando tutores)
+  @Transform(trimOptionalString)
+  @IsString()
+  @MaxLength(80)
+  @IsOptional()
+  familyUnitId?: string;
+
+  // Tutor principal obligatorio
   @Transform(trimString)
   @IsString()
   @MinLength(2, { message: 'El nombre del tutor principal es obligatorio.' })
@@ -99,13 +156,14 @@ export class CreateApplicationDto {
   @MaxLength(120)
   parent1Email: string;
 
-  @Transform(trimString)
+  // Segundo tutor opcional
+  @Transform(trimOptionalString)
   @IsString()
   @MaxLength(60)
   @IsOptional()
   parent2FirstName?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @IsString()
   @MaxLength(100)
   @IsOptional()
@@ -119,13 +177,13 @@ export class CreateApplicationDto {
   @IsOptional()
   parent2Phone?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @ValidateIf((o) => Boolean(o.parent2Email))
   @IsEmail({}, { message: 'El correo electrónico del segundo tutor no es válido.' })
   @IsOptional()
   parent2Email?: string;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @IsString()
   @MaxLength(1000, { message: 'La motivación no puede superar los 1000 caracteres.' })
   @IsOptional()
@@ -135,7 +193,7 @@ export class CreateApplicationDto {
   @IsOptional()
   hasFamilyInGroup?: boolean;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @ValidateIf((o) => o.hasFamilyInGroup === true)
   @IsString()
   @IsNotEmpty({ message: 'Debes indicar el nombre y vínculo del familiar en el grupo.' })
@@ -146,10 +204,16 @@ export class CreateApplicationDto {
   @IsOptional()
   comesFromOtherGroup?: boolean;
 
-  @Transform(trimString)
+  @Transform(trimOptionalString)
   @ValidateIf((o) => o.comesFromOtherGroup === true)
   @IsString()
   @IsNotEmpty({ message: 'Debes indicar de qué grupo scout proviene.' })
   @MaxLength(200)
   originGroupDetails?: string;
+
+  @Transform(trimOptionalString)
+  @IsString()
+  @MaxLength(100)
+  @IsOptional()
+  idempotencyKey?: string;
 }
