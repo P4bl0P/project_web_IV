@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
   Globe,
-  Layers,
   Lock,
   LogOut,
   Menu,
@@ -12,13 +11,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import {
-  canAccessWebContent,
-  getRegisteredModules,
-  hasModulePermission,
-  isSuperAdmin,
-  useAuth,
-} from '../../auth';
+import { canAccessWebContent, isSuperAdmin, useAuth } from '../../auth';
 import type { SharedImagesCatalog } from '../../config/images/sharedImages';
 
 const links = [
@@ -116,7 +109,6 @@ export default function NavBar({ images }: NavBarProps) {
 
   const privateDestination = user ? '/gestion' : '/login';
   const privateLabel = user ? `Abrir área privada de ${user.name}` : 'Acceder al área privada';
-  const modules = getRegisteredModules(user);
   const canWebContent = canAccessWebContent(user, 'canRead');
 
   return (
@@ -176,7 +168,7 @@ export default function NavBar({ images }: NavBarProps) {
                 />
               </button>
               <div
-                className={`absolute top-[calc(100%+12px)] right-0 w-max min-w-[230px] rounded-[15px] border border-[#e4e9f1] bg-white p-[7px] shadow-[0_18px_50px_rgba(0,5,84,0.09)] transition-all duration-200 ${
+                className={`absolute top-[calc(100%+12px)] right-0 w-max min-w-[215px] rounded-[15px] border border-[#e4e9f1] bg-white p-[7px] shadow-[0_18px_50px_rgba(0,5,84,0.09)] transition-all duration-200 ${
                   managementOpen
                     ? 'visible translate-y-0 opacity-100'
                     : 'invisible -translate-y-[5px] opacity-0'
@@ -193,25 +185,6 @@ export default function NavBar({ images }: NavBarProps) {
                     <UserRound size={16} /> Mi perfil
                   </span>
                 </Link>
-
-                <div className="my-1 border-t border-[#eef1f6]" />
-                {modules.map((mod) => {
-                  const allowed = hasModulePermission(user, mod.key, 'canRead');
-                  const target = mod.route || `/gestion/modulo/${mod.key}`;
-                  return (
-                    <Link
-                      key={mod.key}
-                      to={target}
-                      role="menuitem"
-                      className={`${popoverItemClass} ${allowed ? '' : 'text-[#627089]'}`}
-                    >
-                      <span className="inline-flex items-center gap-[9px]">
-                        <Layers size={15} /> {mod.name}
-                      </span>
-                      {!allowed && <Lock size={13} className="text-[#9aa7ba]" aria-label="Sin acceso" />}
-                    </Link>
-                  );
-                })}
                 <Link
                   to="/gestion/contenido-web"
                   role="menuitem"
@@ -229,8 +202,6 @@ export default function NavBar({ images }: NavBarProps) {
                     </span>
                   </Link>
                 )}
-
-                <div className="my-1 border-t border-[#eef1f6]" />
                 <button type="button" role="menuitem" className={popoverItemClass} onClick={() => void handleLogout()}>
                   <span className="inline-flex items-center gap-[9px]">
                     <LogOut size={16} /> Cerrar sesión
@@ -311,22 +282,6 @@ export default function NavBar({ images }: NavBarProps) {
               <Link to="/perfil" tabIndex={open ? 0 : -1} className={`${mobileLinkBase} text-[#0c1933]`} onClick={closeMobileMenu}>
                 Mi perfil <UserRound size={17} />
               </Link>
-              {modules.map((mod) => {
-                const allowed = hasModulePermission(user, mod.key, 'canRead');
-                const target = mod.route || `/gestion/modulo/${mod.key}`;
-                return (
-                  <Link
-                    key={mod.key}
-                    to={target}
-                    tabIndex={open ? 0 : -1}
-                    className={`${mobileLinkBase} ${allowed ? 'text-[#0c1933]' : 'text-[#627089]'}`}
-                    onClick={closeMobileMenu}
-                  >
-                    <span>{mod.name}</span>
-                    {allowed ? <Layers size={17} /> : <Lock size={16} className="text-[#9aa7ba]" />}
-                  </Link>
-                );
-              })}
               <Link
                 to="/gestion/contenido-web"
                 tabIndex={open ? 0 : -1}

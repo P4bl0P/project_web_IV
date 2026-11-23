@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Copy, RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth';
 import AdminAuditSection from '../components/administracion/AdminAuditSection';
-import AdminModulesSection from '../components/administracion/AdminModulesSection';
+import AdminConfirmModal from '../components/administracion/AdminConfirmModal';
 import AdminPermissionsTable from '../components/administracion/AdminPermissionsTable';
 import AdminRolesSection from '../components/administracion/AdminRolesSection';
 import AdminUsersSection from '../components/administracion/AdminUsersSection';
@@ -15,18 +15,21 @@ import {
   type AdminUser,
   type RegisteredModule,
   type RolePermissionUpdateItem,
-  type SpecialActionDefinition,
 } from '../services/api';
 
-type Tab = 'users' | 'roles' | 'permissions' | 'modules' | 'audit';
+type Tab = 'users' | 'roles' | 'permissions' | 'audit';
 
 const TAB_LABELS: Record<Tab, string> = {
   users: 'Usuarios',
   roles: 'Cargos',
   permissions: 'Permisos',
-  modules: 'Módulos',
   audit: 'Auditoría',
 };
+
+type PendingDelete =
+  | { kind: 'user'; user: AdminUser }
+  | { kind: 'role'; role: AdminRole }
+  | null;
 
 export default function AdministracionPage() {
   const { user: currentUser } = useAuth();
@@ -39,6 +42,8 @@ export default function AdministracionPage() {
   const [busy, setBusy] = useState(true);
   const [savingPermissions, setSavingPermissions] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState('');
@@ -70,19 +75,16 @@ export default function AdministracionPage() {
     }
   }, []);
 
-  const loadAudit = useCallback(
-    async (filters?: { action?: string; result?: 'ALLOWED' | 'DENIED' }) => {
-      setLoadingAudit(true);
-      try {
-        setAuditEvents(await adminApi.audit(filters));
-      } catch (reason) {
-        setError(reason instanceof Error ? reason.message : 'No se pudo cargar la auditoría');
-      } finally {
-        setLoadingAudit(false);
-      }
-    },
-    [],
-  );
+  const loadAudit = useCallback(async (filters?: { result?: 'ALLOWED' | 'DENIED' }) => {
+    setLoadingAudit(true);
+    try {
+      setAuditEvents(await adminApi.audit(filters));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo cargar la auditoría');
+    } finally {
+      setLoadingAudit(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +127,7 @@ export default function AdministracionPage() {
       });
       setTemporaryPassword(result.temporaryPassword);
       setForm({ name: '', email: '', roleId: roles[0]?.id || '' });
-      setNotice(`Cuenta creada para ${result.user.email}.`);
+      setNotice(`Usuario ${result.user.name} creado.`);
       await load();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo crear la cuenta');
@@ -153,7 +155,7 @@ export default function AdministracionPage() {
     try {
       const updated = await adminApi.updateUser(userId, { roleId });
       setUsers((current) => current.map((item) => (item.id === userId ? updated : item)));
-      setNotice('Cargo actualizado y sesiones anteriores del usuario invalidadas.');
+      setNotice('Cargo actualizado.');
       await load();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo actualizar el cargo');
@@ -169,7 +171,7 @@ export default function AdministracionPage() {
     try {
       const updated = await adminApi.updateUser(userId, { status });
       setUsers((current) => current.map((item) => (item.id === userId ? updated : item)));
-      setNotice('Estado de la cuenta actualizado.');
+      setNotice('Estado actualizado.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo actualizar el estado');
     }
@@ -180,53 +182,9 @@ export default function AdministracionPage() {
     try {
       const result = await adminApi.resetPassword(userId);
       setTemporaryPassword(result.temporaryPassword);
-      setNotice('Contraseña temporal generada y sesiones previas revocadas.');
+      setNotice('Contraseña temporal generada.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo restablecer la contraseña');
-    }
-  };
-
-  const handleResetMfa = async (userId: string) => {
-    if (!window.confirm('¿Reiniciar la configuración MFA de esta cuenta?')) return;
-    setError('');
-    try {
-      await adminApi.resetMfa(userId);
-      setNotice('MFA reiniciado. El usuario deberá configurarlo en su próximo acceso.');
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo reiniciar el MFA');
-    }
-  };
-
-  const handleDeactivateUser = async (user: AdminUser) => {
-    if (!window.confirm(`¿Desactivar a ${user.name}? Sus sesiones activas se cerrarán de inmediato.`)) {
-      return;
-    }
-    setError('');
-    try {
-      await adminApi.deactivateUser(user.id);
-      setNotice(`Cuenta de ${user.name} desactivada.`);
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo desactivar la cuenta');
-    }
-  };
-
-  const handleDeleteUser = async (user: AdminUser) => {
-    if (
-      !window.confirm(
-        `¿Eliminar permanentemente la cuenta de ${user.name}? Esta acción no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
-    setError('');
-    try {
-      await adminApi.deleteUser(user.id);
-      setNotice(`Cuenta de ${user.name} eliminada.`);
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo eliminar la cuenta');
     }
   };
 
@@ -241,7 +199,7 @@ export default function AdministracionPage() {
         description: roleForm.description.trim() || null,
       });
       setRoleForm({ name: '', description: '' });
-      setNotice(`Cargo "${created.name}" creado. Configura sus permisos en la pestaña Permisos.`);
+      setNotice(`Cargo "${created.name}" creado.`);
       await load();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo crear el cargo');
@@ -263,16 +221,28 @@ export default function AdministracionPage() {
     }
   };
 
-  const deleteRole = async (role: AdminRole) => {
-    if (!window.confirm(`¿Eliminar el cargo "${role.name}"?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     setError('');
     setNotice('');
     try {
-      await adminApi.deleteRole(role.id);
-      setNotice(`Cargo "${role.name}" eliminado.`);
+      if (pendingDelete.kind === 'user') {
+        await adminApi.deleteUser(pendingDelete.user.id);
+        setNotice(`Cuenta de ${pendingDelete.user.name} eliminada.`);
+      } else {
+        await adminApi.deleteRole(pendingDelete.role.id);
+        setNotice(`Cargo "${pendingDelete.role.name}" eliminado.`);
+      }
+      setPendingDelete(null);
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo eliminar el cargo');
+      setPendingDelete(null);
+      setError(
+        reason instanceof Error ? reason.message : 'No se pudo completar la eliminación',
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -288,46 +258,11 @@ export default function AdministracionPage() {
       setRoles((current) =>
         current.map((item) => (item.id === roleId ? updatedRole : item)),
       );
-      setNotice(
-        `Permisos de "${updatedRole.name}" guardados y sesiones activas del cargo invalidadas.`,
-      );
+      setNotice(`Permisos de "${updatedRole.name}" guardados correctamente.`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudieron guardar los permisos');
     } finally {
       setSavingPermissions(false);
-    }
-  };
-
-  const handleCreateModule = async (data: {
-    key?: string;
-    name: string;
-    description?: string | null;
-    isImplemented?: boolean;
-    supportsRead: boolean;
-    supportsCreate: boolean;
-    supportsUpdate: boolean;
-    supportsDelete: boolean;
-    specialActions: SpecialActionDefinition[];
-  }) => {
-    setError('');
-    setNotice('');
-    try {
-      const created = await adminApi.createModule(data);
-      setNotice(`Módulo "${created.name}" registrado en el sistema de permisos.`);
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo registrar el módulo');
-    }
-  };
-
-  const handleToggleModuleImplemented = async (mod: RegisteredModule) => {
-    if (!mod.id) return;
-    setError('');
-    try {
-      await adminApi.updateModule(mod.id, { isImplemented: !mod.isImplemented });
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo actualizar el módulo');
     }
   };
 
@@ -346,7 +281,7 @@ export default function AdministracionPage() {
             Administración
           </h1>
           <p className="m-0 text-[#627089]">
-            Gestiona cuentas, cargos, permisos por módulo, registro de módulos y auditoría.
+            Gestiona cuentas, cargos y permisos desde un único lugar.
           </p>
         </div>
 
@@ -430,9 +365,7 @@ export default function AdministracionPage() {
           onUpdateUserRole={handleUpdateUserRole}
           onUpdateUserStatus={handleUpdateUserStatus}
           onResetPassword={handleResetPassword}
-          onResetMfa={handleResetMfa}
-          onDeactivateUser={handleDeactivateUser}
-          onDeleteUser={handleDeleteUser}
+          onRequestDeleteUser={(user) => setPendingDelete({ kind: 'user', user })}
         />
       )}
 
@@ -443,11 +376,7 @@ export default function AdministracionPage() {
           onRoleFormChange={setRoleForm}
           onCreateRole={createRole}
           onUpdateRole={updateRole}
-          onDeleteRole={deleteRole}
-          onConfigurePermissions={(roleId) => {
-            setSelectedRoleId(roleId);
-            setTab('permissions');
-          }}
+          onRequestDeleteRole={(role) => setPendingDelete({ kind: 'role', role })}
         />
       )}
 
@@ -462,19 +391,29 @@ export default function AdministracionPage() {
         />
       )}
 
-      {tab === 'modules' && (
-        <AdminModulesSection
-          modules={modules}
-          onCreateModule={handleCreateModule}
-          onToggleImplemented={handleToggleModuleImplemented}
-        />
-      )}
-
       {tab === 'audit' && (
         <AdminAuditSection
           events={auditEvents}
           loading={loadingAudit}
           onRefresh={loadAudit}
+        />
+      )}
+
+      {pendingDelete && (
+        <AdminConfirmModal
+          title={
+            pendingDelete.kind === 'user'
+              ? 'Eliminar cuenta de usuario'
+              : 'Eliminar cargo'
+          }
+          description={
+            pendingDelete.kind === 'user'
+              ? `¿Seguro que deseas eliminar permanentemente la cuenta de ${pendingDelete.user.name} (${pendingDelete.user.email})? Esta acción cerrará sus sesiones y no se puede deshacer.`
+              : `¿Seguro que deseas eliminar el cargo "${pendingDelete.role.name}"? Esta acción no se puede deshacer.`
+          }
+          busy={deleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={handleConfirmDelete}
         />
       )}
     </div>

@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -19,7 +18,6 @@ import {
 } from '../auth.guard';
 import { RequirePermission } from '../authorization/authorization.decorators';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
-import { hasSpecialPermission } from '../authorization/module-registry';
 import { ApplicationsService, type AuditContext } from './applications.service';
 import { CompleteEnrollmentDto } from './dto/complete-enrollment.dto';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -132,12 +130,9 @@ export class ApplicationsController {
   // Vista previa del payload preparado para la futura integración con Aurora
   @Get(':id/aurora-preview')
   @UseGuards(AuthGuard, AuthorizationGuard)
-  @RequirePermission('secretaria', 'read', 'preview_aurora')
+  @RequirePermission('secretaria', 'update')
   getAuroraPreview(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    ensurePermission(req, 'secretaria', 'read');
-    if (!hasSpecialPermission(req.user, 'secretaria', 'preview_aurora')) {
-      throw new ForbiddenException('Tu cargo no dispone del permiso especial para vista previa Aurora');
-    }
+    ensurePermission(req, 'secretaria', 'update');
     return this.applicationsService.getAuroraPreview(id, {}, auditContextFromRequest(req));
   }
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
-import { getAccessibleModules, hasModulePermission, isSuperAdmin, useAuth } from '../auth';
+import { isSuperAdmin, useAuth } from '../auth';
 import FormAlert from '../components/shared/forms/FormAlert';
 import { profileApi } from '../services/api';
 
@@ -34,7 +34,7 @@ export default function PerfilPage() {
       }
       await refreshUser();
       setValues({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setMessage('Contraseña actualizada. Las sesiones anteriores han quedado invalidadas.');
+      setMessage('Contraseña actualizada correctamente.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo cambiar la contraseña');
     } finally {
@@ -79,42 +79,6 @@ export default function PerfilPage() {
           {user.role?.description && (
             <p className="m-0 text-xs leading-relaxed text-[#627089]">{user.role.description}</p>
           )}
-          <div className="mt-2 w-full border-t border-[#eef1f6] pt-3">
-            <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-[#627089]">
-              Módulos habilitados
-            </span>
-            {isSuperAdmin(user) ? (
-              <p className="mt-1.5 mb-0 text-xs text-[#000254]">
-                Acceso completo a todos los módulos y administración global.
-              </p>
-            ) : getAccessibleModules(user).length === 0 ? (
-              <p className="mt-1.5 mb-0 text-xs text-[#627089]">
-                Tu cargo no tiene módulos habilitados actualmente.
-              </p>
-            ) : (
-              <ul className="mt-2 mb-0 grid gap-1.5 pl-0 list-none">
-                {getAccessibleModules(user).map((mod) => {
-                  const ops = [
-                    hasModulePermission(user, mod.key, 'canRead') && 'Leer',
-                    hasModulePermission(user, mod.key, 'canCreate') && 'Crear',
-                    hasModulePermission(user, mod.key, 'canUpdate') && 'Editar',
-                    hasModulePermission(user, mod.key, 'canDelete') && 'Eliminar',
-                  ].filter(Boolean);
-                  return (
-                    <li
-                      key={mod.key}
-                      className="rounded-lg border border-[#eef1f6] bg-[#f8fafc] px-2.5 py-1.5 text-xs"
-                    >
-                      <strong className="text-[#000254]">{mod.name}</strong>
-                      <span className="block text-[11px] text-[#627089]">
-                        {ops.length ? ops.join(' · ') : 'Solo acceso'}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
           <Link
             className="mt-[15px] text-[12px] font-bold text-[#01317b] no-underline"
             to="/gestion"

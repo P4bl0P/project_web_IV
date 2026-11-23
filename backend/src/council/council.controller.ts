@@ -36,7 +36,7 @@ export class CouncilController {
 
   @Get('manage')
   @UseGuards(AuthGuard, AuthorizationGuard)
-  @RequirePermission('secretaria', 'read', 'manage_web_content')
+  @RequirePermission('secretaria', 'read')
   findManage(@Req() req: AuthenticatedRequest) {
     ensureWebContentPermission(req, 'read');
     return this.councilService.findAll();
@@ -44,7 +44,7 @@ export class CouncilController {
 
   @Post()
   @UseGuards(AuthGuard, AuthorizationGuard)
-  @RequirePermission('secretaria', 'create', 'manage_web_content')
+  @RequirePermission('secretaria', 'create')
   async create(
     @Body() dto: CreateCouncilMemberDto,
     @Req() req: AuthenticatedRequest,
@@ -66,7 +66,7 @@ export class CouncilController {
 
   @Patch('reorder')
   @UseGuards(AuthGuard, AuthorizationGuard)
-  @RequirePermission('secretaria', 'update', 'manage_web_content')
+  @RequirePermission('secretaria', 'update')
   async reorder(
     @Body() dto: ReorderCouncilMembersDto,
     @Req() req: AuthenticatedRequest,
@@ -87,7 +87,7 @@ export class CouncilController {
 
   @Patch(':id')
   @UseGuards(AuthGuard, AuthorizationGuard)
-  @RequirePermission('secretaria', 'update', 'manage_web_content')
+  @RequirePermission('secretaria', 'update')
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateCouncilMemberDto,
@@ -110,7 +110,7 @@ export class CouncilController {
 
   @Delete(':id')
   @UseGuards(AuthGuard, AuthorizationGuard)
-  @RequirePermission('secretaria', 'delete', 'manage_web_content')
+  @RequirePermission('secretaria', 'delete')
   async remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     ensureWebContentPermission(req, 'delete');
     const result = await this.councilService.remove(id);

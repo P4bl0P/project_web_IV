@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   OnModuleInit,
@@ -11,11 +10,8 @@ import type { PermissionRequirement } from './authorization.decorators';
 import {
   BUILT_IN_MODULES,
   hasModulePermission,
-  hasSpecialPermission,
   isSuperAdminUser,
-  parseSpecialPermissions,
   type AuthorizedUser,
-  type SpecialActionDefinition,
 } from './module-registry';
 
 export interface PermissionInput {
@@ -133,13 +129,6 @@ export class AuthorizationService implements OnModuleInit {
     if (!hasModulePermission(user, requirement.moduleKey, requirement.action)) {
       throw new ForbiddenException('Operación no autorizada para tu cargo actual');
     }
-
-    if (
-      requirement.specialAction &&
-      !hasSpecialPermission(user, requirement.moduleKey, requirement.specialAction)
-    ) {
-      throw new ForbiddenException('Tu cargo no dispone del permiso especial requerido');
-    }
   }
 
   async listRegisteredModules() {
@@ -150,20 +139,6 @@ export class AuthorizationService implements OnModuleInit {
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
     return rows.length > 0 ? rows : [...BUILT_IN_MODULES];
-  }
-
-  extractModuleSpecialKeys(specialActions: unknown): Set<string> {
-    if (!Array.isArray(specialActions)) return new Set();
-    const keys = new Set<string>();
-    for (const item of specialActions) {
-      if (item && typeof item === 'object' && 'key' in item) {
-        const key = (item as SpecialActionDefinition).key;
-        if (typeof key === 'string' && key.trim()) {
-          keys.add(key.trim());
-        }
-      }
-    }
-    return keys;
   }
 
   normalizePermissionPayload(
@@ -178,26 +153,6 @@ export class AuthorizationService implements OnModuleInit {
       specialPermissions: unknown;
     },
   ) {
-    const allowedSpecialKeys = this.extractModuleSpecialKeys(moduleRecord.specialActions);
-    const requestedSpecial =
-      input.specialPermissions !== undefined
-        ? input.specialPermissions
-        : parseSpecialPermissions(current?.specialPermissions);
-
-    const uniqueSpecial: string[] = [];
-    for (const key of requestedSpecial) {
-      const trimmed = key.trim();
-      if (!trimmed) continue;
-      if (!allowedSpecialKeys.has(trimmed)) {
-        throw new BadRequestException(
-          `El permiso especial "${trimmed}" no pertenece a este módulo`,
-        );
-      }
-      if (!uniqueSpecial.includes(trimmed)) {
-        uniqueSpecial.push(trimmed);
-      }
-    }
-
     if (input.canAccess === false) {
       return {
         canAccess: false,
@@ -209,9 +164,6 @@ export class AuthorizationService implements OnModuleInit {
       };
     }
 
-    const canRead = moduleRecord.supportsRead
-      ? Boolean(input.canRead ?? current?.canRead ?? false)
-      : false;
     const canCreate = moduleRecord.supportsCreate
       ? Boolean(input.canCreate ?? current?.canCreate ?? false)
       : false;
@@ -221,32 +173,19 @@ export class AuthorizationService implements OnModuleInit {
     const canDelete = moduleRecord.supportsDelete
       ? Boolean(input.canDelete ?? current?.canDelete ?? false)
       : false;
+    const canRead = moduleRecord.supportsRead
+      ? Boolean(input.canRead ?? current?.canRead ?? false) || canCreate || canUpdate || canDelete
+      : false;
 
-    const hasAnyCapability =
-      canRead || canCreate || canUpdate || canDelete || uniqueSpecial.length > 0;
-    const canAccess =
-      input.canAccess !== undefined
-        ? Boolean(input.canAccess)
-        : Boolean(current?.canAccess || hasAnyCapability);
-
-    if (!canAccess) {
-      return {
-        canAccess: false,
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        canDelete: false,
-        specialPermissions: [] as string[],
-      };
-    }
+    const hasAnyCrud = canRead || canCreate || canUpdate || canDelete;
 
     return {
-      canAccess: true,
-      canRead,
-      canCreate,
-      canUpdate,
-      canDelete,
-      specialPermissions: uniqueSpecial,
+      canAccess: hasAnyCrud,
+      canRead: hasAnyCrud ? canRead : false,
+      canCreate: hasAnyCrud ? canCreate : false,
+      canUpdate: hasAnyCrud ? canUpdate : false,
+      canDelete: hasAnyCrud ? canDelete : false,
+      specialPermissions: [] as string[],
     };
   }
 }

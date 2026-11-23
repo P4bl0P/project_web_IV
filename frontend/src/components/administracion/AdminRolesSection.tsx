@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Check, Pencil, Plus, ShieldCheck, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { Check, Pencil, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 import type { AdminRole } from '../../services/api';
 
 interface AdminRolesSectionProps {
@@ -8,26 +8,7 @@ interface AdminRolesSectionProps {
   onRoleFormChange: (next: { name: string; description: string }) => void;
   onCreateRole: (event: FormEvent) => Promise<void>;
   onUpdateRole: (roleId: string, data: { name: string; description: string | null }) => Promise<void>;
-  onDeleteRole: (role: AdminRole) => Promise<void>;
-  onConfigurePermissions: (roleId: string) => void;
-}
-
-function summarizeRolePermissions(role: AdminRole): string[] {
-  return role.permissions
-    .filter((perm) => perm.canAccess)
-    .map((perm) => {
-      const ops = [
-        perm.canRead && 'Leer',
-        perm.canCreate && 'Crear',
-        perm.canUpdate && 'Editar',
-        perm.canDelete && 'Eliminar',
-      ].filter(Boolean);
-      const specialCount = Array.isArray(perm.specialPermissions)
-        ? perm.specialPermissions.length
-        : 0;
-      const suffix = specialCount > 0 ? ` (+${specialCount} esp.)` : '';
-      return `${perm.module.name}: ${ops.length ? ops.join('·') : 'Acceso'}${suffix}`;
-    });
+  onRequestDeleteRole: (role: AdminRole) => void;
 }
 
 export default function AdminRolesSection({
@@ -36,8 +17,7 @@ export default function AdminRolesSection({
   onRoleFormChange,
   onCreateRole,
   onUpdateRole,
-  onDeleteRole,
-  onConfigurePermissions,
+  onRequestDeleteRole,
 }: AdminRolesSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{ name: string; description: string }>({
@@ -69,7 +49,7 @@ export default function AdminRolesSection({
 
         <form className="grid gap-4" onSubmit={onCreateRole}>
           <label className="grid gap-[7px] text-[13px] font-bold text-[#0c1933]">
-            Nombre del cargo
+            Nombre
             <input
               required
               value={roleForm.name}
@@ -94,23 +74,24 @@ export default function AdminRolesSection({
         </form>
       </section>
 
-      <section className="grid gap-3 rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] shadow-[0_7px_25px_rgba(0,5,84,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="m-0 text-[20px] text-[#000254]">Cargos configurables ({roles.length})</h2>
-          <span className="text-xs text-[#627089]">
-            Los cargos con usuarios asignados no se pueden eliminar hasta reasignarlos.
-          </span>
-        </div>
+      <section className="grid gap-3 self-start rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] shadow-[0_7px_25px_rgba(0,5,84,0.04)]">
+        <h2 className="m-0 mb-1 text-[20px] text-[#000254]">Cargos ({roles.length})</h2>
 
         {roles.map((role) => {
           const isEditing = editingId === role.id;
-          const summary = summarizeRolePermissions(role);
+          const activeModules = role.permissions
+            .filter(
+              (perm) =>
+                perm.canAccess &&
+                (perm.canRead || perm.canCreate || perm.canUpdate || perm.canDelete),
+            )
+            .map((perm) => perm.module.name);
           const hasAssignedUsers = role._count.users > 0;
 
           return (
             <div
               key={role.id}
-              className="rounded-2xl border border-[#eef1f6] bg-[#fafbfd] p-4 space-y-3"
+              className="rounded-2xl border border-[#eef1f6] bg-[#fafbfd] p-4 space-y-2.5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 space-y-1">
@@ -137,7 +118,7 @@ export default function AdminRolesSection({
                       <div className="flex flex-wrap items-center gap-2">
                         <strong className="text-base text-[#000254]">{role.name}</strong>
                         <span className="rounded-full border border-[#dce6f5] bg-white px-2.5 py-0.5 text-[11px] font-bold text-[#01317b]">
-                          {role._count.users} usuario(s)
+                          {role._count.users} {role._count.users === 1 ? 'usuario' : 'usuarios'}
                         </span>
                       </div>
                       {role.description && (
@@ -169,15 +150,8 @@ export default function AdminRolesSection({
                     <>
                       <button
                         type="button"
-                        onClick={() => onConfigurePermissions(role.id)}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#c9d9ef] bg-white px-3 py-1.5 text-xs font-bold text-[#01317b] hover:bg-[#f2f7fd]"
-                      >
-                        <SlidersHorizontal size={13} /> Permisos
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => startEdit(role)}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#e4e9f1] bg-white px-3 py-1.5 text-xs font-bold text-[#0c1933]"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#e4e9f1] bg-white px-3 py-1.5 text-xs font-bold text-[#01317b]"
                       >
                         <Pencil size={13} /> Editar
                       </button>
@@ -189,7 +163,7 @@ export default function AdminRolesSection({
                             ? 'Reasigna los usuarios de este cargo antes de eliminarlo'
                             : 'Eliminar cargo'
                         }
-                        onClick={() => void onDeleteRole(role)}
+                        onClick={() => onRequestDeleteRole(role)}
                         className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#f5c2c4] bg-white px-3 py-1.5 text-xs font-bold text-[#e22328] disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <Trash2 size={13} /> Eliminar
@@ -199,20 +173,18 @@ export default function AdminRolesSection({
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1.5 border-t border-[#eef1f6] pt-2.5">
-                {summary.length > 0 ? (
-                  summary.map((item) => (
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-[#eef1f6] pt-2">
+                {activeModules.length > 0 ? (
+                  activeModules.map((moduleName) => (
                     <span
-                      key={item}
-                      className="rounded-lg border border-[#dce6f5] bg-[#f4f8fd] px-2.5 py-1 text-[11px] font-semibold text-[#01317b]"
+                      key={moduleName}
+                      className="rounded-lg bg-[#edf3fb] px-2.5 py-0.5 text-[11px] font-semibold text-[#01317b]"
                     >
-                      {item}
+                      {moduleName}
                     </span>
                   ))
                 ) : (
-                  <span className="text-[11px] italic text-[#627089]">
-                    Sin permisos activos en ningún módulo.
-                  </span>
+                  <span className="text-[11px] text-[#627089]">Sin módulos habilitados</span>
                 )}
               </div>
             </div>

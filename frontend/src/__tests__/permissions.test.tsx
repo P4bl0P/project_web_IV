@@ -1,5 +1,17 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  AdminRoute,
+  AuthProvider,
+  DEFAULT_REGISTERED_MODULES,
+  ModuleRoute,
+  WebContentRoute,
+  type User,
+} from '../auth';
+import AdminPermissionsTable from '../components/administracion/AdminPermissionsTable';
+import CouncilMemberList from '../components/contenido-web/CouncilMemberList';
+import GestionPage from '../pages/GestionPage';
+import type { AdminRole } from '../services/api';
 
 const assert = {
   match(actual: string, pattern: RegExp) {
@@ -13,18 +25,6 @@ const assert = {
     }
   },
 };
-import {
-  AdminRoute,
-  AuthProvider,
-  DEFAULT_REGISTERED_MODULES,
-  ModuleRoute,
-  WebContentRoute,
-  type User,
-} from '../auth';
-import AdminPermissionsTable from '../components/administracion/AdminPermissionsTable';
-import CouncilMemberList from '../components/contenido-web/CouncilMemberList';
-import GestionPage from '../pages/GestionPage';
-import type { AdminRole } from '../services/api';
 
 function renderWithAuth(user: User | null, initialEntry: string, element: React.ReactNode) {
   return renderToStaticMarkup(
@@ -59,7 +59,6 @@ export async function runPermissionTests() {
           canCreate: true,
           canUpdate: true,
           canDelete: true,
-          specialPermissions: ['manage_web_content'],
           module: { key: 'secretaria', name: 'Secretaría' },
         },
       ],
@@ -84,7 +83,6 @@ export async function runPermissionTests() {
           canCreate: true,
           canUpdate: true,
           canDelete: false,
-          specialPermissions: ['manage_web_content'],
           module: { key: 'secretaria', name: 'Secretaría' },
         },
       ],
@@ -198,7 +196,7 @@ export async function runPermissionTests() {
     assert.match(adminHtml, /CONTENIDO_PRIVADO_ADMIN/);
   });
 
-  test('AdminPermissionsTable refleja exactamente los permisos guardados del cargo', () => {
+  test('AdminPermissionsTable refleja la matriz simple de 4 permisos sin operaciones especiales', () => {
     const roles: AdminRole[] = [
       {
         id: 'role-sec',
@@ -215,7 +213,7 @@ export async function runPermissionTests() {
             canCreate: true,
             canUpdate: true,
             canDelete: false,
-            specialPermissions: ['read_medical_data', 'manage_web_content'],
+            specialPermissions: [],
             module: { ...DEFAULT_REGISTERED_MODULES[1], id: 'mod-sec' },
           },
           {
@@ -251,10 +249,11 @@ export async function runPermissionTests() {
 
     assert.match(html, /Secretaría/);
     assert.match(html, /Jefatura/);
-    assert.match(html, /Datos médicos/);
-    assert.match(html, /Contenido de la web/);
-    assert.match(html, /aria-label="Acceso al módulo Secretaría"[^>]*checked=""/);
-    assert.match(html, /aria-label="Secretaría Datos médicos"[^>]*checked=""/);
+    assert.doesNotMatch(html, /Operaciones especiales/);
+    assert.doesNotMatch(html, /Acceso al módulo/);
+    assert.match(html, /aria-label="Secretaría Leer"[^>]*checked=""/);
+    assert.match(html, /aria-label="Secretaría Editar"[^>]*checked=""/);
+    assert.doesNotMatch(html, /aria-label="Secretaría Eliminar"[^>]*checked=""/);
   });
 
   test('CouncilMemberList respeta capacidades CRUD granulares en la UI', () => {

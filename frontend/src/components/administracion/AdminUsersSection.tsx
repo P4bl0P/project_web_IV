@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Check, KeyRound, Pencil, Plus, Shield, ShieldOff, Trash2, UserRound, X } from 'lucide-react';
+import { Check, KeyRound, Pencil, Plus, Shield, Trash2, UserRound, X } from 'lucide-react';
 import type { AdminRole, AdminUser } from '../../services/api';
 
 interface AdminUsersSectionProps {
@@ -13,9 +13,7 @@ interface AdminUsersSectionProps {
   onUpdateUserRole: (userId: string, roleId: string | null) => Promise<void>;
   onUpdateUserStatus: (userId: string, status: 'ACTIVE' | 'BLOCKED' | 'DISABLED') => Promise<void>;
   onResetPassword: (userId: string) => Promise<void>;
-  onResetMfa: (userId: string) => Promise<void>;
-  onDeactivateUser: (user: AdminUser) => Promise<void>;
-  onDeleteUser: (user: AdminUser) => Promise<void>;
+  onRequestDeleteUser: (user: AdminUser) => void;
 }
 
 const fieldLabelClass = 'grid gap-[7px] text-[13px] font-bold text-[#0c1933]';
@@ -40,9 +38,7 @@ export default function AdminUsersSection({
   onUpdateUserRole,
   onUpdateUserStatus,
   onResetPassword,
-  onResetMfa,
-  onDeactivateUser,
-  onDeleteUser,
+  onRequestDeleteUser,
 }: AdminUsersSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{ name: string; email: string }>({
@@ -69,12 +65,12 @@ export default function AdminUsersSection({
       <section className="self-start rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] shadow-[0_7px_25px_rgba(0,5,84,0.04)]">
         <div className="mb-5 flex items-center gap-[9px] text-[#01317b]">
           <UserRound size={20} />
-          <h2 className="m-0 text-[20px] text-[#000254]">Crear cuenta</h2>
+          <h2 className="m-0 text-[20px] text-[#000254]">Nuevo usuario</h2>
         </div>
 
         <form className="grid gap-4" onSubmit={onCreateUser}>
           <label className={fieldLabelClass}>
-            Nombre completo
+            Nombre
             <input
               required
               value={form.name}
@@ -93,13 +89,13 @@ export default function AdminUsersSection({
             />
           </label>
           <label className={fieldLabelClass}>
-            Cargo inicial (único)
+            Cargo
             <select
               value={form.roleId}
               onChange={(e) => onFormChange({ ...form, roleId: e.target.value })}
               className={fieldControlClass}
             >
-              <option value="">Sin cargo asignado</option>
+              <option value="">Sin cargo</option>
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name}
@@ -113,13 +109,8 @@ export default function AdminUsersSection({
         </form>
       </section>
 
-      <section className="grid gap-3 rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] shadow-[0_7px_25px_rgba(0,5,84,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="m-0 text-[20px] text-[#000254]">Cuentas ({users.length})</h2>
-          <span className="text-xs text-[#627089]">
-            Cada usuario puede tener como máximo un cargo activo.
-          </span>
-        </div>
+      <section className="grid gap-3 self-start rounded-[22px] border border-[#e4e9f1] bg-white p-[27px] shadow-[0_7px_25px_rgba(0,5,84,0.04)]">
+        <h2 className="m-0 mb-1 text-[20px] text-[#000254]">Usuarios ({users.length})</h2>
 
         {users.map((user) => {
           const isProtected = user.isSuperAdmin || user.id === currentUserId;
@@ -131,7 +122,7 @@ export default function AdminUsersSection({
               key={user.id}
               className="rounded-2xl border border-[#eef1f6] bg-[#fafbfd] p-4 space-y-3"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 flex-1 space-y-1">
                   {isEditing ? (
                     <div className="grid gap-2 sm:grid-cols-2">
@@ -155,38 +146,24 @@ export default function AdminUsersSection({
                     <>
                       <div className="flex flex-wrap items-center gap-2">
                         <strong className="text-sm text-[#000254]">{user.name}</strong>
-                        {user.isSuperAdmin && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#000254] px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+                        {user.isSuperAdmin ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#000254] px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Shield size={10} /> Superadministrador
                           </span>
-                        )}
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
-                        <span className="rounded-full border border-[#e4e9f1] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#627089]">
-                          {user.mfaConfiguredAt ? 'MFA activo' : 'MFA pendiente'}
-                        </span>
-                        {user.mustChangePassword && (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                            Cambio clave pendiente
+                        ) : (
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.className}`}
+                          >
+                            {badge.label}
                           </span>
                         )}
                       </div>
-                      <div className="break-all text-xs text-[#627089]">
-                        {user.email} ·{' '}
-                        <strong className="text-[#01317b]">
-                          {user.isSuperAdmin
-                            ? 'Acceso global'
-                            : user.role?.name ?? 'Sin cargo asignado'}
-                        </strong>
-                      </div>
+                      <div className="break-all text-xs text-[#627089]">{user.email}</div>
                     </>
                   )}
                 </div>
 
-                {!isProtected ? (
+                {!isProtected && (
                   <div className="flex flex-wrap items-center gap-2">
                     <select
                       aria-label={`Cargo de ${user.name}`}
@@ -220,15 +197,11 @@ export default function AdminUsersSection({
                       <option value="DISABLED">Desactivado</option>
                     </select>
                   </div>
-                ) : (
-                  <span className="rounded-lg border border-[#dce6f5] bg-white px-2.5 py-1 text-[11px] font-bold text-[#01317b]">
-                    Cuenta protegida
-                  </span>
                 )}
               </div>
 
               {!isProtected && (
-                <div className="flex flex-wrap items-center gap-3 border-t border-[#eef1f6] pt-2.5 text-xs">
+                <div className="flex flex-wrap items-center gap-4 border-t border-[#eef1f6] pt-2.5 text-xs">
                   {isEditing ? (
                     <>
                       <button
@@ -236,7 +209,7 @@ export default function AdminUsersSection({
                         onClick={() => void saveEdit(user.id)}
                         className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-[#01317b] px-2.5 py-1 font-bold text-white"
                       >
-                        <Check size={13} /> Guardar datos
+                        <Check size={13} /> Guardar
                       </button>
                       <button
                         type="button"
@@ -252,7 +225,7 @@ export default function AdminUsersSection({
                       onClick={() => startEdit(user)}
                       className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-[#01317b]"
                     >
-                      <Pencil size={13} /> Editar datos
+                      <Pencil size={13} /> Editar
                     </button>
                   )}
 
@@ -261,30 +234,12 @@ export default function AdminUsersSection({
                     onClick={() => void onResetPassword(user.id)}
                     className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-[#01317b]"
                   >
-                    <KeyRound size={13} /> Restablecer contraseña
+                    <KeyRound size={13} /> Restablecer clave
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => void onResetMfa(user.id)}
-                    className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-[#01317b]"
-                  >
-                    <ShieldOff size={13} /> Reiniciar MFA
-                  </button>
-
-                  {user.status !== 'DISABLED' && (
-                    <button
-                      type="button"
-                      onClick={() => void onDeactivateUser(user)}
-                      className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-amber-700"
-                    >
-                      Desactivar
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => void onDeleteUser(user)}
+                    onClick={() => onRequestDeleteUser(user)}
                     className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-[#e22328]"
                   >
                     <Trash2 size={13} /> Eliminar

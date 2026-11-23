@@ -85,28 +85,7 @@ export const BUILT_IN_MODULES: readonly ModuleDefinition[] = [
     supportsCreate: true,
     supportsUpdate: true,
     supportsDelete: true,
-    specialActions: [
-      {
-        key: 'read_medical_data',
-        label: 'Datos médicos',
-        description: 'Consultar ficha médica completa, alergias, enfermedades y medicación.',
-      },
-      {
-        key: 'read_bank_data',
-        label: 'Datos bancarios (SEPA)',
-        description: 'Consultar IBAN completo y DNI del titular bancario.',
-      },
-      {
-        key: 'preview_aurora',
-        label: 'Vista previa Aurora',
-        description: 'Consultar la vista previa del payload preparado para Aurora.',
-      },
-      {
-        key: 'manage_web_content',
-        label: 'Contenido de la web',
-        description: 'Gestionar integrantes y orden del Consejo en la página pública.',
-      },
-    ],
+    specialActions: [],
   },
   {
     key: 'tesoreria',
@@ -121,13 +100,7 @@ export const BUILT_IN_MODULES: readonly ModuleDefinition[] = [
     supportsCreate: true,
     supportsUpdate: true,
     supportsDelete: true,
-    specialActions: [
-      {
-        key: 'export_sepa',
-        label: 'Exportar remesas SEPA',
-        description: 'Generar y descargar archivos de remesa bancaria SEPA.',
-      },
-    ],
+    specialActions: [],
   },
 ];
 
@@ -210,7 +183,14 @@ export function hasModuleAccess(user: AuthorizedUser | null | undefined, moduleK
   if (user.status && user.status !== 'ACTIVE') return false;
   if (isSuperAdminUser(user)) return true;
   const permission = findModulePermission(user, moduleKey);
-  return permission?.canAccess === true;
+  if (!permission || permission.canAccess === false) return false;
+  return Boolean(
+    permission.canAccess ||
+      permission.canRead ||
+      permission.canCreate ||
+      permission.canUpdate ||
+      permission.canDelete,
+  );
 }
 
 export function hasModulePermission(
@@ -223,11 +203,11 @@ export function hasModulePermission(
   if (isSuperAdminUser(user)) return true;
 
   const permission = findModulePermission(user, moduleKey);
-  if (permission?.canAccess !== true) return false;
+  if (!permission || permission.canAccess === false) return false;
 
   switch (action) {
     case 'access':
-      return true;
+      return hasModuleAccess(user, moduleKey);
     case 'read':
       return permission.canRead === true;
     case 'create':
@@ -241,32 +221,12 @@ export function hasModulePermission(
   }
 }
 
-export function hasSpecialPermission(
-  user: AuthorizedUser | null | undefined,
-  moduleKey: string,
-  specialKey: string,
-): boolean {
-  if (!user) return false;
-  if (user.status && user.status !== 'ACTIVE') return false;
-  if (isSuperAdminUser(user)) return true;
-
-  const permission = findModulePermission(user, moduleKey);
-  if (permission?.canAccess !== true) return false;
-
-  const granted = parseSpecialPermissions(permission.specialPermissions);
-  return granted.includes(specialKey);
-}
-
 export function canReadSensitiveData(
   user: AuthorizedUser | null | undefined,
-  kind: 'medical' | 'bank',
+  _kind: 'medical' | 'bank',
 ): boolean {
   if (isSuperAdminUser(user)) return true;
-  const specialKey = kind === 'medical' ? 'read_medical_data' : 'read_bank_data';
-  return (
-    hasModulePermission(user, 'secretaria', 'read') &&
-    hasSpecialPermission(user, 'secretaria', specialKey)
-  );
+  return hasModulePermission(user, 'secretaria', 'update');
 }
 
 export function hasWebContentPermission(
@@ -274,10 +234,7 @@ export function hasWebContentPermission(
   action: 'read' | 'create' | 'update' | 'delete',
 ): boolean {
   if (isSuperAdminUser(user)) return true;
-  return (
-    hasModulePermission(user, 'secretaria', action) &&
-    hasSpecialPermission(user, 'secretaria', 'manage_web_content')
-  );
+  return hasModulePermission(user, 'secretaria', action);
 }
 
 const SAFE_AUDIT_KEYS = new Set([

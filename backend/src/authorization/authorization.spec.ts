@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { AuthorizationService } from './authorization.service';
 import {
   BUILT_IN_MODULES,
@@ -6,7 +6,6 @@ import {
   canReadSensitiveData,
   hasModuleAccess,
   hasModulePermission,
-  hasSpecialPermission,
   hasWebContentPermission,
   isReservedRoleName,
   isSuperAdminUser,
@@ -15,8 +14,9 @@ import {
 } from './module-registry';
 
 describe('Authorization - Fuente única de verdad y reglas de seguridad', () => {
-  it('define únicamente los 3 módulos y 3 cargos iniciales solicitados', () => {
+  it('define únicamente los 3 módulos y 3 cargos iniciales solicitados sin operaciones especiales', () => {
     expect(BUILT_IN_MODULES.map((m) => m.key)).toEqual(['jefatura', 'secretaria', 'tesoreria']);
+    expect(BUILT_IN_MODULES.every((m) => m.specialActions.length === 0)).toBe(true);
     expect(INITIAL_ROLES.map((r) => r.name)).toEqual(['Jefatura', 'Tesorería', 'Secretaría']);
     expect(INITIAL_ROLES.map((r) => r.defaultModuleKey)).toEqual([
       'jefatura',
@@ -29,7 +29,6 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
     const withoutRole: AuthorizedUser = { id: 'u1', status: 'ACTIVE', isSuperAdmin: false, role: null };
     expect(hasModuleAccess(withoutRole, 'secretaria')).toBe(false);
     expect(hasModulePermission(withoutRole, 'secretaria', 'read')).toBe(false);
-    expect(hasSpecialPermission(withoutRole, 'secretaria', 'manage_web_content')).toBe(false);
     expect(canReadSensitiveData(withoutRole, 'medical')).toBe(false);
     expect(canReadSensitiveData(withoutRole, 'bank')).toBe(false);
     expect(hasWebContentPermission(withoutRole, 'read')).toBe(false);
@@ -50,7 +49,6 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
             canCreate: true,
             canUpdate: true,
             canDelete: true,
-            specialPermissions: ['read_medical_data', 'read_bank_data', 'manage_web_content'],
             module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
@@ -64,7 +62,7 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
     expect(canReadSensitiveData(fakeSecretaria, 'bank')).toBe(false);
     expect(hasWebContentPermission(fakeSecretaria, 'update')).toBe(false);
 
-    const customRoleAuthorized: AuthorizedUser = {
+    const customRoleReadOnly: AuthorizedUser = {
       id: 'u-custom',
       status: 'ACTIVE',
       isSuperAdmin: false,
@@ -78,18 +76,17 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
             canCreate: false,
             canUpdate: false,
             canDelete: false,
-            specialPermissions: ['manage_web_content'],
             module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
       },
     };
 
-    expect(hasModuleAccess(customRoleAuthorized, 'secretaria')).toBe(true);
-    expect(hasModulePermission(customRoleAuthorized, 'secretaria', 'read')).toBe(true);
-    expect(hasWebContentPermission(customRoleAuthorized, 'read')).toBe(true);
-    expect(hasWebContentPermission(customRoleAuthorized, 'delete')).toBe(false);
-    expect(canReadSensitiveData(customRoleAuthorized, 'medical')).toBe(false);
+    expect(hasModuleAccess(customRoleReadOnly, 'secretaria')).toBe(true);
+    expect(hasModulePermission(customRoleReadOnly, 'secretaria', 'read')).toBe(true);
+    expect(hasWebContentPermission(customRoleReadOnly, 'read')).toBe(true);
+    expect(hasWebContentPermission(customRoleReadOnly, 'delete')).toBe(false);
+    expect(canReadSensitiveData(customRoleReadOnly, 'medical')).toBe(false);
   });
 
   it('aisla permisos iniciales entre Jefatura, Tesorería y Secretaría sin fugas cruzadas', () => {
@@ -106,7 +103,6 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
             canCreate: true,
             canUpdate: true,
             canDelete: true,
-            specialPermissions: [],
             module: { key: 'jefatura', name: 'Jefatura' },
           },
         ],
@@ -138,21 +134,21 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
     expect(isReservedRoleName('Secretaría')).toBe(false);
   });
 
-  it('normaliza permisos respetando capacidades del módulo y limpiando flags si canAccess=false', () => {
+  it('normaliza permisos CRUD activando lectura cuando hay escritura y respetando límites del módulo', () => {
     const authz = new AuthorizationService({} as never);
     const moduleCapabilities = {
       supportsRead: true,
       supportsCreate: true,
       supportsUpdate: false,
       supportsDelete: false,
-      specialActions: [{ key: 'export_sepa', label: 'Exportar SEPA' }],
+      specialActions: [],
     };
 
     const cleared = authz.normalizePermissionPayload(moduleCapabilities, {
-      canAccess: false,
-      canRead: true,
-      canCreate: true,
-      specialPermissions: ['export_sepa'],
+      canRead: false,
+      canCreate: false,
+      canUpdate: false,
+      canDelete: false,
     });
     expect(cleared).toEqual({
       canAccess: false,
@@ -163,29 +159,20 @@ describe('Authorization - Fuente única de verdad y reglas de seguridad', () => 
       specialPermissions: [],
     });
 
-    const capped = authz.normalizePermissionPayload(moduleCapabilities, {
-      canAccess: true,
-      canRead: true,
+    const promotedRead = authz.normalizePermissionPayload(moduleCapabilities, {
+      canRead: false,
       canCreate: true,
       canUpdate: true,
       canDelete: true,
-      specialPermissions: ['export_sepa'],
     });
-    expect(capped).toEqual({
+    expect(promotedRead).toEqual({
       canAccess: true,
       canRead: true,
       canCreate: true,
       canUpdate: false,
       canDelete: false,
-      specialPermissions: ['export_sepa'],
+      specialPermissions: [],
     });
-
-    expect(() =>
-      authz.normalizePermissionPayload(moduleCapabilities, {
-        canAccess: true,
-        specialPermissions: ['invented_action'],
-      }),
-    ).toThrow(BadRequestException);
 
     expect(() => authz.assertSuperAdmin(null)).toThrow(UnauthorizedException);
     expect(() =>

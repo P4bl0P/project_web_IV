@@ -41,7 +41,7 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     expect(mockService.findAll).toHaveBeenCalledTimes(1);
   });
 
-  it('permite gestionar integrantes cuando el cargo tiene permiso explícito de Secretaría + manage_web_content sin importar el nombre', async () => {
+  it('permite gestionar integrantes cuando el cargo tiene permiso explícito de Secretaría sin importar el nombre', async () => {
     const customWebEditorReq = {
       user: {
         id: 'u-sec',
@@ -56,7 +56,6 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
               canCreate: true,
               canUpdate: true,
               canDelete: true,
-              specialPermissions: ['manage_web_content'],
               module: { key: 'secretaria', name: 'Secretaría' },
             },
           ],
@@ -79,7 +78,7 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     expect(mockService.remove).toHaveBeenCalledTimes(1);
   });
 
-  it('rechaza incluso a un cargo llamado Secretaría si no tiene permiso explícito manage_web_content o canAccess', () => {
+  it('rechaza incluso a un cargo llamado Secretaría si no tiene permisos activos en el módulo', () => {
     const secretariaNameBypassAttempt = {
       user: {
         id: 'u-sec-empty',
@@ -89,21 +88,20 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
       },
     } as unknown as AuthenticatedRequest;
 
-    const secretariaWithoutSpecial = {
+    const secretariaDisabledModule = {
       user: {
-        id: 'u-sec-nospecial',
+        id: 'u-sec-disabled',
         status: 'ACTIVE',
         isSuperAdmin: false,
         role: {
           name: 'Secretaría',
           permissions: [
             {
-              canAccess: true,
+              canAccess: false,
               canRead: true,
               canCreate: true,
               canUpdate: true,
               canDelete: true,
-              specialPermissions: [],
               module: { key: 'secretaria', name: 'Secretaría' },
             },
           ],
@@ -112,7 +110,7 @@ describe('CouncilController - Seguridad y permisos de Contenido de la web', () =
     } as unknown as AuthenticatedRequest;
 
     expect(() => controller.findManage(secretariaNameBypassAttempt)).toThrow(ForbiddenException);
-    expect(() => controller.findManage(secretariaWithoutSpecial)).toThrow(ForbiddenException);
+    expect(() => controller.findManage(secretariaDisabledModule)).toThrow(ForbiddenException);
   });
 
   it('permite gestionar integrantes a superadministradores', async () => {

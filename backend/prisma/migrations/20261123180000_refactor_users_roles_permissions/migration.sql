@@ -140,11 +140,7 @@ SET
     WHEN "key" = 'tesoreria' THEN 3
     ELSE "displayOrder"
   END,
-  "specialActions" = CASE
-    WHEN "key" = 'secretaria' THEN '[{"key":"read_medical_data","label":"Datos médicos","description":"Consultar ficha médica completa, alergias, enfermedades y medicación."},{"key":"read_bank_data","label":"Datos bancarios (SEPA)","description":"Consultar IBAN completo y DNI del titular bancario."},{"key":"preview_aurora","label":"Vista previa Aurora","description":"Consultar la vista previa del payload preparado para Aurora."},{"key":"manage_web_content","label":"Contenido de la web","description":"Gestionar integrantes y orden del Consejo en la página pública."}]'::jsonb
-    WHEN "key" = 'tesoreria' THEN '[{"key":"export_sepa","label":"Exportar remesas SEPA","description":"Generar y descargar archivos de remesa bancaria SEPA."}]'::jsonb
-    ELSE "specialActions"
-  END;
+  "specialActions" = '[]'::jsonb;
 
 ALTER TABLE "Module" ALTER COLUMN "key" SET NOT NULL;
 CREATE UNIQUE INDEX "Module_key_key" ON "Module"("key");
@@ -159,13 +155,6 @@ UPDATE "Permission"
 SET "canAccess" = true
 WHERE "canRead" = true OR "canCreate" = true OR "canUpdate" = true OR "canDelete" = true;
 
-UPDATE "Permission" p
-SET "specialPermissions" = '["read_medical_data","read_bank_data","preview_aurora","manage_web_content"]'::jsonb
-FROM "Module" m
-WHERE p."moduleId" = m."id"
-  AND m."key" = 'secretaria'
-  AND p."canUpdate" = true;
-
 -- Transición desde el seed previo vacío: si un cargo inicial no tenía ningún permiso activo en todo el sistema,
 -- se le asigna su acceso inicial predeterminado a su módulo correspondiente sin tocar configuraciones personalizadas.
 UPDATE "Permission" p
@@ -175,11 +164,7 @@ SET
   "canCreate" = true,
   "canUpdate" = true,
   "canDelete" = true,
-  "specialPermissions" = CASE
-    WHEN m."key" = 'secretaria' THEN '["read_medical_data","read_bank_data","preview_aurora","manage_web_content"]'::jsonb
-    WHEN m."key" = 'tesoreria' THEN '["export_sepa"]'::jsonb
-    ELSE '[]'::jsonb
-  END
+  "specialPermissions" = '[]'::jsonb
 FROM "Role" r, "Module" m
 WHERE p."roleId" = r."id"
   AND p."moduleId" = m."id"

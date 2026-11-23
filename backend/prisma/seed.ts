@@ -59,9 +59,6 @@ async function main() {
       if (!mod) continue;
 
       const isOwnDefaultModule = roleDef.defaultModuleKey === modDef.key;
-      const defaultSpecial = (
-        isOwnDefaultModule ? modDef.specialActions.map((action) => action.key) : []
-      ) as unknown as Prisma.InputJsonValue;
 
       await prisma.permission.upsert({
         where: { roleId_moduleId: { roleId: role.id, moduleId: mod.id } },
@@ -74,7 +71,7 @@ async function main() {
           canCreate: isOwnDefaultModule && modDef.supportsCreate,
           canUpdate: isOwnDefaultModule && modDef.supportsUpdate,
           canDelete: isOwnDefaultModule && modDef.supportsDelete,
-          specialPermissions: defaultSpecial,
+          specialPermissions: [] as unknown as Prisma.InputJsonValue,
         },
       });
     }

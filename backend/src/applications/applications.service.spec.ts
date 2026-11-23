@@ -980,9 +980,9 @@ describe('ApplicationsService - Reglas de negocio, ciclo de vida, seguridad, cif
       expect((restrictedDetail.enrollment as any).allergies).toBeNull();
       expect((restrictedDetail.enrollment as any).iban).toBe('ES** **** **** **** **** 9012');
 
-      // Incluso un cargo llamado "Secretaría" SIN permisos especiales no accede a datos médicos ni bancarios
+      // Incluso un cargo llamado "Secretaría" sin permiso de edición no accede a datos médicos ni bancarios
       const secretariaNameOnlyUser = {
-        id: 'u-sec-no-special',
+        id: 'u-sec-no-update',
         status: 'ACTIVE',
         isSuperAdmin: false,
         role: {
@@ -992,22 +992,21 @@ describe('ApplicationsService - Reglas de negocio, ciclo de vida, seguridad, cif
               canAccess: true,
               canRead: true,
               canCreate: false,
-              canUpdate: true,
+              canUpdate: false,
               canDelete: false,
-              specialPermissions: [],
               module: { key: 'secretaria', name: 'Secretaría' },
             },
           ],
         },
       };
       const noSpecialDetail = await service.findOne(appId, {
-        actorId: 'u-sec-no-special',
+        actorId: 'u-sec-no-update',
         user: secretariaNameOnlyUser,
       });
       expect((noSpecialDetail.enrollment as any).medicalAccessRestricted).toBe(true);
       expect((noSpecialDetail.enrollment as any).bankAccessRestricted).toBe(true);
 
-      // Usuario autorizado con permisos especiales explícitos ve la ficha descifrada y se registra auditoría sin exponer valores sensibles
+      // Usuario autorizado con permiso de edición ve la ficha descifrada y se registra auditoría sin exponer valores sensibles
       const secretariaUser = {
         id: 'u-sec',
         status: 'ACTIVE',
@@ -1021,7 +1020,6 @@ describe('ApplicationsService - Reglas de negocio, ciclo de vida, seguridad, cif
               canCreate: true,
               canUpdate: true,
               canDelete: true,
-              specialPermissions: ['read_medical_data', 'read_bank_data'],
               module: { key: 'secretaria', name: 'Secretaría' },
             },
           ],

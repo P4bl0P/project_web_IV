@@ -136,7 +136,7 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
     );
   });
 
-  it('aplica mínimo privilegio: un lector de Secretaría (canRead=true, canUpdate=false) no puede mutar, censar ni ver Aurora sin permiso especial', () => {
+  it('aplica mínimo privilegio: un lector de Secretaría (canRead=true, canUpdate=false) no puede mutar, censar ni ver Aurora', () => {
     const readOnlyReq = makeAuthReq({
       role: {
         name: 'Kraal Lectura',
@@ -147,7 +147,6 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
             canCreate: false,
             canUpdate: false,
             canDelete: false,
-            specialPermissions: [],
             module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
@@ -177,7 +176,6 @@ describe('ApplicationsController - Permisos y endpoints de Secretaría', () => {
             canCreate: true,
             canUpdate: true,
             canDelete: true,
-            specialPermissions: ['read_medical_data', 'read_bank_data', 'preview_aurora'],
             module: { key: 'secretaria', name: 'Secretaría' },
           },
         ],
