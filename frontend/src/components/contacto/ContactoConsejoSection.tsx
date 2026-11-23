@@ -33,14 +33,8 @@ export default function ContactoConsejoSection({ image }: ContactoConsejoSection
             organizativa para que cada sábado y cada campamento sean una experiencia inolvidable.
           </p>
           <div className="mt-1.5 flex w-full flex-wrap items-center gap-3 min-[801px]:w-auto">
-            <Link to="/about" className="button button-primary w-full min-[801px]:w-auto">
+            <Link to="/about#nuestro-consejo" className="button button-primary w-full min-[801px]:w-auto">
               Conoce a nuestro Consejo <ArrowRight size={17} />
-            </Link>
-            <Link
-              to="/solicitud"
-              className="button button-ghost w-full hover:border-[#b7c8e0] hover:bg-[#f5f7fb] min-[801px]:w-auto"
-            >
-              Ir a la solicitud inicial <ArrowRight size={16} />
             </Link>
           </div>
         </div>

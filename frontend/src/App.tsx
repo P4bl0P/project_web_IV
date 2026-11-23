@@ -1,6 +1,7 @@
 import { useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AdminRoute, AuthProvider, PrivateRoute, WebContentRoute } from './auth';
+import FloatingJoinButton from './components/shared/FloatingJoinButton';
 import Footer from './components/shared/Footer';
 import NavBar from './components/shared/NavBar';
 import { sharedImages } from './config/images/sharedImages';
@@ -45,6 +46,7 @@ function PublicLayout() {
       <div className="flex-[1_0_auto]">
         <Outlet />
       </div>
+      <FloatingJoinButton />
       <Footer images={sharedImages} />
     </div>
   );
