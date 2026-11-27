@@ -777,16 +777,6 @@ export class AuthService {
     };
   }
 
-  async audit(actorId: string | null, action: string, resource: string, result: string, ipAddress?: string) {
-    await this.auditService.record({
-      actorId,
-      action,
-      resource,
-      result: result === 'DENIED' ? 'DENIED' : 'ALLOWED',
-      ipAddress,
-    });
-  }
-
   private verifyTotpSafe(token: string, encryptedSecret: string): boolean {
     const trimmed = token.trim();
     if (!/^\d{6}$/.test(trimmed)) return false;

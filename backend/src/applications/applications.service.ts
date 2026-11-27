@@ -17,7 +17,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { canReadSensitiveMedicalOrBankData, type AuthenticatedRequest } from '../auth.guard';
 import {
   assertTransitionAllowed,
-  CLOSURE_REASON_LABELS,
   EDITABLE_PHASE1_STATUSES,
   resolveReactivationTargetStatus,
 } from './application-state-machine';
@@ -2540,9 +2539,5 @@ export class ApplicationsService {
       `applicant:${id}:prevStatus=${existing.status}`,
     );
     return deleted;
-  }
-
-  getClosureReasonLabels() {
-    return CLOSURE_REASON_LABELS;
   }
 }

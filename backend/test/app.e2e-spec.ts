@@ -10,11 +10,11 @@ describe('Applications & Health E2E', () => {
   const mockPrisma = {
     $connect: jest.fn(),
     $disconnect: jest.fn(),
-    application: {
+    applicant: {
       create: jest.fn().mockImplementation(({ data }) => ({
         id: '550e8400-e29b-41d4-a716-446655440000',
-        status: 'PENDING',
-        requestDate: new Date().toISOString(),
+        status: 'PENDIENTE_REVISION',
+        createdAt: new Date().toISOString(),
         ...data,
       })),
       findMany: jest.fn().mockResolvedValue([]),
