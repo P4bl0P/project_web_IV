@@ -51,6 +51,7 @@ export interface DatePickerProps {
   disabled?: boolean;
   hasError?: boolean;
   'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   'aria-label'?: string;
   size?: 'md' | 'sm';
   clearable?: boolean;
@@ -86,6 +87,7 @@ export default function DatePicker({
   disabled = false,
   hasError = false,
   'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
   'aria-label': ariaLabel,
   size = 'md',
   clearable = true,
@@ -703,6 +705,7 @@ export default function DatePicker({
           disabled={disabled}
           required={required}
           aria-invalid={isInvalid}
+          aria-describedby={ariaDescribedby}
           aria-label={ariaLabel}
           aria-expanded={isOpen}
           aria-haspopup="dialog"
