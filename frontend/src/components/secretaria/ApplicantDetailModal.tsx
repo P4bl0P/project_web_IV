@@ -18,7 +18,6 @@ import {
   type UpdateCensusPayload,
 } from '../../services/api';
 import { formatIsoToHumanShort } from '../../utils/dateUtils';
-import { generateOfficialScoutPdf } from '../../utils/pdfGenerator';
 import { REGEX } from '../../utils/scoutValidators';
 import { useLockBodyScroll } from '../../utils/useLockBodyScroll';
 import { SecBadge, SecButton } from './secretariaTheme';
@@ -351,6 +350,7 @@ export default function ApplicantDetailModal({
   const handleDownloadPdf = async () => {
     if (!detail) return;
     try {
+      const { generateOfficialScoutPdf } = await import('../../utils/pdfGenerator');
       await generateOfficialScoutPdf(detail);
     } catch (reason) {
       onNotify(

@@ -27,7 +27,6 @@ import {
   type SortField,
   type SortOrder,
 } from '../services/api';
-import { generateOfficialScoutPdf } from '../utils/pdfGenerator';
 import {
   INITIAL_SECRETARIA_FILTERS,
   SECRETARIA_SECTIONS,
@@ -312,7 +311,10 @@ export default function SecretariaPage() {
 
   const handleDownloadPdf = async (record: ApplicantRecord) => {
     try {
-      const detailed = await applicationsApi.getById(record.id);
+      const [{ generateOfficialScoutPdf }, detailed] = await Promise.all([
+        import('../utils/pdfGenerator'),
+        applicationsApi.getById(record.id),
+      ]);
       await generateOfficialScoutPdf(detailed);
     } catch (reason) {
       notify(

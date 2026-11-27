@@ -88,9 +88,9 @@ export class AuthorizationService implements OnModuleInit {
     }
 
     const roles = await this.prisma.role.findMany({ select: { id: true } });
-    for (const role of roles) {
-      for (const mod of syncedModules) {
-        await this.prisma.permission.upsert({
+    const permissionUpserts = roles.flatMap((role) =>
+      syncedModules.map((mod) =>
+        this.prisma.permission.upsert({
           where: { roleId_moduleId: { roleId: role.id, moduleId: mod.id } },
           update: {},
           create: {
@@ -103,7 +103,14 @@ export class AuthorizationService implements OnModuleInit {
             canDelete: false,
             specialPermissions: [] as unknown as Prisma.InputJsonValue,
           },
-        });
+        }),
+      ),
+    );
+    if (permissionUpserts.length > 0) {
+      if (typeof this.prisma.$transaction === 'function') {
+        await this.prisma.$transaction(permissionUpserts);
+      } else {
+        await Promise.all(permissionUpserts);
       }
     }
   }

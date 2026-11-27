@@ -320,9 +320,13 @@ export class ApplicationsService {
    */
   evaluateCompleteness(
     applicant: Applicant & { enrollment?: EnrollmentDetails | null },
+    preDecryptedEnrollment?: EnrollmentDetails | null,
   ): { isIncomplete: boolean; missingFields: string[] } {
-    const decryptedApplicant = applicant.enrollment
-      ? { ...applicant, enrollment: this.decryptEnrollmentFields(applicant.enrollment) }
+    const resolvedEnrollment =
+      preDecryptedEnrollment ??
+      (applicant.enrollment ? this.decryptEnrollmentFields(applicant.enrollment) : null);
+    const decryptedApplicant = resolvedEnrollment
+      ? { ...applicant, enrollment: resolvedEnrollment }
       : applicant;
 
     const missing: string[] = [];
@@ -501,17 +505,21 @@ export class ApplicationsService {
 
   private evaluateCensusReadiness(
     applicant: Applicant & { enrollment?: EnrollmentDetails | null },
+    preDecryptedEnrollment?: EnrollmentDetails | null,
   ): string[] {
     const simulated = {
       ...applicant,
       status: ApplicationStatus.INSCRIPCION_COMPLETADA,
     };
-    const { missingFields } = this.evaluateCompleteness(simulated);
+    const { missingFields } = this.evaluateCompleteness(simulated, preDecryptedEnrollment);
     return missingFields;
   }
 
-  private buildEnrollmentSummary(enrollment: EnrollmentDetails): SanitizedEnrollmentSummary {
-    const decrypted = this.decryptEnrollmentFields(enrollment);
+  private buildEnrollmentSummary(
+    enrollment: EnrollmentDetails,
+    preDecryptedEnrollment?: EnrollmentDetails | null,
+  ): SanitizedEnrollmentSummary {
+    const decrypted = preDecryptedEnrollment ?? this.decryptEnrollmentFields(enrollment);
     const last4 =
       enrollment.ibanLast4 ?? this.crypto.extractIbanLast4(decrypted.iban);
     const hasMedicalInfo = Boolean(
@@ -563,8 +571,9 @@ export class ApplicationsService {
   private buildEnrollmentDetail(
     enrollment: EnrollmentDetails,
     user?: AuthenticatedRequest['user'],
+    preDecryptedEnrollment?: EnrollmentDetails | null,
   ): DecryptedEnrollmentDetail {
-    const decrypted = this.decryptEnrollmentFields(enrollment);
+    const decrypted = preDecryptedEnrollment ?? this.decryptEnrollmentFields(enrollment);
     const allowMedical = user ? canReadSensitiveMedicalOrBankData(user, 'medical') : false;
     const allowBank = user ? canReadSensitiveMedicalOrBankData(user, 'bank') : false;
     const last4 = enrollment.ibanLast4 ?? this.crypto.extractIbanLast4(decrypted.iban);
@@ -624,11 +633,16 @@ export class ApplicationsService {
     if (applicant.socialInclusionPriority) priorityScore += 50;
     if (applicant.comesFromOtherGroup) priorityScore += 25;
 
-    const { isIncomplete, missingFields } = this.evaluateCompleteness(applicant);
+    const decryptedEnrollment = applicant.enrollment
+      ? this.decryptEnrollmentFields(applicant.enrollment)
+      : null;
+
+    const { isIncomplete, missingFields } = this.evaluateCompleteness(
+      applicant,
+      decryptedEnrollment,
+    );
     const missingForCensus =
-      applicant.status === ApplicationStatus.INSCRIPCION_COMPLETADA
-        ? this.evaluateCensusReadiness(applicant)
-        : [];
+      applicant.status === ApplicationStatus.INSCRIPCION_COMPLETADA ? missingFields : [];
 
     const canAdmitToCensus =
       applicant.status === ApplicationStatus.INSCRIPCION_COMPLETADA &&
@@ -657,8 +671,8 @@ export class ApplicationsService {
 
     const projectedEnrollment = enrollment
       ? options.projection === 'detail'
-        ? this.buildEnrollmentDetail(enrollment, options.user)
-        : this.buildEnrollmentSummary(enrollment)
+        ? this.buildEnrollmentDetail(enrollment, options.user, decryptedEnrollment)
+        : this.buildEnrollmentSummary(enrollment, decryptedEnrollment)
       : null;
 
     return {
@@ -699,33 +713,79 @@ export class ApplicationsService {
     });
   }
 
-  private findPotentialDuplicateIdsInBatch(
-    target: Applicant,
-    allActive: Applicant[],
-  ): string[] {
-    if (target.status === ApplicationStatus.BAJA) return [];
-    const targetName = normalizeTextForSearch(
-      `${target.childFirstName} ${target.childLastName1}`,
+  private getDuplicateKey(applicant: Applicant): string | null {
+    if (applicant.status === ApplicationStatus.BAJA) return null;
+    const birth = extractDateParts(applicant.childBirthDate);
+    if (!birth) return null;
+    const normalizedName = normalizeTextForSearch(
+      `${applicant.childFirstName} ${applicant.childLastName1}`,
     );
-    const targetBirth = extractDateParts(target.childBirthDate);
-    if (!targetBirth) return [];
+    return `${normalizedName}|${birth.year}-${birth.month}-${birth.day}`;
+  }
 
-    return allActive
-      .filter((other) => {
-        if (other.id === target.id || other.status === ApplicationStatus.BAJA) return false;
-        const otherName = normalizeTextForSearch(
-          `${other.childFirstName} ${other.childLastName1}`,
-        );
-        if (otherName !== targetName) return false;
-        const otherBirth = extractDateParts(other.childBirthDate);
-        return (
-          otherBirth &&
-          otherBirth.year === targetBirth.year &&
-          otherBirth.month === targetBirth.month &&
-          otherBirth.day === targetBirth.day
-        );
-      })
-      .map((other) => other.id);
+  private buildDuplicateLookupMap(allApplicants: Applicant[]): Map<string, string[]> {
+    const map = new Map<string, string[]>();
+    for (const item of allApplicants) {
+      const key = this.getDuplicateKey(item);
+      if (!key) continue;
+      const ids = map.get(key);
+      if (ids) {
+        ids.push(item.id);
+      } else {
+        map.set(key, [item.id]);
+      }
+    }
+    return map;
+  }
+
+  private getPotentialDuplicateIdsFromMap(
+    target: Applicant,
+    duplicateMap: Map<string, string[]>,
+  ): string[] {
+    const key = this.getDuplicateKey(target);
+    if (!key) return [];
+    const matching = duplicateMap.get(key);
+    if (!matching || matching.length <= 1) return [];
+    return matching.filter((id) => id !== target.id);
+  }
+
+  private matchesPreEnrichQuery(applicant: Applicant, query: QueryApplicationsDto): boolean {
+    if (query.status && applicant.status !== query.status) return false;
+    if (query.statuses && query.statuses.length > 0 && !query.statuses.includes(applicant.status)) {
+      return false;
+    }
+    if (!query.status && (!query.statuses || query.statuses.length === 0) && query.stage) {
+      if (query.stage === 'INITIAL' && applicant.status !== ApplicationStatus.PENDIENTE_REVISION) {
+        return false;
+      }
+      if (query.stage === 'WAITLIST' && applicant.status !== ApplicationStatus.LISTA_ESPERA) {
+        return false;
+      }
+      if (
+        query.stage === 'PENDING_ENROLLMENT' &&
+        applicant.status !== ApplicationStatus.PLAZA_OFERTADA &&
+        applicant.status !== ApplicationStatus.INSCRIPCION_COMPLETADA
+      ) {
+        return false;
+      }
+      if (query.stage === 'CENSUS' && applicant.status !== ApplicationStatus.CENSADO) {
+        return false;
+      }
+      if (query.stage === 'ARCHIVED' && applicant.status !== ApplicationStatus.BAJA) {
+        return false;
+      }
+    }
+    if (
+      query.enrollmentSubStatus &&
+      query.enrollmentSubStatus !== 'ALL' &&
+      (query.enrollmentSubStatus === ApplicationStatus.PLAZA_OFERTADA ||
+        query.enrollmentSubStatus === ApplicationStatus.INSCRIPCION_COMPLETADA) &&
+      applicant.status !== query.enrollmentSubStatus
+    ) {
+      return false;
+    }
+    if (query.gender && applicant.gender !== query.gender) return false;
+    return true;
   }
 
   private async assertUniqueChildDni(
@@ -1169,10 +1229,11 @@ export class ApplicationsService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const duplicateMap = this.buildDuplicateLookupMap(applicants);
     const enriched = applicants.map((app) =>
       this.enrichApplicant(app, {
         projection: 'summary',
-        potentialDuplicateIds: this.findPotentialDuplicateIdsInBatch(app, applicants),
+        potentialDuplicateIds: this.getPotentialDuplicateIdsFromMap(app, duplicateMap),
       }),
     );
     const filteredAndSorted = this.filterAndSortApplicants(enriched, query);
@@ -1212,10 +1273,13 @@ export class ApplicationsService {
       else if (r.status === ApplicationStatus.BAJA) sectionCounts.ARCHIVED++;
     }
 
-    const enriched = allApplicants.map((app) =>
+    const duplicateMap = this.buildDuplicateLookupMap(allApplicants);
+    const candidates = allApplicants.filter((app) => this.matchesPreEnrichQuery(app, query));
+
+    const enriched = candidates.map((app) =>
       this.enrichApplicant(app, {
         projection: 'summary',
-        potentialDuplicateIds: this.findPotentialDuplicateIdsInBatch(app, allApplicants),
+        potentialDuplicateIds: this.getPotentialDuplicateIdsFromMap(app, duplicateMap),
       }),
     );
 
