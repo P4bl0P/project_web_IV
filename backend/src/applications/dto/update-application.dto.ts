@@ -12,18 +12,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Gender } from '@prisma/client';
-
-const trimOptionalString = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const cleanPhoneOptional = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const clean = value.replace(/\s+/g, '').trim();
-  return clean.length > 0 ? clean : undefined;
-};
+import { cleanPhoneOptional, trimOptional } from '../../common/dto-transforms.util';
 
 /**
  * DTO de edición de solicitud en Secretaría.
@@ -31,14 +20,14 @@ const cleanPhoneOptional = ({ value }: { value: unknown }) => {
  * las transiciones de estado deben pasar por los endpoints específicos de la máquina de estados.
  */
 export class UpdateApplicationDto {
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2)
   @MaxLength(60)
   @IsOptional()
   childFirstName?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2)
   @MaxLength(60)
@@ -61,7 +50,7 @@ export class UpdateApplicationDto {
   @IsOptional()
   noSecondLastNameJustification?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(120)
   @IsOptional()
@@ -77,14 +66,14 @@ export class UpdateApplicationDto {
   @IsOptional()
   gender?: Gender;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2)
   @MaxLength(60)
   @IsOptional()
   parent1FirstName?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2)
   @MaxLength(100)
@@ -99,7 +88,7 @@ export class UpdateApplicationDto {
   @IsOptional()
   parent1Phone?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => o.parent1Email !== undefined)
   @IsEmail({}, { message: 'El correo electrónico del tutor 1 no es válido.' })
   @IsOptional()
@@ -125,7 +114,7 @@ export class UpdateApplicationDto {
   @IsOptional()
   parent2Phone?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => Boolean(o.parent2Email))
   @IsEmail({}, { message: 'El correo electrónico del segundo tutor no es válido.' })
   @IsOptional()

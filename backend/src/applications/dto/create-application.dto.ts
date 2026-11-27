@@ -13,18 +13,11 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { Gender } from '@prisma/client';
-
-const trimString = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-
-const cleanPhone = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.replace(/\s+/g, '') : value;
-
-const trimOptionalString = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
+import {
+  cleanPhone,
+  trimOptional,
+  trimString,
+} from '../../common/dto-transforms.util';
 
 export class CreateApplicationDto {
   @Transform(trimString)
@@ -33,14 +26,14 @@ export class CreateApplicationDto {
   @MaxLength(60, { message: 'El nombre del educando es demasiado largo.' })
   childFirstName: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2, { message: 'El primer apellido debe tener al menos 2 caracteres.' })
   @MaxLength(60)
   @IsOptional()
   childLastName1?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(60)
   @IsOptional()
@@ -50,7 +43,7 @@ export class CreateApplicationDto {
   @IsOptional()
   hasNoSecondLastName?: boolean;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => o.hasNoSecondLastName === true)
   @IsString()
   @MinLength(5, {
@@ -60,7 +53,7 @@ export class CreateApplicationDto {
   noSecondLastNameJustification?: string;
 
   // Compatibilidad con clientes legados (si no envían childLastName1 desglosado)
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => !o.childLastName1)
   @IsString()
   @MinLength(2, { message: 'Los apellidos del educando son obligatorios.' })
@@ -78,47 +71,47 @@ export class CreateApplicationDto {
   gender?: Gender;
 
   // Dirección opcional en Fase 1 (se recoge exclusivamente en Inscripción Fase 2)
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(3)
   @MaxLength(150)
   @IsOptional()
   streetAddress?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(20)
   @IsOptional()
   streetNumber?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(30)
   @IsOptional()
   apartmentDoor?: string;
 
   // Compatibilidad temporal con clientes que envíen ApartmentDoor
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(30)
   @IsOptional()
   ApartmentDoor?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @Matches(/^(?:0[1-9]|[1-4]\d|5[0-2])\d{3}$/, {
     message: 'El código postal debe ser un código español válido de 5 dígitos (ej. 41089).',
   })
   @IsOptional()
   postalCode?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   @IsOptional()
   municipality?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MinLength(2)
   @MaxLength(50)
@@ -126,7 +119,7 @@ export class CreateApplicationDto {
   province?: string;
 
   // Identificador de unidad familiar (para agrupar hermanos reutilizando tutores)
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(80)
   @IsOptional()
@@ -157,13 +150,13 @@ export class CreateApplicationDto {
   parent1Email: string;
 
   // Segundo tutor opcional
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(60)
   @IsOptional()
   parent2FirstName?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(100)
   @IsOptional()
@@ -177,13 +170,13 @@ export class CreateApplicationDto {
   @IsOptional()
   parent2Phone?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => Boolean(o.parent2Email))
   @IsEmail({}, { message: 'El correo electrónico del segundo tutor no es válido.' })
   @IsOptional()
   parent2Email?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(1000, { message: 'La motivación no puede superar los 1000 caracteres.' })
   @IsOptional()
@@ -193,7 +186,7 @@ export class CreateApplicationDto {
   @IsOptional()
   hasFamilyInGroup?: boolean;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => o.hasFamilyInGroup === true)
   @IsString()
   @IsNotEmpty({ message: 'Debes indicar el nombre y vínculo del familiar en el grupo.' })
@@ -204,14 +197,14 @@ export class CreateApplicationDto {
   @IsOptional()
   comesFromOtherGroup?: boolean;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @ValidateIf((o) => o.comesFromOtherGroup === true)
   @IsString()
   @IsNotEmpty({ message: 'Debes indicar de qué grupo scout proviene.' })
   @MaxLength(200)
   originGroupDetails?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptional)
   @IsString()
   @MaxLength(100)
   @IsOptional()

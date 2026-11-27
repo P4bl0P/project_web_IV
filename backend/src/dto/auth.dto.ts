@@ -1,11 +1,6 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-
-const trimValue = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-
-const normalizeEmail = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().toLowerCase() : value;
+import { normalizeEmail, trimString } from '../common/dto-transforms.util';
 
 export class LoginDto {
   @Transform(normalizeEmail)
@@ -19,12 +14,12 @@ export class LoginDto {
 }
 
 export class MfaVerifyDto {
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString({ message: 'El reto de autenticación es obligatorio' })
   @IsNotEmpty({ message: 'El reto de autenticación es obligatorio' })
   challenge: string;
 
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString({ message: 'El código de verificación es obligatorio' })
   @IsNotEmpty({ message: 'El código de verificación es obligatorio' })
   @MaxLength(32, { message: 'Código de verificación demasiado largo' })
@@ -75,7 +70,7 @@ export class SetupMfaDto {
 }
 
 export class ConfirmMfaDto {
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString({ message: 'El código MFA es obligatorio' })
   @IsNotEmpty({ message: 'El código MFA es obligatorio' })
   @MaxLength(32)

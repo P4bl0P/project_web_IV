@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 const authFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
   fetch(input, { ...init, credentials: 'include' });
 
@@ -8,13 +8,22 @@ async function parseErrorMessage(response: Response, fallback: string): Promise<
   return typeof msg === 'string' && msg.trim() ? msg : fallback;
 }
 
-async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await authFetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
+export async function apiJson<T>(
+  path: string,
+  init?: RequestInit,
+  fallbackError = 'No se pudo completar la operación',
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await authFetch(`${API_URL}${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+  }
   if (!response.ok) {
-    throw new Error(await parseErrorMessage(response, 'No se pudo completar la operación'));
+    throw new Error(await parseErrorMessage(response, fallbackError));
   }
   return response.json();
 }

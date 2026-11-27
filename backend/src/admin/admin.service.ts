@@ -784,6 +784,11 @@ export class AdminService {
       where: { moduleId: id },
     });
     const touchedRoleIds = new Set<string>();
+    const pendingPermissionUpdates: Array<{
+      id: string;
+      data: Prisma.PermissionUpdateInput;
+    }> = [];
+
     for (const perm of affectedPermissions) {
       const normalized = this.authorization.normalizePermissionPayload(updated, {}, perm);
       const prevSpecial = parseSpecialPermissions(perm.specialPermissions);
@@ -796,8 +801,8 @@ export class AdminService {
         JSON.stringify(normalized.specialPermissions) !== JSON.stringify(prevSpecial);
       if (changed) {
         touchedRoleIds.add(perm.roleId);
-        await this.prisma.permission.update({
-          where: { id: perm.id },
+        pendingPermissionUpdates.push({
+          id: perm.id,
           data: {
             canAccess: normalized.canAccess,
             canRead: normalized.canRead,
@@ -811,8 +816,21 @@ export class AdminService {
       }
     }
 
-    for (const roleId of touchedRoleIds) {
-      await this.authService.revokeRoleSessions(roleId);
+    if (pendingPermissionUpdates.length > 0) {
+      const queries = pendingPermissionUpdates.map(({ id: permId, data }) =>
+        this.prisma.permission.update({ where: { id: permId }, data }),
+      );
+      if (typeof this.prisma.$transaction === 'function') {
+        await this.prisma.$transaction(queries);
+      } else {
+        await Promise.all(queries);
+      }
+    }
+
+    if (touchedRoleIds.size > 0) {
+      await Promise.all(
+        [...touchedRoleIds].map((roleId) => this.authService.revokeRoleSessions(roleId)),
+      );
     }
 
     await this.auditService.record({

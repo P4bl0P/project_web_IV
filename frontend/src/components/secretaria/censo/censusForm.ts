@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import type { ApplicantRecord, DirectCensusPayload } from '../../../services/api';
+import type { DirectCensusPayload } from '../../../services/api';
 import {
   REGEX,
   validateEnrollmentStep,
@@ -279,78 +279,6 @@ export function findFirstInvalidCensusStep(
     }
   }
   return null;
-}
-
-export function formFromRecord(record?: ApplicantRecord | null): DirectCensusPayload {
-  if (!record) return { ...EMPTY_CENSUS_FORM };
-  const enrollment = record.enrollment;
-
-  return {
-    ...EMPTY_CENSUS_FORM,
-    childFirstName: record.childFirstName,
-    childLastName1: record.childLastName1 || '',
-    childLastName2: record.childLastName2 || '',
-    hasNoSecondLastName: Boolean(record.hasNoSecondLastName),
-    noSecondLastNameJustification: record.noSecondLastNameJustification || '',
-    childBirthDate: record.childBirthDate.slice(0, 10),
-    gender:
-      record.gender === 'MASCULINO' || record.gender === 'FEMENINO' ? record.gender : '',
-    streetAddress: record.streetAddress || '',
-    streetNumber: record.streetNumber || '',
-    apartmentDoor: record.apartmentDoor ?? record.ApartmentDoor ?? '',
-    postalCode: record.postalCode || '',
-    municipality: record.municipality || '',
-    province: record.province || '',
-    parent1FirstName: record.parent1FirstName,
-    parent1LastName: record.parent1LastName,
-    parent1Phone: record.parent1Phone,
-    parent1Email: record.parent1Email,
-    parent1Relationship: record.parent1Relationship || '',
-    parent2FirstName: record.parent2FirstName || '',
-    parent2LastName: record.parent2LastName || '',
-    parent2Phone: record.parent2Phone || '',
-    parent2Email: record.parent2Email || '',
-    parent2Relationship: record.parent2Relationship || '',
-    motivation: record.motivation || '',
-    hasFamilyInGroup: record.hasFamilyInGroup,
-    familyMemberDetails: record.familyMemberDetails || '',
-    comesFromOtherGroup: record.comesFromOtherGroup,
-    originGroupDetails: record.originGroupDetails || '',
-    childDni: enrollment?.childDni || '',
-    childPhone: enrollment?.childPhone || '',
-    childEmail: enrollment?.childEmail || '',
-    legalStatus: enrollment?.legalStatus || 'MENOR',
-    circularPreference: enrollment?.circularPreference || 'EMAIL',
-    parent1Dni: enrollment?.parent1Dni || '',
-    parent2Dni: enrollment?.parent2Dni || '',
-    parentsMaritalStatus: enrollment?.parentsMaritalStatus || '',
-    custodyType: enrollment?.custodyType || 'SIN_ESPECIFICAR',
-    acceptsDataStorage: enrollment?.acceptsDataStorage ?? true,
-    acceptsDataTransfer: enrollment?.acceptsDataTransfer ?? true,
-    authorizesImages: enrollment?.authorizesImages ?? true,
-    consentTextVersion: enrollment?.consentTextVersion || '2026.1',
-    bloodType: enrollment?.bloodType || '',
-    chronicDiseases: enrollment?.chronicDiseases || '',
-    allergies: enrollment?.allergies || '',
-    medHeadache: enrollment?.medHeadache || '',
-    medFever: enrollment?.medFever || '',
-    medStomach: enrollment?.medStomach || '',
-    medThroat: enrollment?.medThroat || '',
-    medicalObservations: enrollment?.medicalObservations || '',
-    emergencyContactName: enrollment?.emergencyContactName || '',
-    emergencyContactPhone: enrollment?.emergencyContactPhone || '',
-    emergencyContactRelationship: enrollment?.emergencyContactRelationship || '',
-    authorizesEmergency: enrollment?.authorizesEmergency ?? true,
-    accountHolderName: enrollment?.accountHolderName || '',
-    accountHolderDni: enrollment?.accountHolderDni || '',
-    accountHolderAddress: enrollment?.accountHolderAddress || '',
-    accountHolderMunicipality: enrollment?.accountHolderMunicipality || '',
-    accountHolderPostalCode: enrollment?.accountHolderPostalCode || '',
-    iban: enrollment?.iban || '',
-    authorizesSepa: enrollment?.authorizesSepa ?? true,
-    signatureParent1: enrollment?.signatureParent1 || '',
-    signatureParent2: enrollment?.signatureParent2 || '',
-  };
 }
 
 export function buildCensusPayload(formData: DirectCensusPayload): DirectCensusPayload {

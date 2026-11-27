@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApplicationStatus, Gender } from '@prisma/client';
+import { toOptionalNumber, trimOptional } from '../../common/dto-transforms.util';
 
 export type SortField =
   | 'priority'
@@ -24,15 +25,6 @@ export type SortField =
 export type SortOrder = 'asc' | 'desc';
 
 export type RecordStage = 'INITIAL' | 'WAITLIST' | 'PENDING_ENROLLMENT' | 'CENSUS' | 'ARCHIVED';
-
-const toOptionalNumber = ({ value }: { value: unknown }) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? value : parsed;
-};
-
-const trimOptional = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() || undefined : value;
 
 export class QueryApplicationsDto {
   @IsEnum(ApplicationStatus)

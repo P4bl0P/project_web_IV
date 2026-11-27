@@ -252,7 +252,7 @@ export default function AdminUsersSection({
 
                     <select
                       aria-label={`Estado de ${user.name}`}
-                      value={user.status === 'INVITED' ? 'ACTIVE' : user.status}
+                      value={user.status}
                       onChange={(e) =>
                         void onUpdateUserStatus(
                           user.id,
@@ -261,6 +261,11 @@ export default function AdminUsersSection({
                       }
                       className="rounded-lg border border-[#e4e9f1] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#000254]"
                     >
+                      {user.status === 'INVITED' && (
+                        <option value="INVITED" disabled>
+                          Invitado
+                        </option>
+                      )}
                       <option value="ACTIVE">Activo</option>
                       <option value="BLOCKED">Bloqueado</option>
                       <option value="DISABLED">Desactivado</option>
