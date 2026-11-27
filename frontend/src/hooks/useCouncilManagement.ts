@@ -27,22 +27,23 @@ export function useCouncilManagement() {
     if (data.availableRoles?.length) setAvailableRoles(data.availableRoles);
   }, []);
 
+  const applyFailure = useCallback((reason: unknown) => {
+    setError(
+      reason instanceof Error ? reason.message : 'No se pudo cargar el Consejo de Grupo.',
+    );
+  }, []);
+
   const loadMembers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await councilApi.getManaged();
-      applyResponse(data);
+      applyResponse(await councilApi.getManaged());
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'No se pudo cargar el Consejo de Grupo.',
-      );
+      applyFailure(reason);
     } finally {
       setLoading(false);
     }
-  }, [applyResponse]);
+  }, [applyResponse, applyFailure]);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,13 +56,7 @@ export function useCouncilManagement() {
         }
       })
       .catch((reason: unknown) => {
-        if (!cancelled) {
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : 'No se pudo cargar el Consejo de Grupo.',
-          );
-        }
+        if (!cancelled) applyFailure(reason);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -69,7 +64,7 @@ export function useCouncilManagement() {
     return () => {
       cancelled = true;
     };
-  }, [applyResponse]);
+  }, [applyResponse, applyFailure]);
 
   const createMember = async (payload: CreateCouncilMemberPayload) => {
     setSaving(true);

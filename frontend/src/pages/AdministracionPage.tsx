@@ -47,25 +47,32 @@ export default function AdministracionPage() {
   const [form, setForm] = useState({ name: '', email: '', roleId: '' });
   const [roleForm, setRoleForm] = useState({ name: '', description: '' });
 
-  const load = useCallback(async () => {
-    setBusy(true);
-    setError('');
-    try {
-      const [nextUsers, nextRoles, nextModules] = await Promise.all([
-        adminApi.users(),
-        adminApi.roles(),
-        adminApi.modules(),
-      ]);
+  const applyLoadedData = useCallback(
+    ([nextUsers, nextRoles, nextModules]: [
+      AdminUser[],
+      AdminRole[],
+      RegisteredModule[],
+    ]) => {
       setUsers(nextUsers);
       setRoles(nextRoles);
       setModules(nextModules);
       setForm((v) => ({ ...v, roleId: v.roleId || nextRoles[0]?.id || '' }));
+    },
+    [],
+  );
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await Promise.all([adminApi.users(), adminApi.roles(), adminApi.modules()]);
+      applyLoadedData(result);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se pudo cargar la administración');
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [applyLoadedData]);
 
   const loadAudit = useCallback(async (filters?: { result?: 'ALLOWED' | 'DENIED' }) => {
     setLoadingAudit(true);
@@ -81,12 +88,9 @@ export default function AdministracionPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([adminApi.users(), adminApi.roles(), adminApi.modules()])
-      .then(([nextUsers, nextRoles, nextModules]) => {
+      .then((result) => {
         if (cancelled) return;
-        setUsers(nextUsers);
-        setRoles(nextRoles);
-        setModules(nextModules);
-        setForm((v) => ({ ...v, roleId: v.roleId || nextRoles[0]?.id || '' }));
+        applyLoadedData(result);
         setError('');
       })
       .catch((reason: unknown) => {
@@ -100,7 +104,7 @@ export default function AdministracionPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyLoadedData]);
 
   useEffect(() => {
     if (!notice) return;

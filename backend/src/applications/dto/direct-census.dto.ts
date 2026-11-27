@@ -12,12 +12,7 @@ import {
 } from 'class-validator';
 import { CompleteEnrollmentDto } from './complete-enrollment.dto';
 import { CreateApplicationDto } from './create-application.dto';
-
-const trimString = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-
-const cleanPhone = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.replace(/\s+/g, '') : value;
+import { cleanPhone, trimString } from '../../common/dto-transforms.util';
 
 class DirectCensusBaseDto extends IntersectionType(
   OmitType(CompleteEnrollmentDto, [

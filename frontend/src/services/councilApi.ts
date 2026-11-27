@@ -1,3 +1,4 @@
+import { apiJson } from './api';
 import type {
   CouncilMember,
   CouncilResponse,
@@ -5,32 +6,10 @@ import type {
   UpdateCouncilMemberPayload,
 } from '../types/conocenos';
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const COUNCIL_ERROR = 'No se pudo completar la operación del Consejo.';
 
-async function councilFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}${path}`, {
-      ...init,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
-    });
-  } catch {
-    throw new Error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
-  }
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = Array.isArray(data.message)
-      ? data.message.join(' · ')
-      : data.message;
-    throw new Error(
-      typeof message === 'string' && message.trim()
-        ? message
-        : 'No se pudo completar la operación del Consejo.',
-    );
-  }
-  return data as T;
+function councilFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  return apiJson<T>(path, init, COUNCIL_ERROR);
 }
 
 export const councilApi = {

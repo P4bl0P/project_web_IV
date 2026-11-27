@@ -1,11 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import type { RegisteredModule, SpecialActionDefinition } from './services/api';
+import { API_URL, type RegisteredModule, type SpecialActionDefinition } from './services/api';
 
 export type { RegisteredModule, SpecialActionDefinition };
-
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 export type PermissionAction =
   | 'canAccess'

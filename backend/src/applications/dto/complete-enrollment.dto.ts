@@ -13,24 +13,12 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { CircularPreference, CustodyType, Gender, LegalStatus } from '@prisma/client';
-
-const trimString = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-
-const trimOptional = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const cleanPhoneOptional = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const clean = value.replace(/\s+/g, '').trim();
-  return clean.length > 0 ? clean : undefined;
-};
-
-const cleanIban = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : value;
+import {
+  cleanIban,
+  cleanPhoneOptional,
+  trimOptional,
+  trimString,
+} from '../../common/dto-transforms.util';
 
 export class CompleteEnrollmentDto {
   // --- Revisión y posible corrección de datos iniciales de la solicitud ---

@@ -9,9 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { ClosureReason } from '@prisma/client';
-
-const trimOptional = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() || undefined : value;
+import { trimOptional } from '../../common/dto-transforms.util';
 
 export class OfferSpotDto {
   @IsInt()

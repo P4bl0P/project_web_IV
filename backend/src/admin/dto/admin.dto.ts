@@ -16,27 +16,15 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-const trimValue = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-
-const trimOptional = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() || undefined : value;
-
-const normalizeEmail = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().toLowerCase() : value;
-
-const emptyToNull = ({ value }: { value: unknown }) => {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : null;
-  }
-  return value;
-};
+import {
+  emptyToNull,
+  normalizeEmail,
+  trimOptional,
+  trimString,
+} from '../../common/dto-transforms.util';
 
 export class CreateUserDto {
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString({ message: 'El nombre es obligatorio' })
   @IsNotEmpty({ message: 'El nombre es obligatorio' })
   @MaxLength(120, { message: 'El nombre no puede superar los 120 caracteres' })
@@ -80,7 +68,7 @@ export class UpdateUserDto {
 }
 
 export class CreateRoleDto {
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString({ message: 'El nombre del cargo es obligatorio' })
   @IsNotEmpty({ message: 'El nombre del cargo es obligatorio' })
   @MaxLength(80, { message: 'El nombre del cargo no puede superar los 80 caracteres' })
@@ -176,7 +164,7 @@ export class UpdatePermissionDto {
 }
 
 export class SpecialActionItemDto {
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   @Matches(/^[a-z0-9_]+$/, {
@@ -185,13 +173,13 @@ export class SpecialActionItemDto {
   @MaxLength(60)
   key: string;
 
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
   label: string;
 
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -208,7 +196,7 @@ export class CreateModuleDto {
   @MaxLength(60)
   key?: string;
 
-  @Transform(trimValue)
+  @Transform(trimString)
   @IsString({ message: 'El nombre del módulo es obligatorio' })
   @IsNotEmpty({ message: 'El nombre del módulo es obligatorio' })
   @MaxLength(80)
