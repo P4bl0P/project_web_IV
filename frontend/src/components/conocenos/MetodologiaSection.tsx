@@ -58,7 +58,7 @@ export default function MetodologiaSection() {
               </p>
               <p className="mt-2 text-sm leading-relaxed text-white/80">
                 Cada actividad combina juego, responsabilidad compartida, vida en la naturaleza y
-                acompañamiento cercano de scouters voluntarios.
+                acompañamiento cercano de responsables voluntarios.
               </p>
             </div>
           </div>

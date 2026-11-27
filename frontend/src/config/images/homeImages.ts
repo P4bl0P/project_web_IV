@@ -17,28 +17,28 @@ export const homeImages: HomeImagesCatalog = {
   hero: {
     slides: [
       {
-        src: '/images/home/scout-01.jpg',
-        alt: 'Actividad del Grupo IV Scout',
-        caption: 'Aventura que se comparte',
-      },
-      {
-        src: '/images/home/scout-02.jpg',
-        alt: 'Scouts del Grupo IV en una actividad',
-        caption: 'Aprender haciendo',
-      },
-      {
-        src: '/images/home/scout-03.jpg',
-        alt: 'Campamento del Grupo IV Scout',
-        caption: 'Siempre un poco más lejos',
-      },
-      {
-        src: '/images/home/scout-04.jpg',
+        src: '/images/home/home-01.jpg',
         alt: 'Comunidad del Grupo IV Scout',
+        caption: 'Explorando el mundo con valores',
+      },
+      {
+        src: '/images/home/home-02.jpg',
+        alt: 'Scouts del Grupo IV en una actividad',
         caption: 'Una comunidad para crecer',
+      },
+            {
+        src: '/images/home/home-03.jpg',
+        alt: 'Actividad del Grupo IV Scout',
+        caption: 'Aventuras que se comparten',
+      },
+      {
+        src: '/images/home/home-04.jpg',
+        alt: 'Campamento del Grupo IV Scout',
+        caption: 'Nuevos y viejos amigos',
       },
     ],
     fallback: {
-      src: '/images/home/hero.png',
+      src: '/images/shared/flor_lis.png',
       alt: 'Ilustración del espíritu scout',
       caption: 'Siempre listos',
     },

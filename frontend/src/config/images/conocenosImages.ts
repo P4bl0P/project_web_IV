@@ -10,18 +10,18 @@ export interface ConocenosImagesCatalog {
 }
 
 export const conocenosImages: ConocenosImagesCatalog = {
-  hero: '/images/conocenos/hero/scout-01.jpg',
+  hero: '/images/conocenos/hero/conocenos-01.jpg',
   historia: {
-    'origen-1979': '/images/conocenos/historia/antiguas/scout-02.jpg',
-    'consolidacion-1997': '/images/conocenos/historia/actuales/scout-04.jpg',
-    'asamblea-2013': '/images/conocenos/historia/actuales/scout-03.jpg',
-    'aniversario-2024': '/images/conocenos/historia/actuales/scout-01.jpg',
+    'origen-1979': '/images/conocenos/historia/conocenos-02.jpg',
+    'consolidacion-1997': '/images/conocenos/historia/conocenos-03.jpg',
+    'asamblea-2013': '/images/conocenos/historia/conocenos-04.jpg',
+    'aniversario-2024': '/images/conocenos/historia/conocenos-05.jpg',
   },
   secciones: {
-    castores: null,
-    lobatos: null,
-    rangers: null,
-    pioneros: '/images/conocenos/secciones/pioneros/scout-03.jpg',
-    rutas: '/images/conocenos/secciones/rutas/scout-04.jpg',
+    castores: '/images/conocenos/secciones/castores/castores-01.jpg',
+    lobatos: '/images/conocenos/secciones/lobatos/lobatos-01.jpg',
+    rangers: '/images/conocenos/secciones/rangers/rangers-01.jpg',
+    pioneros: '/images/conocenos/secciones/pioneros/pioneros-01.jpg',
+    rutas: '/images/conocenos/secciones/rutas/rutas-01.jpg',
   },
 };

@@ -33,10 +33,10 @@ export const EMAIL_CHANNELS = [
   {
     id: 'secretaria',
     shortLabel: 'Correo de Secretaría',
-    badge: 'Trámites, documentación e inscripciones',
+    badge: 'Trámites y documentación administrativa',
     title: 'Correo de Secretaría',
     description:
-      'Para gestiones administrativas, entrega de documentación, censo, solicitudes de ingreso y trámites oficiales.',
+      'Para gestiones administrativas, entrega de documentación específica y dudas sobre trámites oficiales.',
     address: 'papelescoutiv@gmail.com',
     actionLabel: 'Escribir a Secretaría',
   },

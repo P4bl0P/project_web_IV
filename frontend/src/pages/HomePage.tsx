@@ -5,7 +5,7 @@ import { homeImages } from '../config/images/homeImages';
 
 const values = [
   { icon: Compass, title: 'Aventura con propósito', text: 'Aprendemos haciendo, al aire libre y con curiosidad.' },
-  { icon: Users, title: 'Una comunidad', text: 'Familias, educandos y scouters creciendo juntos.' },
+  { icon: Users, title: 'Una comunidad', text: 'Familias, educandos y responsables creciendo juntos.' },
   { icon: Leaf, title: 'Cuidamos lo que importa', text: 'Naturaleza, entorno y compromiso con nuestro barrio.' },
 ];
 

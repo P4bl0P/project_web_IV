@@ -1,4 +1,4 @@
-import { ArrowRight, Heart, MapPin } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { ContactoImageAsset } from '../../config/images/contactoImages';
 
@@ -40,14 +40,6 @@ export default function ContactoHeader({ image }: ContactoHeaderProps) {
             className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,2,84,0.04)_20%,rgba(0,2,84,0.58)_100%)]"
             aria-hidden="true"
           />
-          <div className="absolute inset-x-4 bottom-[14px] flex flex-wrap items-center justify-between gap-3 min-[801px]:inset-x-6 min-[801px]:bottom-5">
-            <span className="inline-flex items-center gap-[7px] rounded-full border border-white/[0.38] bg-[#000254]/[0.58] px-[14px] py-2 text-[12px] font-bold text-white backdrop-blur-[10px]">
-              <MapPin size={14} aria-hidden="true" /> Montequinto · Dos Hermanas (Sevilla)
-            </span>
-            <span className="inline-flex items-center gap-[7px] rounded-full border border-white/95 bg-white/[0.92] px-[14px] py-2 text-[12px] font-bold text-[#000254] backdrop-blur-[10px]">
-              <Heart size={14} fill="currentColor" className="text-[#e22328]" aria-hidden="true" /> Sábados de actividad scout
-            </span>
-          </div>
         </div>
 
         <nav

@@ -54,7 +54,7 @@ describe('SensitiveDataService y AuroraContactMapper', () => {
       childLastName: 'García Pérez',
       childBirthDate: new Date('2017-12-23T00:00:00.000Z'), // 9 años en ronda 2026/2027 -> Lobatos
       gender: Gender.FEMENINO,
-      streetAddress: 'Avda. de los Scouters',
+      streetAddress: 'Avda. de los Responsables',
       streetNumber: '14',
       apartmentDoor: '3º B',
       postalCode: '41089',
@@ -158,7 +158,7 @@ describe('SensitiveDataService y AuroraContactMapper', () => {
       expect(payload.genre).toBe('FEMALE');
       expect(payload.birthDate).toBe('2017-12-23');
       expect(payload.branch).toBe('LOBATOS');
-      expect(payload.address1).toBe('Avda. de los Scouters, 14');
+      expect(payload.address1).toBe('Avda. de los Responsables, 14');
       expect(payload.address2).toBe('3º B');
       expect(payload.hasDataAgreement).toBe(true);
       expect(payload.hasPhotoAgreement).toBe(false);

@@ -11,15 +11,15 @@ export interface ContactoImagesCatalog {
 
 export const contactoImages: ContactoImagesCatalog = {
   hero: {
-    src: '/images/contacto/scout-04.jpg',
-    alt: 'Scouts del Grupo IV en ruta al aire libre',
+    src: '/images/contacto/contacto-01.jpg',
+    alt: 'Scouts del Grupo IV formando un círculo',
   },
   ubicacion: {
-    src: '/images/contacto/scout-02.jpg',
+    src: '/images/contacto/contacto-02.jpg',
     alt: 'Scouts del Grupo IV frente a las puertas de la parroquia',
   },
   consejo: {
-    src: '/images/contacto/scout-01.jpg',
-    alt: 'Equipo de scouters y educandos del Grupo IV Scout',
+    src: '/images/contacto/contacto-03.jpg',
+    alt: 'Equipo de responsables y educandos del Grupo IV Scout',
   },
 };
