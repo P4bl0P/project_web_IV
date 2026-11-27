@@ -16,7 +16,7 @@ const BRANCH_SUBTITLES: Record<string, string> = {
   Castores: 'Castores (Colonia)',
   Lobatos: 'Lobatos (Manada)',
   Rangers: 'Rangers (Tropa)',
-  Pioneros: 'Pioneros (Escultas)',
+  Pioneros: 'Pioneros (Unidad)',
   Rutas: 'Rutas (Agrupación de Rutas · fuera del grupo)',
   Responsables: 'Responsables (21+ años)',
   'Menor de 6 años': 'Menor de 6 años (fuera de edad mínima)',
